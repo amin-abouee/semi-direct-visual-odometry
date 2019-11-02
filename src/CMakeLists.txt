@@ -3,16 +3,17 @@ set(CMAKE_RELEASE_DIR "${CMAKE_SOURCE_DIR}/bin/release")
 # debug binary folder
 set(CMAKE_DEBUG_DIR "${CMAKE_SOURCE_DIR}/bin/debug")
 
-find_package(OpenCV REQUIRED)
+find_package(OpenCV)
+find_package(Eigen3)
 find_package(Doxygen)
 option(BUILD_DOC "Build documentation" OFF)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
+# include_directories(${OpenCV_INCLUDE_DIRS})
 
 set(LIBRARY_SOURCES
     main.cpp
     )
-
 
 # include_directories(math.hpp)
 # add_library(source SHARED ${LIBRARY_SOURCES})
@@ -22,7 +23,7 @@ set(LIBRARY_SOURCES
 
 add_executable(visual_odometry ${LIBRARY_SOURCES})
 # target_link_libraries (visual_odometry visualizer source)
-target_link_libraries (visual_odometry ${OpenCV_LIBS})
+target_link_libraries (visual_odometry ${OpenCV_LIBS} Eigen3::Eigen)
 
 set_target_properties(visual_odometry PROPERTIES CMAKE_CXX_STANDARD_REQUIRED ON)
 set_target_properties(visual_odometry PROPERTIES CXX_STANDARD 17)
