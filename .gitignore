@@ -31,4 +31,8 @@
 *.out
 *.app
 
+compile_commands.json
+
 /build
+/bin
+/.vscode
