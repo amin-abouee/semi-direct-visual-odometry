@@ -12,6 +12,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 # include_directories(${OpenCV_INCLUDE_DIRS})
 
 set(LIBRARY_SOURCES
+    feature-selection.cpp
     main.cpp
     )
 
