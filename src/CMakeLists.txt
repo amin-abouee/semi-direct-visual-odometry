@@ -13,6 +13,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 
 set(LIBRARY_SOURCES
     feature-selection.cpp
+    visualization.cpp
     main.cpp
     )
 
