@@ -35,6 +35,12 @@ public:
     // D'tor
     ~Visualization() = default;
 
+    void visualizeFeaturePoints( const cv::Mat& img, const Eigen::MatrixXd& vecs, const std::string& windowsName );
+
+    void visualizeGrayImage(const cv::Mat& img, const std::string& windowsName);
+
+    void visualizeHSVColoredImage(const cv::Mat& img, const std::string& windowsName);
+
     void visualizeEpipole( const cv::Mat& img,
                            const Eigen::Vector3d& vec,
                            const Eigen::Matrix3d& K,
@@ -42,15 +48,17 @@ public:
 
     void visualizeEpipolarLine( const cv::Mat& img,
                                 const Eigen::Vector3d& vec,
-                                const Eigen::Matrix3d& E,
+                                const Eigen::Matrix3d& F,
                                 const std::string& windowsName );
 
     void visualizeEpipolarLines( const cv::Mat& img,
                                  const Eigen::MatrixXd& vecs,
-                                 const Eigen::Matrix3d& E,
+                                 const Eigen::Matrix3d& F,
                                  const std::string& windowsName );
 
 private:
+
+    cv::Scalar generateColor( const double min, const double max, const float value );
 };
 
 #endif /* __VISUALIZATION_H__ */

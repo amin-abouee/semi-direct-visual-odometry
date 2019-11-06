@@ -42,28 +42,29 @@ public:
 
     void detectFeatures( const uint32_t numberCandidate );
 
-    void visualizeFeaturePoints();
+    // void visualizeFeaturePoints();
 
-    void visualizeGrayGradientMagnitude();
+    // void visualizeGrayGradientMagnitude();
 
-    void visualizeColoredGradientMagnitude();
+    // void visualizeColoredGradientMagnitude();
 
-    void visualizeEpipolar( const Eigen::Vector3d& point, const Eigen::Matrix3d& K );
+    // void visualizeEpipolar( const Eigen::Vector3d& point, const Eigen::Matrix3d& K );
 
     Eigen::Matrix< double, 3, Eigen::Dynamic > m_kp;
+    cv::Mat m_gradientMagnitude;
+    cv::Mat m_gradientOrientation;
+
 private:
     // Efficient adaptive non-maximal suppression algorithms for homogeneous spatial keypoint distribution
     Eigen::Matrix< double, 3, Eigen::Dynamic > Ssc(
       std::vector< cv::KeyPoint > keyPoints, int numRetPoints, float tolerance, int cols, int rows );
 
-    cv::Scalar generateColor( const double min, const double max, const float value );
+    // cv::Scalar generateColor( const double min, const double max, const float value );
 
     cv::Mat m_dx;
     cv::Mat m_dy;
-    cv::Mat m_gradientMagnitude;
-    cv::Mat m_gradientOrientation;
 
-    uint32_t m_numberCandidate;
+    // uint32_t m_numberCandidate;
 
     std::shared_ptr< cv::Mat > m_imgGray;
     // std::vector < cv::KeyPoint > m_keypoints;
