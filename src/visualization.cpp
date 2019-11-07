@@ -51,6 +51,8 @@ void Visualization::visualizeHSVColoredImage(const cv::Mat& img, const std::stri
     // https://toolstud.io/color/rgb.php?rgb_r=0&rgb_g=255&rgb_b=0&convert=rgbdec
     // https://answers.opencv.org/question/191488/create-a-hsv-range-palette/
 
+    // https://docs.opencv.org/3.4/d4/dee/tutorial_optical_flow.html
+
     cv::Mat normMag, imgBGR, imgHSV;
     cv::normalize( img, normMag, 0, 255, cv::NORM_MINMAX, CV_8UC1 );
     cv::cvtColor( normMag, imgBGR, cv::COLOR_GRAY2BGR );
@@ -82,11 +84,8 @@ void Visualization::visualizeEpipole( const cv::Mat& img,
                                       const Eigen::Matrix3d& K,
                                       const std::string& windowsName )
 {
-    cv::Mat imgBGR;
-    if ( img.channels() == 1 )
-        cv::cvtColor( img, imgBGR, cv::COLOR_GRAY2BGR );
-    else
-        imgBGR = img.clone();
+    // https://answers.opencv.org/question/182587/how-to-draw-epipolar-line/
+    cv::Mat imgBGR = getBGRImage(img);
 
     const Eigen::Vector3d projected = K * vec;
     cv::circle( imgBGR, cv::Point2i( projected( 0 ), projected( 1 ) ), 5.0, cv::Scalar( 0, 255, 165 ) );
@@ -98,11 +97,7 @@ void Visualization::visualizeEpipolarLine( const cv::Mat& img,
                                            const Eigen::Matrix3d& F,
                                            const std::string& windowsName )
 {
-    cv::Mat imgBGR;
-    if ( img.channels() == 1 )
-        cv::cvtColor( img, imgBGR, cv::COLOR_GRAY2BGR );
-    else
-        imgBGR = img.clone();
+    cv::Mat imgBGR = getBGRImage(img);
 
     Eigen::Vector3d line = F * vec;
 
@@ -121,11 +116,7 @@ void Visualization::visualizeEpipolarLines( const cv::Mat& img,
                                             const Eigen::Matrix3d& F,
                                             const std::string& windowsName )
 {
-    cv::Mat imgBGR;
-    if ( img.channels() == 1 )
-        cv::cvtColor( img, imgBGR, cv::COLOR_GRAY2BGR );
-    else
-        imgBGR = img.clone();
+    cv::Mat imgBGR = getBGRImage(img);
 
     for ( std::size_t i( 0 ); i < vecs.cols(); i++ )
     {
@@ -144,4 +135,14 @@ cv::Scalar Visualization::generateColor( const double min, const double max, con
 {
     int hue = ( 120 / ( max - min ) ) * value;
     return cv::Scalar( hue, 100, 100 );
+}
+
+cv::Mat Visualization::getBGRImage(const cv::Mat& img)
+{
+    cv::Mat imgBGR;
+    if ( img.channels() == 1 )
+        cv::cvtColor( img, imgBGR, cv::COLOR_GRAY2BGR );
+    else
+        imgBGR = img.clone();
+    return imgBGR;
 }

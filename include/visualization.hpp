@@ -59,6 +59,8 @@ public:
 private:
 
     cv::Scalar generateColor( const double min, const double max, const float value );
+
+    cv::Mat getBGRImage(const cv::Mat& img);
 };
 
 #endif /* __VISUALIZATION_H__ */
