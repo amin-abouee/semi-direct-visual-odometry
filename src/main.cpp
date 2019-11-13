@@ -8,7 +8,7 @@
 
 #include <Eigen/Core>
 
-#include "feature-selection.hpp"
+#include "feature_selection.hpp"
 #include "visualization.hpp"
 
 int main( int argc, char* argv[] )

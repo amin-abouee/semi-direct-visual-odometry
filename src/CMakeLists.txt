@@ -15,7 +15,8 @@ include_directories(${CMAKE_SOURCE_DIR}/include
 
 set(LIBRARY_SOURCES
     frame.cpp
-    feature-selection.cpp
+    image_pyramid.cpp
+    feature_selection.cpp
     visualization.cpp
     main.cpp
     )

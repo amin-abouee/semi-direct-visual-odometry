@@ -19,6 +19,7 @@
 #include "image_pyramid.hpp"
 
 class Feature;
+class Point;
 
 class Frame final
 {
@@ -30,6 +31,7 @@ public:
     Sophus::SE3d m_TransformWF;
     Eigen::Matrix<double, 6, 6> m_covPose;
     ImagePyramid m_imagePyramid;
+    std::vector <Feature*> m_currentFrameFeatures;
     bool m_keyFrame;
 
 

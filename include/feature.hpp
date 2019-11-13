@@ -20,6 +20,9 @@ public:
     Frame* m_frame;
     Eigen::Vector2d m_px;
     Eigen::Vector3d m_bearing_vec;
+    uint8_t level;
+    Eigen::Vector3d m_point;
+    Eigen::Vector2d m_gradientOrientation;
 
 
     explicit Feature();
@@ -27,6 +30,7 @@ public:
     Feature(Feature&& rhs);
     Feature& operator=(const Feature& rhs);
     Feature& operator=(Feature&& rhs);
+    ~Feature() = default;
 
 private:
 
