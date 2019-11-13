@@ -48,7 +48,7 @@ int main( int argc, char* argv[] )
     // cv::calcHist(&mag, 1, 0, cv::Mat(), histoMag, 1, &histSize, &histRange);
 
     auto t3 = std::chrono::high_resolution_clock::now();
-    featureSelection.detectFeatures( 1000 );
+    featureSelection.detectFeatures( 200 );
     auto t4 = std::chrono::high_resolution_clock::now();
     ;
     std::cout << "Elapsed time for SSC: " << std::chrono::duration_cast< std::chrono::milliseconds >( t4 - t3 ).count()

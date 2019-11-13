@@ -3,15 +3,18 @@ set(CMAKE_RELEASE_DIR "${CMAKE_SOURCE_DIR}/bin/release")
 # debug binary folder
 set(CMAKE_DEBUG_DIR "${CMAKE_SOURCE_DIR}/bin/debug")
 
-find_package(OpenCV)
-find_package(Eigen3)
+find_package(OpenCV REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(Sophus REQUIRED)
 find_package(Doxygen)
 option(BUILD_DOC "Build documentation" OFF)
 
-include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_SOURCE_DIR}/include
+                    ${Sophus_INCLUDE_DIR})
 # include_directories(${OpenCV_INCLUDE_DIRS})
 
 set(LIBRARY_SOURCES
+    frame.cpp
     feature-selection.cpp
     visualization.cpp
     main.cpp
