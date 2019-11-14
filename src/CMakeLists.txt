@@ -6,6 +6,9 @@ set(CMAKE_DEBUG_DIR "${CMAKE_SOURCE_DIR}/bin/debug")
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Sophus REQUIRED)
+find_package(nlohmann_json REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
+find_package(Threads)
 find_package(Doxygen)
 option(BUILD_DOC "Build documentation" OFF)
 
@@ -29,7 +32,7 @@ set(LIBRARY_SOURCES
 
 add_executable(visual_odometry ${LIBRARY_SOURCES})
 # target_link_libraries (visual_odometry visualizer source)
-target_link_libraries (visual_odometry ${OpenCV_LIBS} Eigen3::Eigen)
+target_link_libraries (visual_odometry ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads)
 
 set_target_properties(visual_odometry PROPERTIES CMAKE_CXX_STANDARD_REQUIRED ON)
 set_target_properties(visual_odometry PROPERTIES CXX_STANDARD 17)

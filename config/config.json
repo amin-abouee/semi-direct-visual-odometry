@@ -1,0 +1,7 @@
+{
+    "file_paths": 
+    {
+        "log_file" : "/home/amin/Workspace/cplusplus/single_camera_live_tracking/art_visual_tracking_library/log.conf",
+        "camera_calibration": "/home/amin/Workspace/cplusplus/single_camera_live_tracking/config/flea3_full.yaml"
+    }
+}
