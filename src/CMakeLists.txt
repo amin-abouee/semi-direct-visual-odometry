@@ -7,7 +7,9 @@ find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Sophus REQUIRED)
 find_package(nlohmann_json REQUIRED)
-find_package(spdlog CONFIG REQUIRED)
+find_package(OpenMP REQUIRED)
+# https://github.com/gabime/spdlog/blob/v1.x/example/CMakeLists.txt
+find_package(spdlog REQUIRED)
 find_package(Threads)
 find_package(Doxygen)
 option(BUILD_DOC "Build documentation" OFF)
@@ -32,7 +34,7 @@ set(LIBRARY_SOURCES
 
 add_executable(visual_odometry ${LIBRARY_SOURCES})
 # target_link_libraries (visual_odometry visualizer source)
-target_link_libraries (visual_odometry ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads)
+target_link_libraries (visual_odometry ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads OpenMP::OpenMP_CXX spdlog::spdlog)
 
 set_target_properties(visual_odometry PROPERTIES CMAKE_CXX_STANDARD_REQUIRED ON)
 set_target_properties(visual_odometry PROPERTIES CXX_STANDARD 17)

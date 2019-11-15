@@ -12,13 +12,18 @@
 #include "visualization.hpp"
 
 #include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 
 int main( int argc, char* argv[] )
 {
-    spdlog::set_level(spdlog::level::debug);
-    spdlog::set_pattern("[%H:%M:%S] [%@ - %s] [thread %t] %v");
-    spdlog::debug("Welcome to spdlog!");
-    SPDLOG_DEBUG("Some debug message");
+    auto mainLogger = spdlog::stdout_color_mt("bombo");
+    mainLogger->set_level(spdlog::level::debug);
+    mainLogger->set_pattern("[%Y-%m-%d %H:%M:%S] [%s:%#] [%n->%l] [thread:%t] %v");
+    mainLogger->info("Info");
+    mainLogger->debug("Debug");
+    mainLogger->warn("Warn");
+    mainLogger->error("Error");
+
     cv::Mat img = cv::imread( "../input/0000000000.png", cv::IMREAD_GRAYSCALE );
 
     Eigen::Matrix3d K;

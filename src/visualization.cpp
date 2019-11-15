@@ -118,7 +118,7 @@ void Visualization::visualizeEpipolarLines( const cv::Mat& img,
 {
     cv::Mat imgBGR = getBGRImage(img);
 
-    for ( std::size_t i( 0 ); i < vecs.cols(); i++ )
+    for ( int i( 0 ); i < vecs.cols(); i++ )
     {
         Eigen::Vector3d line = F * vecs.col( i );
         double nu            = line( 0 ) * line( 0 ) + line( 1 ) * line( 1 );
