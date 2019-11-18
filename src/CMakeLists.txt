@@ -19,6 +19,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include
 # include_directories(${OpenCV_INCLUDE_DIRS})
 
 set(LIBRARY_SOURCES
+    pinhole_camera.cpp
     frame.cpp
     image_pyramid.cpp
     feature_selection.cpp
