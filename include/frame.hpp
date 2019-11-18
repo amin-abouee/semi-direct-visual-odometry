@@ -17,6 +17,7 @@
 #include <sophus/se3.hpp>
 
 #include "image_pyramid.hpp"
+#include "pinhole_camera.hpp"
 
 class Feature;
 class Point;
@@ -26,8 +27,7 @@ class Frame final
 public:
     static uint32_t m_frameCounter;
     uint32_t m_id;
-    Eigen::Matrix3d m_K;
-    std::pair< std::uint16_t, std::uint16_t > m_imgRes;
+    PinholeCamera* m_camera;
     Sophus::SE3d m_TransW2F;
     Eigen::Matrix< double, 6, 6 > m_covPose;
     ImagePyramid m_imagePyramid;
@@ -35,7 +35,7 @@ public:
     bool m_keyFrame;
 
     // C'tor
-    explicit Frame( Eigen::Matrix3d& K, cv::Mat& img );
+    explicit Frame( PinholeCamera* camera, cv::Mat& img );
     // Copy C'tor
     Frame( const Frame& rhs ) = delete;  // non construction-copyable
     // move C'tor

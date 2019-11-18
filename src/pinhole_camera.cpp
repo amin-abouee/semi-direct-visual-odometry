@@ -94,9 +94,9 @@ Eigen::Vector3d PinholeCamera::inverseProject2d(const double x, const double y) 
     return pointCamera.normalized();
 }
 
-Eigen::Vector3d inverseProject2d(const Eigen::Vector2d& pointImage) const
+Eigen::Vector3d PinholeCamera::inverseProject2d(const Eigen::Vector2d& pointImage) const
 {
-
+    return inverseProject2d(pointImage.x(), pointImage.y());
 }
 
 const Eigen::Matrix3d& PinholeCamera::K() const
@@ -156,7 +156,7 @@ bool PinholeCamera::isInFrame( const Eigen::Vector2d& imagePoint, double boundar
         return true;
     return false;
 }
-bool PinholeCamera::isInFrame( const Eigen::Vector2d& imagePoint, double boundary, uint8_t level ) const
+bool PinholeCamera::isInFrame( const Eigen::Vector2d& imagePoint, uint8_t level, double boundary) const
 {
     if ( imagePoint.x() >= boundary && imagePoint.y() >= boundary &&
          imagePoint.x() < m_width / ( 1 << level ) - boundary && imagePoint.y() < m_height / ( 1 << level ) - boundary )
@@ -170,5 +170,4 @@ void PinholeCamera::undistortImage(const cv::Mat& distorted, cv::Mat& undistorte
         cv::remap(distorted, undistorted, undistortedMapX, undistortedMapY, cv::INTER_LINEAR);
     else
         undistorted = distorted.clone();
-    
 }

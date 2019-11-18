@@ -48,7 +48,7 @@ public:
     double height() const;
 
     bool isInFrame(const Eigen::Vector2d& imagePoint, double boundary = 0.0) const;
-    bool isInFrame(const Eigen::Vector2d& imagePoint, double boundary = 0.0, uint8_t level = 0) const;
+    bool isInFrame(const Eigen::Vector2d& imagePoint, uint8_t level, double boundary = 0.0) const;
 
     void undistortImage(const cv::Mat& distorted, cv::Mat& undistorted);
 
