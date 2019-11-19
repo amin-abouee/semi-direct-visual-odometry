@@ -36,11 +36,14 @@ void Frame::removeKeyPoint( std::shared_ptr<Feature>& feature )
     //         break;
     //     }
     // }
-    auto element = std::remove_if(m_frameFeatures.begin(), m_frameFeatures.end(), [&feature](std::shared_ptr<Feature>& f)
-    {if (f == feature)
-        return true;
-    });
 
+    auto find = [&feature](std::shared_ptr<Feature>& f) -> bool 
+    {
+        if (f == feature)
+            return true;
+        return false;
+    };
+    auto element = std::remove_if(m_frameFeatures.begin(), m_frameFeatures.end(), find);
 }
 
 std::uint32_t Frame::numberObservation() const
@@ -54,10 +57,6 @@ bool Frame::isVisible( const Eigen::Vector3d& point3D ) const
     if ( cameraPoint.z() < 0.0 )
         return false;
     const Eigen::Vector2d imagePoint = camera2image( cameraPoint );
-    // if ( imagePoint.x() >= 0.0 && imagePoint.y() >= 0.0 && imagePoint.x() < m_camera->width() &&
-    //      imagePoint.y() < m_camera->height() )
-    //     return true;
-    // return false;
     return m_camera->isInFrame(imagePoint);
 }
 
@@ -84,8 +83,6 @@ Eigen::Vector3d Frame::camera2world( const Eigen::Vector3d& point3D_c ) const
 
 Eigen::Vector2d Frame::camera2image( const Eigen::Vector3d& point3D_c ) const
 {
-    // const Eigen::Vector3d imagePoint = m_K * point3D_c;
-    // return Eigen::Vector2d( imagePoint.x() / imagePoint.z(), imagePoint.y() / imagePoint.z() );
     return m_camera->project2d(point3D_c);
 }
 
@@ -97,8 +94,6 @@ Eigen::Vector3d Frame::image2world( const Eigen::Vector2d& point2D, const double
 
 Eigen::Vector3d Frame::image2camera( const Eigen::Vector2d& point2D, const double depth ) const
 {
-    // const Eigen::Vector3d homoImageCord( point2D.x() * depth, point2D.y() * depth, depth );
-    // return m_K.inverse() * homoImageCord;
     return m_camera->inverseProject2d(point2D) * depth;
 }
 
