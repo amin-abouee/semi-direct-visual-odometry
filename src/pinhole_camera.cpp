@@ -149,14 +149,14 @@ double PinholeCamera::height() const
     return m_height;
 }
 
-bool PinholeCamera::isInFrame( const Eigen::Vector2d& imagePoint, double boundary ) const
+bool PinholeCamera::isInFrame( const Eigen::Vector2d& imagePoint, const double boundary ) const
 {
     if ( imagePoint.x() >= boundary && imagePoint.y() >= boundary && imagePoint.x() < m_width - boundary &&
          imagePoint.y() < m_height - boundary )
         return true;
     return false;
 }
-bool PinholeCamera::isInFrame( const Eigen::Vector2d& imagePoint, uint8_t level, double boundary) const
+bool PinholeCamera::isInFrame( const Eigen::Vector2d& imagePoint, const uint8_t level, const double boundary) const
 {
     if ( imagePoint.x() >= boundary && imagePoint.y() >= boundary &&
          imagePoint.x() < m_width / ( 1 << level ) - boundary && imagePoint.y() < m_height / ( 1 << level ) - boundary )
