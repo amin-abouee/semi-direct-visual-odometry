@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <chrono>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
@@ -10,15 +10,14 @@
 #include <Eigen/Core>
 
 #include "feature_selection.hpp"
-#include "visualization.hpp"
 #include "frame.hpp"
 #include "pinhole_camera.hpp"
+#include "visualization.hpp"
 
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
 
 #include <nlohmann/json.hpp>
-
 
 nlohmann::json createConfigParser( const std::string& fileName )
 {
@@ -36,7 +35,6 @@ nlohmann::json createConfigParser( const std::string& fileName )
     return configParser;
 }
 
-
 int main( int argc, char* argv[] )
 {
     auto mainLogger = spdlog::stdout_color_mt( "main" );
@@ -49,8 +47,8 @@ int main( int argc, char* argv[] )
 
     std::string configIOFile = "../config/config.json";
 
-    const nlohmann::json& configJson = createConfigParser(configIOFile);
-    std::cout << configJson["file_paths"]["camera_calibration"].get<std::string>() << std::endl;
+    const nlohmann::json& configJson = createConfigParser( configIOFile );
+    std::cout << configJson[ "file_paths" ][ "camera_calibration" ].get< std::string >() << std::endl;
     // std::ifstream jsonFile(configFile);
     // const nlohmann::json& filePaths = configFile[ "file_paths" ];
 
@@ -79,9 +77,9 @@ int main( int argc, char* argv[] )
 
     Eigen::Vector3d t( -0.0206659, -0.00456935, 0.999776 );
 
-    PinholeCamera camera(1242, 375, K(0, 0), K(1, 1), K(0, 2), K(1, 2), 0.0, 0.0, 0.0, 0.0, 0.0);
-    Frame refFrame(camera, refImg);
-    Frame curFrame(camera, curImg);
+    PinholeCamera camera( 1242, 375, K( 0, 0 ), K( 1, 1 ), K( 0, 2 ), K( 1, 2 ), 0.0, 0.0, 0.0, 0.0, 0.0 );
+    Frame refFrame( camera, refImg );
+    Frame curFrame( camera, curImg );
 
     FeatureSelection featureSelection;
 
@@ -111,13 +109,13 @@ int main( int argc, char* argv[] )
     // Eigen::Vector3d vecHomo(vec(0), vec(1), 1.0);
 
     Visualization visualize;
-    // visualize.visualizeEpipole( img, C, K, "Epipole-Left" );
+    visualize.visualizeFeaturePointsGradientMagnitude( featureSelection.m_gradientMagnitude, refFrame, "Selected By SSC"); 
+    visualize.visualizeEpipole( curFrame, C, "Epipole-Right" );
     // visualize.visualizeEpipolarLine(img, vecHomo, K, R, t, "Epipolar-Line");
     // visualize.visualizeEpipolarLine(img, vec, E, "Epipolar-Line");
-    // visualize.visualizeEpipolarLines( refImg, featureSelection.m_kp, F, "Epipolar-Lines-Right" );
-    // visualize.visualizeFeaturePoints( featureSelection.m_gradientMagnitude, featureSelection.m_kp, "Selected By SSC" );
-    // visualize.visualizeGrayImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude" );
-    // visualize.visualizeHSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
+    visualize.visualizeEpipolarLines( refFrame, F, "Epipolar-Lines-Right" );
+    visualize.visualizeGrayImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude" );
+    visualize.visualizeHSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
     cv::waitKey( 0 );
     return 0;
 }

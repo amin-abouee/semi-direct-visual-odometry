@@ -15,8 +15,9 @@
 #include <iostream>
 #include <string>
 
-#include <Eigen/Core>
+#include "frame.hpp"
 
+#include <Eigen/Core>
 #include <opencv2/core.hpp>
 
 class Visualization final
@@ -35,32 +36,28 @@ public:
     // D'tor
     ~Visualization() = default;
 
-    void visualizeFeaturePoints( const cv::Mat& img, const Eigen::MatrixXd& vecs, const std::string& windowsName );
+    void visualizeFeaturePoints( const Frame& frame, const std::string& windowsName );
 
-    void visualizeGrayImage(const cv::Mat& img, const std::string& windowsName);
+    void visualizeFeaturePointsGradientMagnitude( const cv::Mat& img,
+                                                  const Frame& frame,
+                                                  const std::string& windowsName );
 
-    void visualizeHSVColoredImage(const cv::Mat& img, const std::string& windowsName);
+    void visualizeGrayImage( const cv::Mat& img, const std::string& windowsName );
 
-    void visualizeEpipole( const cv::Mat& img,
-                           const Eigen::Vector3d& vec,
-                           const Eigen::Matrix3d& K,
-                           const std::string& windowsName );
+    void visualizeHSVColoredImage( const cv::Mat& img, const std::string& windowsName );
 
-    void visualizeEpipolarLine( const cv::Mat& img,
+    void visualizeEpipole( const Frame& frame, const Eigen::Vector3d& vec, const std::string& windowsName );
+
+    void visualizeEpipolarLine( const Frame& frame,
                                 const Eigen::Vector3d& vec,
                                 const Eigen::Matrix3d& F,
                                 const std::string& windowsName );
 
-    void visualizeEpipolarLines( const cv::Mat& img,
-                                 const Eigen::MatrixXd& vecs,
-                                 const Eigen::Matrix3d& F,
-                                 const std::string& windowsName );
+    void visualizeEpipolarLines( const Frame& frame, const Eigen::Matrix3d& F, const std::string& windowsName );
 
 private:
-
     cv::Scalar generateColor( const double min, const double max, const float value );
-
-    cv::Mat getBGRImage(const cv::Mat& img);
+    cv::Mat getBGRImage( const cv::Mat& img );
 };
 
 #endif /* __VISUALIZATION_H__ */
