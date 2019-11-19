@@ -22,6 +22,7 @@ set(LIBRARY_SOURCES
     pinhole_camera.cpp
     frame.cpp
     image_pyramid.cpp
+    feature.cpp
     feature_selection.cpp
     visualization.cpp
     main.cpp

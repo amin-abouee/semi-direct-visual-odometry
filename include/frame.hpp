@@ -12,8 +12,10 @@
 #ifndef __FRAME_HPP__
 #define __FRAME_HPP__
 
-#include <Eigen/Core>
 #include <iostream>
+#include <memory>
+
+#include <Eigen/Core>
 #include <sophus/se3.hpp>
 
 #include "image_pyramid.hpp"
@@ -28,14 +30,15 @@ public:
     static uint32_t m_frameCounter;
     uint32_t m_id;
     PinholeCamera* m_camera;
+    // std::reference_wrapper<PinholeCamera> m_camera;
     Sophus::SE3d m_TransW2F;
     Eigen::Matrix< double, 6, 6 > m_covPose;
     ImagePyramid m_imagePyramid;
-    std::vector< Feature* > m_frameFeatures;
+    std::vector< std::shared_ptr<Feature> > m_frameFeatures;
     bool m_keyFrame;
 
     // C'tor
-    explicit Frame( PinholeCamera* camera, cv::Mat& img );
+    explicit Frame( PinholeCamera& camera, cv::Mat& img );
     // Copy C'tor
     Frame( const Frame& rhs ) = delete;  // non construction-copyable
     // move C'tor
@@ -54,9 +57,9 @@ public:
     void setKeyframe();
 
     /// Add a feature to the image
-    void addFeature( Feature* feature );
+    void addFeature( std::shared_ptr<Feature>& feature );
 
-    void removeKeyPoint( Feature* feature );
+    void removeKeyPoint( std::shared_ptr<Feature>& feature );
 
     std::uint32_t numberObservation() const;
 

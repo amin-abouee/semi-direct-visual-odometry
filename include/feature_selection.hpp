@@ -15,15 +15,20 @@
 #include <iostream>
 #include <vector>
 
+#include <Eigen/Core>
 #include <opencv2/core.hpp>
 
-#include <Eigen/Core>
+#include "feature.hpp"
 
 class FeatureSelection final
 {
 public:
     // C'tor
-    explicit FeatureSelection( const cv::Mat& imgGray );
+    explicit FeatureSelection() = default;
+
+    // explicit FeatureSelection( const cv::Mat& imgGray );
+
+    // explicit FeatureSelection( const cv::Mat& imgGray, const uint32_t numberCandidate );
 
     // Copy C'tor
     FeatureSelection( const FeatureSelection& rhs ) = default;
@@ -40,7 +45,9 @@ public:
     // D'tor
     ~FeatureSelection() = default;
 
-    void detectFeatures( const uint32_t numberCandidate );
+    void detectFeatures( Frame& frame, const uint32_t numberCandidate );
+
+    // void detectFeatures();
 
     // void visualizeFeaturePoints();
 
@@ -50,25 +57,25 @@ public:
 
     // void visualizeEpipolar( const Eigen::Vector3d& point, const Eigen::Matrix3d& K );
 
-    Eigen::Matrix< double, 3, Eigen::Dynamic > m_kp;
+    // std::vector< Feature > m_features;
     cv::Mat m_gradientMagnitude;
     cv::Mat m_gradientOrientation;
 
 private:
     // Efficient adaptive non-maximal suppression algorithms for homogeneous spatial keypoint distribution
-    Eigen::Matrix< double, 3, Eigen::Dynamic > Ssc(
-      std::vector< cv::KeyPoint > keyPoints, int numRetPoints, float tolerance, int cols, int rows );
-
-    // cv::Scalar generateColor( const double min, const double max, const float value );
+    void Ssc( Frame& frame,
+              const std::vector< cv::KeyPoint >& keyPoints,
+              const int numRetPoints,
+              const float tolerance,
+              const int cols,
+              const int rows );
 
     cv::Mat m_dx;
     cv::Mat m_dy;
 
-    // uint32_t m_numberCandidate;
+    // std::shared_ptr< cv::Mat > m_imgGray;
 
-    std::shared_ptr< cv::Mat > m_imgGray;
-    // std::vector < cv::KeyPoint > m_keypoints;
-
+    // uint32_t m_numberFeatures;
 };
 
 #endif /* __FEATURE_SELECTION_H__ */

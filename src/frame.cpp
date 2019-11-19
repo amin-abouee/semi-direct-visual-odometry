@@ -1,13 +1,13 @@
 #include "frame.hpp"
 
-Frame::Frame( PinholeCamera* camera, cv::Mat& img ) : m_camera( camera ), m_imagePyramid( img, 4 ), m_keyFrame( false )
+Frame::Frame( PinholeCamera& camera, cv::Mat& img ) : m_camera( &camera ), m_imagePyramid( img, 4 ), m_keyFrame( false )
 {
 }
 
 void Frame::initFrame( const cv::Mat& img )
 {
     if ( img.empty() || img.type() != CV_8UC1 || img.cols != m_camera->width() || img.rows != m_camera->height() )
-        throw std::runtime_error( "BANGO" );
+        throw std::runtime_error( "IMAGE CORROUPTED" );
 
     m_imagePyramid.createImagePyramid( img, 4 );
 }
@@ -17,25 +17,30 @@ void Frame::setKeyframe()
     m_keyFrame = true;
 }
 
-void Frame::addFeature( Feature* feature )
+void Frame::addFeature( std::shared_ptr<Feature>& feature )
 {
-    m_frameFeatures.push_back( feature );
+    m_frameFeatures.emplace_back( feature );
 }
 
-void Frame::removeKeyPoint( Feature* feature )
+void Frame::removeKeyPoint( std::shared_ptr<Feature>& feature )
 {
     // std::remove_if(m_frameFeatures.begin(), m_frameFeatures.end(), [&feature](Feature*& f){if (f == feature)
     // {
     //     f = nullptr;
     // }});
-    for ( auto& f : m_frameFeatures )
-    {
-        if ( f == feature )
-        {
-            f = nullptr;
-            break;
-        }
-    }
+    // for ( auto& f : m_frameFeatures )
+    // {
+    //     if ( f == feature )
+    //     {
+    //         f = nullptr;
+    //         break;
+    //     }
+    // }
+    auto element = std::remove_if(m_frameFeatures.begin(), m_frameFeatures.end(), [&feature](std::shared_ptr<Feature>& f)
+    {if (f == feature)
+        return true;
+    });
+
 }
 
 std::uint32_t Frame::numberObservation() const

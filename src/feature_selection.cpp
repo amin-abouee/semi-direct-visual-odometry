@@ -1,6 +1,7 @@
 #include "feature_selection.hpp"
 
 #include <algorithm>
+#include <memory>
 
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
@@ -8,15 +9,25 @@
 
 #include <Eigen/Core>
 
-FeatureSelection::FeatureSelection( const cv::Mat& imgGray )
-{
-    m_imgGray = std::make_shared< cv::Mat >( imgGray );
+// FeatureSelection::FeatureSelection( const cv::Mat& imgGray )
+// {
+//     m_imgGray = std::make_shared< cv::Mat >( imgGray );
+//     m_features.reserve(2000);
+// }
 
-    // cv::convertScaleAbs( dy, absDy );
-}
+// FeatureSelection::FeatureSelection( const cv::Mat& imgGray, const uint32_t numberFeatures ):
+// m_numberFeatures(numberFeatures)
+// {
+//     m_imgGray = std::make_shared< cv::Mat >( imgGray );
+//     m_features.reserve(numberFeatures * 2);
+// }
 
-Eigen::Matrix< double, 3, Eigen::Dynamic > FeatureSelection::Ssc(
-  std::vector< cv::KeyPoint > keyPoints, int numRetPoints, float tolerance, int cols, int rows )
+void FeatureSelection::Ssc( Frame& frame,
+                            const std::vector< cv::KeyPoint >& keyPoints,
+                            const int numRetPoints,
+                            const float tolerance,
+                            const int cols,
+                            const int rows )
 {
     // several temp expression variables to simplify solution equation
     int exp1       = rows + cols + 2 * numRetPoints;
@@ -96,15 +107,24 @@ Eigen::Matrix< double, 3, Eigen::Dynamic > FeatureSelection::Ssc(
     }
     // retrieve final keypoints
     // std::vector< cv::KeyPoint > kp;
-    Eigen::Matrix< double, 3, Eigen::Dynamic > kp( 3, ResultVec.size() );
+    // Eigen::Matrix< double, 3, Eigen::Dynamic > kp( 3, ResultVec.size() );
+    // for ( unsigned int i = 0; i < ResultVec.size(); i++ )
+    // {
+    //     kp.col( i ) = Eigen::Vector3d( keyPoints[ ResultVec[ i ] ].pt.x, keyPoints[ ResultVec[ i ] ].pt.y, 1.0 );
+    // }
+    // return kp;
+
     for ( unsigned int i = 0; i < ResultVec.size(); i++ )
     {
-        kp.col( i ) = Eigen::Vector3d( keyPoints[ ResultVec[ i ] ].pt.x, keyPoints[ ResultVec[ i ] ].pt.y, 1.0 );
+        // kp.col( i ) = Eigen::Vector3d( keyPoints[ ResultVec[ i ] ].pt.x, keyPoints[ ResultVec[ i ] ].pt.y, 1.0 );
+        const auto& kp = keyPoints[ ResultVec[ i ] ];
+        std::shared_ptr< Feature > feature = std::make_shared< Feature >(
+          frame, Eigen::Vector2d( kp.pt.x, kp.pt.y ), kp.response, kp.angle, 0 );
+        frame.addFeature(feature);
     }
-    return kp;
 }
 
-void FeatureSelection::detectFeatures( const uint32_t numberCandidate )
+void FeatureSelection::detectFeatures( Frame& frame, const uint32_t numberCandidate )
 {
     // https://answers.opencv.org/question/199237/most-accurate-visual-representation-of-gradient-magnitude/
     // https://answers.opencv.org/question/136622/how-to-calculate-gradient-in-c-using-opencv/
@@ -118,21 +138,25 @@ void FeatureSelection::detectFeatures( const uint32_t numberCandidate )
     double delta   = 0.0;
     int borderType = cv::BORDER_DEFAULT;
 
+    const cv::Mat imgGray = frame.m_imagePyramid.getBaseImage();
     // cv::Mat dx, absDx;
-    cv::Sobel( *m_imgGray, m_dx, ddepth, 1, 0, ksize, scale, delta, borderType );
+    cv::Sobel( imgGray, m_dx, ddepth, 1, 0, ksize, scale, delta, borderType );
     // cv::convertScaleAbs( dx, absDx );
 
     // cv::Mat dy, absDy;
-    cv::Sobel( *m_imgGray, m_dy, CV_32F, 0, 1, ksize, scale, delta, borderType );
+    cv::Sobel( imgGray, m_dy, CV_32F, 0, 1, ksize, scale, delta, borderType );
 
     // cv::Mat mag, angle;
     cv::cartToPolar( m_dx, m_dy, m_gradientMagnitude, m_gradientOrientation, true );
 
+    const int width  = imgGray.cols;
+    const int height = imgGray.rows;
+
     std::vector< cv::KeyPoint > keyPoints;
     keyPoints.reserve( 10 * numberCandidate );
-    for ( int i( 0 ); i < m_imgGray->rows; i++ )
+    for ( int i( 0 ); i < height; i++ )
     {
-        for ( int j( 0 ); j < m_imgGray->cols; j++ )
+        for ( int j( 0 ); j < width; j++ )
         {
             if ( m_gradientMagnitude.at< float >( i, j ) > 75.0 )
             {
@@ -148,10 +172,7 @@ void FeatureSelection::detectFeatures( const uint32_t numberCandidate )
 
     // const int numRetPoints = 500;
     const float tolerance = 0.1;
-    const int cols        = m_imgGray->cols;
-    const int rows        = m_imgGray->rows;
-
-    m_kp = Ssc( keyPoints, numberCandidate, tolerance, cols, rows );
+    Ssc( frame, keyPoints, numberCandidate, tolerance, width, height );
 }
 
 // void FeatureSelection::visualizeFeaturePoints()

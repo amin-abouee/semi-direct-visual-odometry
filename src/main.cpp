@@ -80,10 +80,10 @@ int main( int argc, char* argv[] )
     Eigen::Vector3d t( -0.0206659, -0.00456935, 0.999776 );
 
     PinholeCamera camera(1242, 375, K(0, 0), K(1, 1), K(0, 2), K(1, 2), 0.0, 0.0, 0.0, 0.0, 0.0);
-    Frame refFrame(&camera, refImg);
-    Frame curFrame(&camera, curImg);
+    Frame refFrame(camera, refImg);
+    Frame curFrame(camera, curImg);
 
-    FeatureSelection featureSelection( refImg );
+    FeatureSelection featureSelection;
 
     // auto t1 = std::chrono::high_resolution_clock::now();
     // featureSelection.detectFeatures();
@@ -101,7 +101,7 @@ int main( int argc, char* argv[] )
     // cv::calcHist(&mag, 1, 0, cv::Mat(), histoMag, 1, &histSize, &histRange);
 
     auto t3 = std::chrono::high_resolution_clock::now();
-    featureSelection.detectFeatures( 5 );
+    featureSelection.detectFeatures( refFrame, 5 );
     auto t4 = std::chrono::high_resolution_clock::now();
     ;
     std::cout << "Elapsed time for SSC: " << std::chrono::duration_cast< std::chrono::milliseconds >( t4 - t3 ).count()
@@ -114,8 +114,8 @@ int main( int argc, char* argv[] )
     // visualize.visualizeEpipole( img, C, K, "Epipole-Left" );
     // visualize.visualizeEpipolarLine(img, vecHomo, K, R, t, "Epipolar-Line");
     // visualize.visualizeEpipolarLine(img, vec, E, "Epipolar-Line");
-    visualize.visualizeEpipolarLines( refImg, featureSelection.m_kp, F, "Epipolar-Lines-Right" );
-    visualize.visualizeFeaturePoints( featureSelection.m_gradientMagnitude, featureSelection.m_kp, "Selected By SSC" );
+    // visualize.visualizeEpipolarLines( refImg, featureSelection.m_kp, F, "Epipolar-Lines-Right" );
+    // visualize.visualizeFeaturePoints( featureSelection.m_gradientMagnitude, featureSelection.m_kp, "Selected By SSC" );
     // visualize.visualizeGrayImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude" );
     // visualize.visualizeHSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
     cv::waitKey( 0 );
