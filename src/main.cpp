@@ -68,7 +68,7 @@ int main( int argc, char* argv[] )
     Eigen::Matrix3d F;
     F << -5.33286713e-08, -1.49632194e-03, 2.67961447e-01, 1.49436356e-03, -2.27291565e-06, -9.03327631e-01,
       -2.68937438e-01, 9.02739500e-01, 1.00000000e+00;
-    std::cout << "Fundamental Matrix: \n" << E << std::endl;
+    std::cout << "Fundamental Matrix: \n" << F << std::endl;
 
     const Eigen::Vector3d C( -0.01793327, -0.00577164, 1 );
 
@@ -82,14 +82,16 @@ int main( int argc, char* argv[] )
     Frame curFrame( camera, curImg );
     Eigen::AngleAxisd temp( R );  // Re-orthogonality
     curFrame.m_TransW2F = refFrame.m_TransW2F * Sophus::SE3d( temp.toRotationMatrix(), t );
-    std::cout << "transformation W -> 1: " << refFrame.m_TransW2F.params().transpose() << std::endl;
-    std::cout << "transformation W -> 2: " << curFrame.m_TransW2F.params().transpose() << std::endl;
-    std::cout << "transformation 1 -> 2: " << Sophus::SE3d( temp.toRotationMatrix(), t ).params().transpose()
-              << std::endl;
+    // std::cout << "transformation W -> 1: " << refFrame.m_TransW2F.params().transpose() << std::endl;
+    // std::cout << "transformation W -> 2: " << curFrame.m_TransW2F.params().transpose() << std::endl;
+    // std::cout << "transformation 1 -> 2: " << Sophus::SE3d( temp.toRotationMatrix(), t ).params().transpose()
+            //   << std::endl;
     Sophus::SE3d T_pre2cur = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
     std::cout << "transformation 1 -> 2: " << T_pre2cur.params().transpose() << std::endl;
 
     FeatureSelection featureSelection;
+    F = curFrame.m_camera->invK().transpose() * E * refFrame.m_camera->invK();
+    std::cout << "Fundamental Matrix: \n" << F << std::endl;
 
     auto t1 = std::chrono::high_resolution_clock::now();
     featureSelection.detectFeatures( refFrame, 5 );
@@ -106,7 +108,10 @@ int main( int argc, char* argv[] )
     //                                  "Epipolar-Line-Feature-0" );
     visualize.visualizeEpipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0.0, 1e12,
                                      "Epipolar-Line-Feature-0" );
-    visualize.visualizeEpipolarLines( refFrame, curFrame.m_imagePyramid.getBaseImage(), F, "Epipolar-Lines-Right" );
+    visualize.visualizeEpipolarLinesWithFundamenalMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), F,
+                                                          "Epipolar-Lines-Right-With-F" );
+    visualize.visualizeEpipolarLinesWithEssentialMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), E,
+                                                          "Epipolar-Lines-Right-With-E" );
     // visualize.visualizeGrayImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude" );
     // visualize.visualizeHSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
     // visualize.visualizeHSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );

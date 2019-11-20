@@ -64,7 +64,15 @@ public:
                                 const double maxDepth,
                                 const std::string& windowsName );
 
-    void visualizeEpipolarLines( const Frame& frame, const cv::Mat& currentImg, const Eigen::Matrix3d& F, const std::string& windowsName );
+    void visualizeEpipolarLinesWithFundamenalMatrix( const Frame& frame,
+                                                     const cv::Mat& currentImg,
+                                                     const Eigen::Matrix3d& F,
+                                                     const std::string& windowsName );
+    
+    void visualizeEpipolarLinesWithEssentialMatrix( const Frame& frame,
+                                                     const cv::Mat& currentImg,
+                                                     const Eigen::Matrix3d& E,
+                                                     const std::string& windowsName );
 
 private:
     cv::Scalar generateColor( const double min, const double max, const float value );

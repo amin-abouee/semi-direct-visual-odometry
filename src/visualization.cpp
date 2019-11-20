@@ -146,14 +146,14 @@ void Visualization::visualizeEpipolarLine( const Frame& refFrame,
                                            const double maxDepth,
                                            const std::string& windowsName )
 {
-    cv::Mat refImgBGR               = getBGRImage( refFrame.m_imagePyramid.getBaseImage() );
-    cv::Mat curImgBGR               = getBGRImage( curFrame.m_imagePyramid.getBaseImage() );
+    cv::Mat refImgBGR            = getBGRImage( refFrame.m_imagePyramid.getBaseImage() );
+    cv::Mat curImgBGR            = getBGRImage( curFrame.m_imagePyramid.getBaseImage() );
     const Sophus::SE3d T_Ref2Cur = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
     // std::cout << "Visualization 1 -> 2: " << T_Ref2Cur.params().transpose() << std::endl;
     // std::cout << "refFrame.image2camera(feature): " << refFrame.image2camera(feature, 1.0).transpose() << std::endl;
-    const Eigen::Vector2d point1 = curFrame.camera2image( T_Ref2Cur * ( refFrame.image2camera(feature, minDepth ) ) );
-    const Eigen::Vector2d point2 = curFrame.camera2image( T_Ref2Cur * ( refFrame.image2camera(feature, maxDepth ) ) );
-    const Eigen::Vector2d C = curFrame.camera2image( T_Ref2Cur * ( refFrame.image2camera(feature, 0.0 ) ) );
+    const Eigen::Vector2d point1 = curFrame.camera2image( T_Ref2Cur * ( refFrame.image2camera( feature, minDepth ) ) );
+    const Eigen::Vector2d point2 = curFrame.camera2image( T_Ref2Cur * ( refFrame.image2camera( feature, maxDepth ) ) );
+    const Eigen::Vector2d C      = curFrame.camera2image( T_Ref2Cur * ( refFrame.image2camera( feature, 0.0 ) ) );
     // std::cout << "Position point 1: " << point1.transpose() << std::endl;
     // std::cout << "Position point 2: " << point2.transpose() << std::endl;
     cv::circle( refImgBGR, cv::Point2i( feature.x(), feature.y() ), 5.0, cv::Scalar( 255, 10, 255 ) );
@@ -162,14 +162,14 @@ void Visualization::visualizeEpipolarLine( const Frame& refFrame,
     cv::circle( curImgBGR, cv::Point2i( C.x(), C.y() ), 5.0, cv::Scalar( 0, 255, 165 ) );
 
     cv::Mat stickImages;
-    cv::hconcat(refImgBGR, curImgBGR, stickImages);
+    cv::hconcat( refImgBGR, curImgBGR, stickImages );
     cv::imshow( windowsName, stickImages );
 }
 
-void Visualization::visualizeEpipolarLines( const Frame& frame,
-                                            const cv::Mat& currentImg,
-                                            const Eigen::Matrix3d& F,
-                                            const std::string& windowsName )
+void Visualization::visualizeEpipolarLinesWithFundamenalMatrix( const Frame& frame,
+                                                                const cv::Mat& currentImg,
+                                                                const Eigen::Matrix3d& F,
+                                                                const std::string& windowsName )
 {
     cv::Mat imgBGR      = getBGRImage( currentImg );
     const auto szPoints = frame.m_frameFeatures.size();
@@ -186,6 +186,15 @@ void Visualization::visualizeEpipolarLines( const Frame& frame,
         cv::line( imgBGR, p1, p2, cv::Scalar( 0, 160, 200 ) );
     }
     cv::imshow( windowsName, imgBGR );
+}
+
+void Visualization::visualizeEpipolarLinesWithEssentialMatrix( const Frame& frame,
+                                                                const cv::Mat& currentImg,
+                                                                const Eigen::Matrix3d& E,
+                                                                const std::string& windowsName )
+{
+    const Eigen::Matrix3d F = frame.m_camera->invK().transpose() * E * frame.m_camera->invK();
+    visualizeEpipolarLinesWithFundamenalMatrix(frame, currentImg, F, windowsName);
 }
 
 cv::Scalar Visualization::generateColor( const double min, const double max, const float value )
