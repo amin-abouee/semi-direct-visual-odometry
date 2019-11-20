@@ -9,6 +9,15 @@
 
 #include <Eigen/Core>
 
+#include "spdlog/sinks/stdout_color_sinks.h"
+
+FeatureSelection::FeatureSelection()
+{
+    featureLogger = spdlog::stdout_color_mt( "FeatureSelection" );
+    featureLogger->set_level( spdlog::level::debug );
+    featureLogger->set_pattern( "[%Y-%m-%d %H:%M:%S] [%s:%#] [%n->%l] [thread:%t] %v" );
+}
+
 // FeatureSelection::FeatureSelection( const cv::Mat& imgGray )
 // {
 //     m_imgGray = std::make_shared< cv::Mat >( imgGray );
@@ -130,6 +139,7 @@ void FeatureSelection::detectFeatures( Frame& frame, const uint32_t numberCandid
     int borderType = cv::BORDER_DEFAULT;
 
     const cv::Mat imgGray = frame.m_imagePyramid.getBaseImage();
+    auto t1 = std::chrono::high_resolution_clock::now();
     // cv::Mat dx, absDx;
     cv::Sobel( imgGray, m_dx, ddepth, 1, 0, ksize, scale, delta, borderType );
     // cv::convertScaleAbs( dx, absDx );
@@ -137,8 +147,18 @@ void FeatureSelection::detectFeatures( Frame& frame, const uint32_t numberCandid
     // cv::Mat dy, absDy;
     cv::Sobel( imgGray, m_dy, CV_32F, 0, 1, ksize, scale, delta, borderType );
 
+
+    // m_dx = cv::Mat ( imgGray.size(), CV_32F );
+    // m_dy = cv::Mat ( imgGray.size(), CV_32F );
+    // computeGradient(imgGray, m_dx, m_dy);
+
     // cv::Mat mag, angle;
     cv::cartToPolar( m_dx, m_dy, m_gradientMagnitude, m_gradientOrientation, true );
+    auto t2 = std::chrono::high_resolution_clock::now();
+    // std::cout << "Elapsed time for gradient magnitude: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
+            //   << std::endl;
+
+    featureLogger->info("Elapsed time for gradient magnitude: {}", std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count());
 
     const int width  = imgGray.cols;
     const int height = imgGray.rows;
@@ -164,4 +184,85 @@ void FeatureSelection::detectFeatures( Frame& frame, const uint32_t numberCandid
     // const int numRetPoints = 500;
     const float tolerance = 0.1;
     Ssc( frame, keyPoints, numberCandidate, tolerance, width, height );
+}
+
+void FeatureSelection::computeGradient( const cv::Mat& currentTemplateImage,
+                                            cv::Mat& templateGradientX,
+                                            cv::Mat& templateGradientY )
+{
+    int h = currentTemplateImage.rows;
+    int w = currentTemplateImage.cols;
+
+    // ALIGNMENT_LOG( DEBUG ) << "h: " << h << ", w: " << w;
+    // [1, 1; w-1, h-1]
+    for ( int y( 1 ); y < h - 1; y++ )
+    {
+        for ( int x( 1 ); x < w - 1; x++ )
+        {
+            templateGradientX.at< float >( y, x ) =
+              0.5 * ( currentTemplateImage.at< float >( y, x + 1 ) - currentTemplateImage.at< float >( y, x - 1 ) );
+            templateGradientY.at< float >( y, x ) =
+              0.5 * ( currentTemplateImage.at< float >( y + 1, x ) - currentTemplateImage.at< float >( y - 1, x ) );
+        }
+    }
+
+    // ALIGNMENT_LOG( DEBUG ) << "center computed";
+
+    // for first and last rows
+    for ( int x( 1 ); x < w - 1; x++ )
+    {
+        templateGradientX.at< float >( 0, x ) =
+          0.5 * ( currentTemplateImage.at< float >( 0, x + 1 ) - currentTemplateImage.at< float >( 0, x - 1 ) );
+        templateGradientY.at< float >( 0, x ) =
+          0.5 * ( currentTemplateImage.at< float >( 1, x ) - currentTemplateImage.at< float >( 0, x ) );
+
+        templateGradientX.at< float >( h - 1, x ) =
+          0.5 * ( currentTemplateImage.at< float >( h - 1, x + 1 ) - currentTemplateImage.at< float >( h - 1, x - 1 ) );
+        templateGradientY.at< float >( h - 1, x ) =
+          0.5 * ( currentTemplateImage.at< float >( h - 1, x ) - currentTemplateImage.at< float >( h - 2, x ) );
+    }
+
+    // ALIGNMENT_LOG( DEBUG ) << "first and last rows";
+
+    // for first and last cols
+    for ( int y( 1 ); y < h - 1; y++ )
+    {
+        templateGradientX.at< float >( y, 0 ) =
+          0.5 * ( currentTemplateImage.at< float >( y, 1 ) - currentTemplateImage.at< float >( y, 0 ) );
+        templateGradientY.at< float >( y, 0 ) =
+          0.5 * ( currentTemplateImage.at< float >( y + 1, 0 ) - currentTemplateImage.at< float >( y - 1, 0 ) );
+
+        templateGradientX.at< float >( y, w - 1 ) =
+          0.5 * ( currentTemplateImage.at< float >( y, w - 1 ) - currentTemplateImage.at< float >( y, w - 2 ) );
+        templateGradientY.at< float >( y, w - 1 ) =
+          0.5 * ( currentTemplateImage.at< float >( y + 1, w - 1 ) - currentTemplateImage.at< float >( y - 1, w - 1 ) );
+    }
+
+    // ALIGNMENT_LOG( DEBUG ) << "first and last cols";
+
+    // upper left
+    templateGradientX.at< float >( 0, 0 ) =
+      0.5 * ( currentTemplateImage.at< float >( 0, 1 ) - currentTemplateImage.at< float >( 0, 0 ) );
+    // upper right
+    templateGradientX.at< float >( 0, w - 1 ) =
+      0.5 * ( currentTemplateImage.at< float >( 0, w - 1 ) - currentTemplateImage.at< float >( 0, w - 2 ) );
+    // lower left
+    templateGradientX.at< float >( h - 1, 0 ) =
+      0.5 * ( currentTemplateImage.at< float >( h - 1, 1 ) - currentTemplateImage.at< float >( h - 1, 0 ) );
+    // lower right
+    templateGradientX.at< float >( h - 1, w - 1 ) =
+      0.5 * ( currentTemplateImage.at< float >( h - 1, w - 1 ) - currentTemplateImage.at< float >( h - 1, w - 2 ) );
+
+    // upper left
+    templateGradientY.at< float >( 0, 0 ) =
+      0.5 * ( currentTemplateImage.at< float >( 1, 0 ) - currentTemplateImage.at< float >( 0, 0 ) );
+    // upper right
+    templateGradientY.at< float >( 0, w - 1 ) =
+      0.5 * ( currentTemplateImage.at< float >( 1, w - 1 ) - currentTemplateImage.at< float >( 0, w - 1 ) );
+    // lower left
+    templateGradientY.at< float >( h - 1, 0 ) =
+      0.5 * ( currentTemplateImage.at< float >( h - 1, 0 ) - currentTemplateImage.at< float >( h - 2, 0 ) );
+    // lower right
+    templateGradientY.at< float >( h - 1, w - 1 ) =
+      0.5 * ( currentTemplateImage.at< float >( h - 1, w - 1 ) - currentTemplateImage.at< float >( h - 2, w - 1 ) );
 }

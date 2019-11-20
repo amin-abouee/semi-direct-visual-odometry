@@ -38,9 +38,7 @@ public:
 
     void visualizeFeaturePoints( const Frame& frame, const std::string& windowsName );
 
-    void visualizeFeaturePointsGradientMagnitude( const cv::Mat& img,
-                                                  const Frame& frame,
-                                                  const std::string& windowsName );
+    void visualizeFeaturePoints( const cv::Mat& img, const Frame& frame, const std::string& windowsName );
 
     void visualizeGrayImage( const cv::Mat& img, const std::string& windowsName );
 
@@ -53,7 +51,20 @@ public:
                                 const Eigen::Matrix3d& F,
                                 const std::string& windowsName );
 
-    void visualizeEpipolarLines( const Frame& frame, const Eigen::Matrix3d& F, const std::string& windowsName );
+    void visualizeEpipolarLine( const Frame& curFrame,
+                                const Eigen::Vector3d& normalizedVec,
+                                const double minDepth,
+                                const double maxDepth,
+                                const std::string& windowsName );
+
+    void visualizeEpipolarLine( const Frame& refFrame,
+                                const Frame& curFrame,
+                                const Eigen::Vector2d& feature,
+                                const double minDepth,
+                                const double maxDepth,
+                                const std::string& windowsName );
+
+    void visualizeEpipolarLines( const Frame& frame, const cv::Mat& currentImg, const Eigen::Matrix3d& F, const std::string& windowsName );
 
 private:
     cv::Scalar generateColor( const double min, const double max, const float value );

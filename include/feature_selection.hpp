@@ -14,9 +14,12 @@
 
 #include <iostream>
 #include <vector>
+#include <memory>
 
 #include <Eigen/Core>
 #include <opencv2/core.hpp>
+
+#include <spdlog/spdlog.h>
 
 #include "feature.hpp"
 
@@ -24,7 +27,7 @@ class FeatureSelection final
 {
 public:
     // C'tor
-    explicit FeatureSelection() = default;
+    explicit FeatureSelection();
 
     // explicit FeatureSelection( const cv::Mat& imgGray );
 
@@ -47,16 +50,6 @@ public:
 
     void detectFeatures( Frame& frame, const uint32_t numberCandidate );
 
-    // void detectFeatures();
-
-    // void visualizeFeaturePoints();
-
-    // void visualizeGrayGradientMagnitude();
-
-    // void visualizeColoredGradientMagnitude();
-
-    // void visualizeEpipolar( const Eigen::Vector3d& point, const Eigen::Matrix3d& K );
-
     // std::vector< Feature > m_features;
     cv::Mat m_gradientMagnitude;
     cv::Mat m_gradientOrientation;
@@ -70,8 +63,12 @@ private:
               const int cols,
               const int rows );
 
+    void computeGradient( const cv::Mat& currentTemplateImage, cv::Mat& templateGradientX, cv::Mat& templateGradientY );
+
     cv::Mat m_dx;
     cv::Mat m_dy;
+
+    std::shared_ptr<spdlog::logger> featureLogger;
 
     // std::shared_ptr< cv::Mat > m_imgGray;
 

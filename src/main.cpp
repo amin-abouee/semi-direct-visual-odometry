@@ -48,7 +48,7 @@ int main( int argc, char* argv[] )
     std::string configIOFile = "../config/config.json";
 
     const nlohmann::json& configJson = createConfigParser( configIOFile );
-    std::cout << configJson[ "file_paths" ][ "camera_calibration" ].get< std::string >() << std::endl;
+    // std::cout << configJson[ "file_paths" ][ "camera_calibration" ].get< std::string >() << std::endl;
     // std::ifstream jsonFile(configFile);
     // const nlohmann::json& filePaths = configFile[ "file_paths" ];
 
@@ -80,33 +80,36 @@ int main( int argc, char* argv[] )
     PinholeCamera camera( 1242, 375, K( 0, 0 ), K( 1, 1 ), K( 0, 2 ), K( 1, 2 ), 0.0, 0.0, 0.0, 0.0, 0.0 );
     Frame refFrame( camera, refImg );
     Frame curFrame( camera, curImg );
+    Eigen::AngleAxisd temp( R );  // Re-orthogonality
+    curFrame.m_TransW2F = refFrame.m_TransW2F * Sophus::SE3d( temp.toRotationMatrix(), t );
+    std::cout << "transformation W -> 1: " << refFrame.m_TransW2F.params().transpose() << std::endl;
+    std::cout << "transformation W -> 2: " << curFrame.m_TransW2F.params().transpose() << std::endl;
+    std::cout << "transformation 1 -> 2: " << Sophus::SE3d( temp.toRotationMatrix(), t ).params().transpose()
+              << std::endl;
+    Sophus::SE3d T_pre2cur = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
+    std::cout << "transformation 1 -> 2: " << T_pre2cur.params().transpose() << std::endl;
 
     FeatureSelection featureSelection;
 
-    // auto t1 = std::chrono::high_resolution_clock::now();
-    // featureSelection.detectFeatures();
-    // auto t2 = std::chrono::high_resolution_clock::now();
-    // std::cout << "Elapsed time for gradient magnitude: " <<
-    // std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count() << std::endl;
-
-    auto t3 = std::chrono::high_resolution_clock::now();
-    featureSelection.detectFeatures( refFrame, 20 );
-    auto t4 = std::chrono::high_resolution_clock::now();
-    ;
-    std::cout << "Elapsed time for SSC: " << std::chrono::duration_cast< std::chrono::milliseconds >( t4 - t3 ).count()
+    auto t1 = std::chrono::high_resolution_clock::now();
+    featureSelection.detectFeatures( refFrame, 5 );
+    auto t2 = std::chrono::high_resolution_clock::now();
+    std::cout << "Elapsed time for SSC: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
               << std::endl;
 
-    // Eigen::Vector3d vec = featureSelection.m_kp.col(0);
-    // Eigen::Vector3d vecHomo(vec(0), vec(1), 1.0);
-
     Visualization visualize;
-    visualize.visualizeFeaturePointsGradientMagnitude( featureSelection.m_gradientMagnitude, refFrame, "Selected By SSC"); 
+    // visualize.visualizeFeaturePoints( featureSelection.m_gradientMagnitude, refFrame,
+    //   "Feature Selected By SSC on Gradient Magnitude Image" );
     visualize.visualizeEpipole( curFrame, C, "Epipole-Right" );
     // visualize.visualizeEpipolarLine(img, vecHomo, K, R, t, "Epipolar-Line");
-    // visualize.visualizeEpipolarLine(img, vec, E, "Epipolar-Line");
-    visualize.visualizeEpipolarLines( refFrame, F, "Epipolar-Lines-Right" );
-    visualize.visualizeGrayImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude" );
-    visualize.visualizeHSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
+    // visualize.visualizeEpipolarLine( curFrame, refFrame.m_frameFeatures[ 0 ]->m_bearingVec, 0.0, 50.0,
+    //                                  "Epipolar-Line-Feature-0" );
+    visualize.visualizeEpipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0.0, 1e12,
+                                     "Epipolar-Line-Feature-0" );
+    visualize.visualizeEpipolarLines( refFrame, curFrame.m_imagePyramid.getBaseImage(), F, "Epipolar-Lines-Right" );
+    // visualize.visualizeGrayImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude" );
+    // visualize.visualizeHSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
+    // visualize.visualizeHSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
     cv::waitKey( 0 );
     return 0;
 }

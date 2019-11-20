@@ -1,7 +1,7 @@
 #include "frame.hpp"
 #include "feature.hpp"
 
-Frame::Frame( PinholeCamera& camera, cv::Mat& img ) : m_camera( &camera ), m_imagePyramid( img, 4 ), m_keyFrame( false )
+Frame::Frame( PinholeCamera& camera, cv::Mat& img ) : m_camera( &camera ), m_imagePyramid( img, 4 ), m_keyFrame( false ), m_TransW2F()
 {
 }
 
