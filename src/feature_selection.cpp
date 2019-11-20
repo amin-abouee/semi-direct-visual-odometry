@@ -108,9 +108,8 @@ void FeatureSelection::Ssc( Frame& frame,
 
     for ( unsigned int i = 0; i < ResultVec.size(); i++ )
     {
-        // kp.col( i ) = Eigen::Vector3d( keyPoints[ ResultVec[ i ] ].pt.x, keyPoints[ ResultVec[ i ] ].pt.y, 1.0 );
         const auto& kp = keyPoints[ ResultVec[ i ] ];
-        std::shared_ptr< Feature > feature = std::make_shared< Feature >(
+        std::unique_ptr< Feature > feature = std::make_unique< Feature >(
           frame, Eigen::Vector2d( kp.pt.x, kp.pt.y ), kp.response, kp.angle, 0 );
         frame.addFeature(feature);
     }

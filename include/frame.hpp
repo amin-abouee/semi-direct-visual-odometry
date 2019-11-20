@@ -34,7 +34,7 @@ public:
     Sophus::SE3d m_TransW2F;
     Eigen::Matrix< double, 6, 6 > m_covPose;
     ImagePyramid m_imagePyramid;
-    std::vector< std::shared_ptr<Feature> > m_frameFeatures;
+    std::vector< std::unique_ptr<Feature> > m_frameFeatures;
     bool m_keyFrame;
 
     // C'tor
@@ -57,9 +57,9 @@ public:
     void setKeyframe();
 
     /// Add a feature to the image
-    void addFeature( std::shared_ptr<Feature>& feature );
+    void addFeature( std::unique_ptr<Feature>& feature );
 
-    void removeKeyPoint( std::shared_ptr<Feature>& feature );
+    void removeKeyPoint( std::unique_ptr<Feature>& feature );
 
     std::uint32_t numberObservation() const;
 

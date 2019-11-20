@@ -1,4 +1,5 @@
 #include "frame.hpp"
+#include "feature.hpp"
 
 Frame::Frame( PinholeCamera& camera, cv::Mat& img ) : m_camera( &camera ), m_imagePyramid( img, 4 ), m_keyFrame( false )
 {
@@ -17,12 +18,12 @@ void Frame::setKeyframe()
     m_keyFrame = true;
 }
 
-void Frame::addFeature( std::shared_ptr<Feature>& feature )
+void Frame::addFeature( std::unique_ptr<Feature>& feature )
 {
-    m_frameFeatures.emplace_back( feature );
+    m_frameFeatures.emplace_back( std::move(feature) );
 }
 
-void Frame::removeKeyPoint( std::shared_ptr<Feature>& feature )
+void Frame::removeKeyPoint( std::unique_ptr<Feature>& feature )
 {
     // std::remove_if(m_frameFeatures.begin(), m_frameFeatures.end(), [&feature](Feature*& f){if (f == feature)
     // {
@@ -37,7 +38,7 @@ void Frame::removeKeyPoint( std::shared_ptr<Feature>& feature )
     //     }
     // }
 
-    auto find = [&feature](std::shared_ptr<Feature>& f) -> bool 
+    auto find = [&feature](std::unique_ptr<Feature>& f) -> bool 
     {
         if (f == feature)
             return true;
