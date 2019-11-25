@@ -7,6 +7,16 @@ find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Sophus REQUIRED)
 find_package(nlohmann_json REQUIRED)
+
+# https://github.com/microsoft/LightGBM/issues/1898
+# cmake \
+#   -DOpenMP_C_FLAGS="-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include" \
+#   -DOpenMP_C_LIB_NAMES="omp" \
+#   -DOpenMP_CXX_FLAGS="-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include" \
+#   -DOpenMP_CXX_LIB_NAMES="omp" \
+#   -DOpenMP_omp_LIBRARY=/usr/local/opt/libomp/lib/libomp.dylib \
+#   ..
+
 # find_package(OpenMP REQUIRED)
 # https://github.com/gabime/spdlog/blob/v1.x/example/CMakeLists.txt
 find_package(spdlog REQUIRED)
@@ -36,7 +46,7 @@ set(LIBRARY_SOURCES
 
 add_executable(visual_odometry ${LIBRARY_SOURCES})
 # target_link_libraries (visual_odometry visualizer source)
-target_link_libraries (visual_odometry ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads spdlog::spdlog)
+target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads spdlog::spdlog)
 
 set_target_properties(visual_odometry PROPERTIES CMAKE_CXX_STANDARD_REQUIRED ON)
 set_target_properties(visual_odometry PROPERTIES CXX_STANDARD 17)

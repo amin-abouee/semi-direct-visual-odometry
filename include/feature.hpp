@@ -21,6 +21,7 @@ public:
     Frame* m_frame;
     FeatureType m_type;
     Eigen::Vector2d m_feature;
+    Eigen::Vector3d m_homogenous;
     Eigen::Vector3d m_bearingVec;
     uint8_t m_level;
     double m_gradientOrientation;
