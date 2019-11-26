@@ -14,7 +14,7 @@
 #include "feature_selection.hpp"
 #include "frame.hpp"
 #include "pinhole_camera.hpp"
-#include "triangulation.hpp"
+#include "algorithm.hpp"
 #include "visualization.hpp"
 
 #include "spdlog/sinks/stdout_color_sinks.h"
@@ -114,12 +114,12 @@ int main( int argc, char* argv[] )
     // Eigen::MatrixXd P2 = curFrame.m_camera->K() * curFrame.m_TransW2F.matrix3x4();
     // std::cout << "P2: " << P2 << std::endl;
 
-    Triangulation triangulate;
+    // Triangulation triangulate;
     Eigen::Vector3d point;
     Eigen::Vector2d p1( 975, 123 );
     Eigen::Vector2d p2( 1004, 119 );
-    triangulate.triangulatePointHomogenousDLT( refFrame, curFrame, p1, p2, point );
-    triangulate.triangulatePointDLT( refFrame, curFrame, p1, p2, point );
+    Algorithm::triangulatePointHomogenousDLT( refFrame, curFrame, p1, p2, point );
+    Algorithm::triangulatePointDLT( refFrame, curFrame, p1, p2, point );
     std::cout << "point in world: " << point.transpose() << std::endl;
     std::cout << "point: " << point.norm() << std::endl;
 

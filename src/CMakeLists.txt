@@ -34,7 +34,7 @@ set(LIBRARY_SOURCES
     image_pyramid.cpp
     feature.cpp
     feature_selection.cpp
-    triangulation.cpp
+    algorithm.cpp
     visualization.cpp
     main.cpp
     )

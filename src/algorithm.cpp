@@ -1,14 +1,10 @@
-#include "triangulation.hpp"
+#include "algorithm.hpp"
 
-Triangulation::Triangulation()
-{
-}
-
-void Triangulation::triangulatePointHomogenousDLT( const Frame& refFrame,
-                                         const Frame& curFrame,
-                                         Eigen::Vector2d& refFeature,
-                                         Eigen::Vector2d& curFeature,
-                                         Eigen::Vector3d& point )
+void Algorithm::triangulatePointHomogenousDLT( const Frame& refFrame,
+                                               const Frame& curFrame,
+                                               Eigen::Vector2d& refFeature,
+                                               Eigen::Vector2d& curFeature,
+                                               Eigen::Vector3d& point )
 {
     Eigen::MatrixXd A( 4, 4 );
     const Eigen::Matrix< double, 3, 4 > P1 = refFrame.m_camera->K() * refFrame.m_TransW2F.matrix3x4();
@@ -44,14 +40,14 @@ void Triangulation::triangulatePointHomogenousDLT( const Frame& refFrame,
     std::cout << "project 2: " << project2.transpose() << std::endl;
     // std::cout << "point in reference camera: " << refFrame.world2camera( res.head( 2 ) ).transpose() << std::endl;
     // std::cout << "point in current camera: " << curFrame.world2camera( res.head( 2 ) ).transpose() << std::endl;
-    point = res.head(2);
+    point = res.head( 2 );
 }
 
-void Triangulation::triangulatePointDLT( const Frame& refFrame,
-                                         const Frame& curFrame,
-                                         Eigen::Vector2d& refFeature,
-                                         Eigen::Vector2d& curFeature,
-                                         Eigen::Vector3d& point )
+void Algorithm::triangulatePointDLT( const Frame& refFrame,
+                                     const Frame& curFrame,
+                                     Eigen::Vector2d& refFeature,
+                                     Eigen::Vector2d& curFeature,
+                                     Eigen::Vector3d& point )
 {
     Eigen::MatrixXd A( 4, 3 );
     const Eigen::Matrix< double, 3, 4 > P1 = refFrame.m_camera->K() * refFrame.m_TransW2F.matrix3x4();
@@ -70,5 +66,22 @@ void Triangulation::triangulatePointDLT( const Frame& refFrame,
     p << refFeature.x() * P1( 2, 3 ) - P1( 0, 3 ), refFeature.y() * P1( 2, 3 ) - P1( 1, 3 ),
       curFeature.x() * P2( 2, 3 ) - P2( 0, 3 ), curFeature.y() * P2( 2, 3 ) - P2( 1, 3 );
     // point = A.colPivHouseholderQr().solve(p);
-    point = (A.transpose() * A).ldlt().solve(A.transpose() * p);
+    point = ( A.transpose() * A ).ldlt().solve( A.transpose() * p );
+}
+
+void Algorithm::decomposeEssentialMatrix( Eigen::Matrix3d& E,
+                                          Eigen::Matrix3d& R1,
+                                          Eigen::Matrix3d& R2,
+                                          Eigen::Vector3d& t )
+{
+    Eigen::JacobiSVD< Eigen::Matrix3d > svd_E( E, Eigen::ComputeFullV | Eigen::ComputeFullU );
+    Eigen::Matrix3d W;
+    W << 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0;
+    R1 = svd_E.matrixU() * W * svd_E.matrixV().transpose();
+    if ( R1.determinant() < 0 )
+        R1 *= -1;
+    R2 = svd_E.matrixU() * W.transpose() * svd_E.matrixV().transpose();
+    if ( R2.determinant() < 0 )
+        R2 *= -1;
+    t = svd_E.matrixU().col( 3 );
 }
