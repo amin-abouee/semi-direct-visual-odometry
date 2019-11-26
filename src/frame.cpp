@@ -1,7 +1,10 @@
 #include "frame.hpp"
 #include "feature.hpp"
 
-Frame::Frame( PinholeCamera& camera, cv::Mat& img ) : m_camera( &camera ), m_imagePyramid( img, 4 ), m_keyFrame( false ), m_TransW2F()
+uint32_t Frame::m_frameCounter;
+
+Frame::Frame( PinholeCamera& camera, cv::Mat& img )
+    : m_id( m_frameCounter++ ), m_camera( &camera ), m_TransW2F(), m_imagePyramid( img, 4 ), m_keyFrame( false )
 {
 }
 
@@ -18,12 +21,12 @@ void Frame::setKeyframe()
     m_keyFrame = true;
 }
 
-void Frame::addFeature( std::unique_ptr<Feature>& feature )
+void Frame::addFeature( std::unique_ptr< Feature >& feature )
 {
-    m_frameFeatures.emplace_back( std::move(feature) );
+    m_frameFeatures.emplace_back( std::move( feature ) );
 }
 
-void Frame::removeKeyPoint( std::unique_ptr<Feature>& feature )
+void Frame::removeKeyPoint( std::unique_ptr< Feature >& feature )
 {
     // std::remove_if(m_frameFeatures.begin(), m_frameFeatures.end(), [&feature](Feature*& f){if (f == feature)
     // {
@@ -38,13 +41,12 @@ void Frame::removeKeyPoint( std::unique_ptr<Feature>& feature )
     //     }
     // }
 
-    auto find = [&feature](std::unique_ptr<Feature>& f) -> bool 
-    {
-        if (f == feature)
+    auto find = [&feature]( std::unique_ptr< Feature >& f ) -> bool {
+        if ( f == feature )
             return true;
         return false;
     };
-    auto element = std::remove_if(m_frameFeatures.begin(), m_frameFeatures.end(), find);
+    auto element = std::remove_if( m_frameFeatures.begin(), m_frameFeatures.end(), find );
 }
 
 std::uint32_t Frame::numberObservation() const
@@ -58,7 +60,7 @@ bool Frame::isVisible( const Eigen::Vector3d& point3D ) const
     if ( cameraPoint.z() < 0.0 )
         return false;
     const Eigen::Vector2d imagePoint = camera2image( cameraPoint );
-    return m_camera->isInFrame(imagePoint);
+    return m_camera->isInFrame( imagePoint );
 }
 
 bool Frame::isKeyframe() const
@@ -84,7 +86,7 @@ Eigen::Vector3d Frame::camera2world( const Eigen::Vector3d& point3D_c ) const
 
 Eigen::Vector2d Frame::camera2image( const Eigen::Vector3d& point3D_c ) const
 {
-    return m_camera->project2d(point3D_c);
+    return m_camera->project2d( point3D_c );
 }
 
 Eigen::Vector3d Frame::image2world( const Eigen::Vector2d& point2D, const double depth ) const
@@ -95,7 +97,7 @@ Eigen::Vector3d Frame::image2world( const Eigen::Vector2d& point2D, const double
 
 Eigen::Vector3d Frame::image2camera( const Eigen::Vector2d& point2D, const double depth ) const
 {
-    return m_camera->inverseProject2d(point2D) * depth;
+    return m_camera->inverseProject2d( point2D ) * depth;
 }
 
 /// compute position of camera in world cordinate C = -R^t * t

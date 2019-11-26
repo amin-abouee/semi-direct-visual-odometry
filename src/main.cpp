@@ -61,24 +61,28 @@ int main( int argc, char* argv[] )
     Eigen::Matrix3d K;
     K << 7.215377e+02, 0.000000e+00, 6.095593e+02, 0.000000e+00, 7.215377e+02, 1.728540e+02, 0.000000e+00, 0.000000e+00,
       1.000000e+00;
-    std::cout << "Camera Matrix: \n" << K << std::endl;
+    // std::cout << "Camera Matrix: \n" << K << std::endl;
 
     Eigen::Matrix3d E;
     E << .22644456e-03, -7.06943058e-01, -4.05822481e-03, 7.06984545e-01, 1.22048201e-03, 1.26855863e-02,
       3.25653616e-03, -1.46073125e-02, -2.59077801e-05;
-    std::cout << "Essential Matrix: \n" << E << std::endl;
+    // std::cout << "Essential Matrix: \n" << E << std::endl;
 
     Eigen::Matrix3d F;
     F << -5.33286713e-08, -1.49632194e-03, 2.67961447e-01, 1.49436356e-03, -2.27291565e-06, -9.03327631e-01,
       -2.68937438e-01, 9.02739500e-01, 1.00000000e+00;
-    std::cout << "Fundamental Matrix: \n" << F << std::endl;
+    // std::cout << "Fundamental Matrix: \n" << F << std::endl;
 
     const Eigen::Vector3d C( -0.01793327, -0.00577164, 1 );
 
     Eigen::Matrix3d R;
     R << 0.99999475, 0.0017505, -0.0027263, -0.00174731, 0.99999779, 0.00117013, 0.00272834, -0.00116536, 0.9999956;
 
-    Eigen::Vector3d t( -0.0206659, -0.00456935, 0.999776 );
+    // Eigen::Matrix3d R;
+    // R << -0.99925367, -0.00151199, -0.03859818, 0.00191117, -0.99994505, -0.01030721, -0.03858047, -0.01037328, 0.99920165;
+
+    // Eigen::Vector3d t( -0.0206659, -0.00456935, 0.999776 );
+    Eigen::Vector3d t( 0.0206659, 0.00456935, -0.999776 );
 
     PinholeCamera camera( 1242, 375, K( 0, 0 ), K( 1, 1 ), K( 0, 2 ), K( 1, 2 ), 0.0, 0.0, 0.0, 0.0, 0.0 );
     Frame refFrame( camera, refImg );
@@ -89,12 +93,12 @@ int main( int argc, char* argv[] )
     // std::cout << "transformation W -> 2: " << curFrame.m_TransW2F.params().transpose() << std::endl;
     // std::cout << "transformation 1 -> 2: " << Sophus::SE3d( temp.toRotationMatrix(), t ).params().transpose()
             //   << std::endl;
-    Sophus::SE3d T_pre2cur = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
-    std::cout << "transformation 1 -> 2: " << T_pre2cur.params().transpose() << std::endl;
+    // Sophus::SE3d T_pre2cur = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
+    // std::cout << "transformation 1 -> 2: " << T_pre2cur.params().transpose() << std::endl;
 
     FeatureSelection featureSelection;
     F = curFrame.m_camera->invK().transpose() * E * refFrame.m_camera->invK();
-    std::cout << "Fundamental Matrix: \n" << F << std::endl;
+    // std::cout << "Fundamental Matrix: \n" << F << std::endl;
 
     auto t1 = std::chrono::high_resolution_clock::now();
     featureSelection.detectFeatures( refFrame, 5 );
@@ -106,15 +110,18 @@ int main( int argc, char* argv[] )
     // Eigen::MatrixXd P1 = refFrame.m_camera->K() * refFrame.m_TransW2F.matrix3x4();
     // std::cout << "P1: " << P1 << std::endl;
     // Eigen::MatrixXd P2 = curFrame.m_camera->K() * curFrame.m_TransW2F.matrix3x4();
-    // std::cout << "P2: " << P2 << std::endl;\
+    // std::cout << "P2: " << P2 << std::endl;
     
     Triangulation triangulate;
     // cv::Point2f point1(975, 123);
     // cv::Point2f point2(1004, 119);
-    Eigen::Vector3d depth;
+    Eigen::Vector3d point;
     Eigen::Vector2d p1(975, 123);
     Eigen::Vector2d p2(1004, 119);
-    triangulate.triangulatePointDLT(refFrame, curFrame, p1, p2, depth);
+    // triangulate.triangulatePointDLT(refFrame, curFrame, p1, p2, point);
+    triangulate.triangulatePointLLS(refFrame, curFrame, p1, p2, point);
+    std::cout << "point in world: " << point.transpose() << std::endl;
+    std::cout << "point: " << point.norm() << std::endl;
     // std::vector <cv::Point2f> points1;
     // std::vector <cv::Point2f> points2;
     // points1.push_back(point1);
@@ -140,10 +147,10 @@ int main( int argc, char* argv[] )
     // visualize.visualizeEpipole( curFrame, C, "Epipole-Right" );
     // visualize.visualizeEpipolarLine(img, vecHomo, K, R, t, "Epipolar-Line");
     // visualize.visualizeEpipolarLine( curFrame, refFrame.m_frameFeatures[ 0 ]->m_bearingVec, 0.0, 50.0,
-    //                                  "Epipolar-Line-Feature-0" );
-    std::cout << "position feature: " << refFrame.m_frameFeatures[ 3 ]->m_feature.transpose() << std::endl;
-    // visualize.visualizeEpipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0.0, 1e12,
                                     //  "Epipolar-Line-Feature-0" );
+    std::cout << "position feature: " << refFrame.m_frameFeatures[ 3 ]->m_feature.transpose() << std::endl;
+    visualize.visualizeEpipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0.0, point.norm(),
+                                     "Epipolar-Line-Feature-0" );
     visualize.visualizeEpipolarLinesWithFundamenalMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), F,
                                                           "Epipolar-Lines-Right-With-F" );
     // visualize.visualizeEpipolarLinesWithEssentialMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), E,
