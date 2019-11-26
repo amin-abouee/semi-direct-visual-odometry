@@ -3,10 +3,10 @@
 #include <fstream>
 #include <iostream>
 
+#include <opencv2/calib3d.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
-#include <opencv2/calib3d.hpp>
 // #include <opencv2/core/eigen.hpp>
 
 #include <Eigen/Core>
@@ -14,8 +14,8 @@
 #include "feature_selection.hpp"
 #include "frame.hpp"
 #include "pinhole_camera.hpp"
-#include "visualization.hpp"
 #include "triangulation.hpp"
+#include "visualization.hpp"
 
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
@@ -75,11 +75,13 @@ int main( int argc, char* argv[] )
 
     const Eigen::Vector3d C( -0.01793327, -0.00577164, 1 );
 
+    // Do the cheirality check.
     Eigen::Matrix3d R;
     R << 0.99999475, 0.0017505, -0.0027263, -0.00174731, 0.99999779, 0.00117013, 0.00272834, -0.00116536, 0.9999956;
 
     // Eigen::Matrix3d R;
-    // R << -0.99925367, -0.00151199, -0.03859818, 0.00191117, -0.99994505, -0.01030721, -0.03858047, -0.01037328, 0.99920165;
+    // R << -0.99925367, -0.00151199, -0.03859818, 0.00191117, -0.99994505, -0.01030721, -0.03858047, -0.01037328,
+    // 0.99920165;
 
     // Eigen::Vector3d t( -0.0206659, -0.00456935, 0.999776 );
     Eigen::Vector3d t( 0.0206659, 0.00456935, -0.999776 );
@@ -92,7 +94,7 @@ int main( int argc, char* argv[] )
     // std::cout << "transformation W -> 1: " << refFrame.m_TransW2F.params().transpose() << std::endl;
     // std::cout << "transformation W -> 2: " << curFrame.m_TransW2F.params().transpose() << std::endl;
     // std::cout << "transformation 1 -> 2: " << Sophus::SE3d( temp.toRotationMatrix(), t ).params().transpose()
-            //   << std::endl;
+    //   << std::endl;
     // Sophus::SE3d T_pre2cur = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
     // std::cout << "transformation 1 -> 2: " << T_pre2cur.params().transpose() << std::endl;
 
@@ -111,35 +113,15 @@ int main( int argc, char* argv[] )
     // std::cout << "P1: " << P1 << std::endl;
     // Eigen::MatrixXd P2 = curFrame.m_camera->K() * curFrame.m_TransW2F.matrix3x4();
     // std::cout << "P2: " << P2 << std::endl;
-    
+
     Triangulation triangulate;
-    // cv::Point2f point1(975, 123);
-    // cv::Point2f point2(1004, 119);
     Eigen::Vector3d point;
-    Eigen::Vector2d p1(975, 123);
-    Eigen::Vector2d p2(1004, 119);
-    // triangulate.triangulatePointDLT(refFrame, curFrame, p1, p2, point);
-    triangulate.triangulatePointLLS(refFrame, curFrame, p1, p2, point);
+    Eigen::Vector2d p1( 975, 123 );
+    Eigen::Vector2d p2( 1004, 119 );
+    triangulate.triangulatePointHomogenousDLT( refFrame, curFrame, p1, p2, point );
+    triangulate.triangulatePointDLT( refFrame, curFrame, p1, p2, point );
     std::cout << "point in world: " << point.transpose() << std::endl;
     std::cout << "point: " << point.norm() << std::endl;
-    // std::vector <cv::Point2f> points1;
-    // std::vector <cv::Point2f> points2;
-    // points1.push_back(point1);
-    // points2.push_back(point2);
-
-    // cv::Mat p1cv, p2cv;
-    // cv::Mat p1cv = (cv::Mat_<float>(3, 4) << 721.538, 0, 609.559, 0, 0, 721.538, 172.854, 0, 0, 0, 0, 1);
-    // cv::Mat p2cv = (cv::Mat_<float>(3, 4) << 723.197, 0.552694, 607.589, 594.512, -0.789147, 721.335, 173.698, 169.518, 0.00272834, -0.00116536, 0.999996, 0.999776);
-    // cv::Mat output;
-    // cv::triangulatePoints(p1cv, p2cv, points1, points2, output);
-    // output /= output.at<float>(3, 0);
-    // std::cout << "type: " << output.type() << std::endl;
-    // std::cout << "3D point: " << output << std::endl;
-
-    // cv::Mat f1 = p1cv * output;
-    // cv::Mat f2 = p2cv * output;
-    // std::cout << "f1: " << f1/f1.at<float>(2, 0) << std::endl;
-    // std::cout << "f2: " << f2/f2.at<float>(2, 0) << std::endl;
 
 
     // visualize.visualizeFeaturePoints( featureSelection.m_gradientMagnitude, refFrame,
@@ -147,14 +129,23 @@ int main( int argc, char* argv[] )
     // visualize.visualizeEpipole( curFrame, C, "Epipole-Right" );
     // visualize.visualizeEpipolarLine(img, vecHomo, K, R, t, "Epipolar-Line");
     // visualize.visualizeEpipolarLine( curFrame, refFrame.m_frameFeatures[ 0 ]->m_bearingVec, 0.0, 50.0,
-                                    //  "Epipolar-Line-Feature-0" );
-    std::cout << "position feature: " << refFrame.m_frameFeatures[ 3 ]->m_feature.transpose() << std::endl;
-    visualize.visualizeEpipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0.0, point.norm(),
-                                     "Epipolar-Line-Feature-0" );
-    visualize.visualizeEpipolarLinesWithFundamenalMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), F,
-                                                          "Epipolar-Lines-Right-With-F" );
+    //  "Epipolar-Line-Feature-0" );
+    // const double mu    = point.norm();
+    // std::cout << "position feature: " << refFrame.m_frameFeatures[ 3 ]->m_feature.transpose() << std::endl;
+    {
+      // const double mu    = 20.0;
+      // const double sigma = 1.0;
+      // visualize.visualizeEpipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, mu - sigma,
+      //                                 mu + sigma, "Epipolar-Line-Feature-3" );
+    }
+
+    visualize.visualizeEpipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0,
+                                      20, "Epipolar-Line-Feature-3" );
+
+    // visualize.visualizeEpipolarLinesWithFundamenalMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), F,
+                                                          // "Epipolar-Lines-Right-With-F" );
     // visualize.visualizeEpipolarLinesWithEssentialMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), E,
-                                                          // "Epipolar-Lines-Right-With-E" );
+    // "Epipolar-Lines-Right-With-E" );
     // visualize.visualizeGrayImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude" );
     // visualize.visualizeHSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
     // visualize.visualizeHSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );

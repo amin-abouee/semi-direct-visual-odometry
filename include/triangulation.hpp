@@ -17,7 +17,7 @@ public:
     Triangulation& operator=( Triangulation&& rhs ) = delete;
     ~Triangulation()                                = default;
 
-    void triangulatePointDLT( const Frame& refFrame,
+    void triangulatePointHomogenousDLT( const Frame& refFrame,
                               const Frame& curFrame,
                               Eigen::Vector2d& refFeature,
                               Eigen::Vector2d& curFeature,
@@ -25,7 +25,7 @@ public:
 
 
     // Guide to 3D Vision Computation, Procedure 4.1, Triangulation with known camera matrices, Eq. 4.3, Page 61
-    void triangulatePointLLS (const Frame& refFrame,
+    void triangulatePointDLT (const Frame& refFrame,
                               const Frame& curFrame,
                               Eigen::Vector2d& refFeature,
                               Eigen::Vector2d& curFeature,

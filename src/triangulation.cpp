@@ -4,7 +4,7 @@ Triangulation::Triangulation()
 {
 }
 
-void Triangulation::triangulatePointDLT( const Frame& refFrame,
+void Triangulation::triangulatePointHomogenousDLT( const Frame& refFrame,
                                          const Frame& curFrame,
                                          Eigen::Vector2d& refFeature,
                                          Eigen::Vector2d& curFeature,
@@ -12,9 +12,7 @@ void Triangulation::triangulatePointDLT( const Frame& refFrame,
 {
     Eigen::MatrixXd A( 4, 4 );
     const Eigen::Matrix< double, 3, 4 > P1 = refFrame.m_camera->K() * refFrame.m_TransW2F.matrix3x4();
-    // std::cout << "P1: " << P1 << std::endl;
     const Eigen::Matrix< double, 3, 4 > P2 = curFrame.m_camera->K() * curFrame.m_TransW2F.matrix3x4();
-    // std::cout << "P2: " << P2 << std::endl;
 
     A.row( 0 ) = ( refFeature.x() * P1.row( 2 ) ) - P1.row( 0 );
     A.row( 1 ) = ( refFeature.y() * P1.row( 2 ) ) - P1.row( 1 );
@@ -49,7 +47,7 @@ void Triangulation::triangulatePointDLT( const Frame& refFrame,
     point = res.head(2);
 }
 
-void Triangulation::triangulatePointLLS( const Frame& refFrame,
+void Triangulation::triangulatePointDLT( const Frame& refFrame,
                                          const Frame& curFrame,
                                          Eigen::Vector2d& refFeature,
                                          Eigen::Vector2d& curFeature,
