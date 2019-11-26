@@ -185,6 +185,7 @@ void Visualization::visualizeEpipolarLinesWithFundamenalMatrix( const Frame& fra
         const cv::Point p2( imgBGR.cols - 1, -( line( 2 ) + line( 0 ) * ( imgBGR.cols - 1 ) ) / line( 1 ) );
         cv::line( imgBGR, p1, p2, cv::Scalar( 0, 160, 200 ) );
     }
+    cv::circle( imgBGR, cv::Point2i( 1004, 119 ), 5.0, cv::Scalar( 0, 255, 165 ) );
     cv::imshow( windowsName, imgBGR );
 }
 
