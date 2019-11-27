@@ -38,6 +38,8 @@ public:
                             const double maxDepth,
                             double& estimatedDepth );
 
+    void findTemplateMatch( Frame& refFrame, Frame& curFrame, const uint16_t patchSzRef, const uint16_t patchSzCur );
+
 private:
 };
 

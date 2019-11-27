@@ -33,6 +33,7 @@ set(LIBRARY_SOURCES
     frame.cpp
     image_pyramid.cpp
     feature.cpp
+    matcher.cpp
     feature_selection.cpp
     algorithm.cpp
     visualization.cpp

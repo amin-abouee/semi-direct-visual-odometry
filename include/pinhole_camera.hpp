@@ -47,17 +47,17 @@ public:
     double width() const;
     double height() const;
 
-    bool isInFrame(const Eigen::Vector2d& imagePoint, const double boundary = 0.0) const;
-    bool isInFrame(const Eigen::Vector2d& imagePoint, const uint8_t level, const double boundary = 0.0) const;
+    bool isInFrame(const Eigen::Vector2d& imagePoint, const double boundary = 0.0 ) const;
+    bool isInFrame(const Eigen::Vector2d& imagePoint, const uint8_t level, const double boundary ) const;
 
     void undistortImage(const cv::Mat& distorted, cv::Mat& undistorted);
 
 private:
+    double m_width;
+    double m_height;
     Eigen::Matrix3d m_K;
     Eigen::Matrix3d m_invK;
     Eigen::Matrix<double, 1, 5> m_distortion;
-    double m_width;
-    double m_height;
     cv::Mat m_cvK;
     cv::Mat m_cvDistortion;
     cv::Mat undistortedMapX;

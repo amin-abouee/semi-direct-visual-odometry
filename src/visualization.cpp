@@ -10,13 +10,75 @@ void Visualization::visualizeFeaturePoints( const Frame& frame, const std::strin
     cv::Mat imgBGR;
     cv::cvtColor( frame.m_imagePyramid.getBaseImage(), imgBGR, cv::COLOR_GRAY2BGR );
 
-    const auto szPoints = frame.m_frameFeatures.size();
+    const auto szPoints = frame.numberObservation();
     for ( int i( 0 ); i < szPoints; i++ )
     {
         const auto& feature = frame.m_frameFeatures[ i ]->m_feature;
         cv::circle( imgBGR, cv::Point2i( feature.x(), feature.y() ), 2.0, cv::Scalar( 0, 255, 0 ) );
     }
     cv::imshow( windowsName, imgBGR );
+}
+
+void Visualization::visualizeFeaturePointsInBothImages( const Frame& refFrame,
+                                                        const Frame& curFrame,
+                                                        const std::string& windowsName )
+{
+    cv::Mat refImgBGR;
+    cv::cvtColor( refFrame.m_imagePyramid.getBaseImage(), refImgBGR, cv::COLOR_GRAY2BGR );
+
+    auto szPoints = refFrame.numberObservation();
+    for ( int i( 0 ); i < szPoints; i++ )
+    {
+        const auto& feature = refFrame.m_frameFeatures[ i ]->m_feature;
+        cv::circle( refImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, cv::Scalar( 128, 255, 0 ) );
+    }
+    // cv::imshow( windowsName, imgBGR );
+    cv::Mat curImgBGR;
+    cv::cvtColor( curFrame.m_imagePyramid.getBaseImage(), curImgBGR, cv::COLOR_GRAY2BGR );
+
+    szPoints = curFrame.numberObservation();
+    for ( int i( 0 ); i < szPoints; i++ )
+    {
+        const auto& feature = curFrame.m_frameFeatures[ i ]->m_feature;
+        cv::circle( curImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, cv::Scalar( 0, 128, 255 ) );
+    }
+
+    cv::Mat stickImages;
+    cv::hconcat( refImgBGR, curImgBGR, stickImages );
+    cv::imshow( windowsName, stickImages );
+}
+
+void Visualization::visualizeFeaturePointsInBothImagesWithSearchRegion( const Frame& refFrame,
+                                                                        const Frame& curFrame,
+                                                                        const uint16_t& patchSize,
+                                                                        const std::string& windowsName )
+{
+    const uint16_t halfPatch = patchSize / 2;
+    cv::Mat refImgBGR;
+    cv::cvtColor( refFrame.m_imagePyramid.getBaseImage(), refImgBGR, cv::COLOR_GRAY2BGR );
+
+    auto szPoints = refFrame.numberObservation();
+    for ( int i( 0 ); i < szPoints; i++ )
+    {
+        const auto& feature = refFrame.m_frameFeatures[ i ]->m_feature;
+        cv::circle( refImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, cv::Scalar( 128, 255, 0 ) );
+    }
+    // cv::imshow( windowsName, imgBGR );
+    cv::Mat curImgBGR;
+    cv::cvtColor( curFrame.m_imagePyramid.getBaseImage(), curImgBGR, cv::COLOR_GRAY2BGR );
+
+    szPoints = curFrame.numberObservation();
+    for ( int i( 0 ); i < szPoints; i++ )
+    {
+        const auto& feature = curFrame.m_frameFeatures[ i ]->m_feature;
+        cv::circle( curImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, cv::Scalar( 0, 128, 255 ) );
+        cv::rectangle( curImgBGR, cv::Point2i( feature.x() - halfPatch, feature.y() - halfPatch ),
+                       cv::Point2i( feature.x() + halfPatch, feature.y() + halfPatch ), cv::Scalar( 0, 128, 255 ) );
+    }
+
+    cv::Mat stickImages;
+    cv::hconcat( refImgBGR, curImgBGR, stickImages );
+    cv::imshow( windowsName, stickImages );
 }
 
 void Visualization::visualizeFeaturePoints( const cv::Mat& img, const Frame& frame, const std::string& windowsName )
@@ -172,7 +234,7 @@ void Visualization::visualizeEpipolarLinesWithFundamenalMatrix( const Frame& fra
                                                                 const std::string& windowsName )
 {
     cv::Mat imgBGR      = getBGRImage( currentImg );
-    const auto szPoints = frame.m_frameFeatures.size();
+    const auto szPoints = frame.numberObservation();
 
     for ( int i( 0 ); i < szPoints; i++ )
     {
@@ -190,12 +252,12 @@ void Visualization::visualizeEpipolarLinesWithFundamenalMatrix( const Frame& fra
 }
 
 void Visualization::visualizeEpipolarLinesWithEssentialMatrix( const Frame& frame,
-                                                                const cv::Mat& currentImg,
-                                                                const Eigen::Matrix3d& E,
-                                                                const std::string& windowsName )
+                                                               const cv::Mat& currentImg,
+                                                               const Eigen::Matrix3d& E,
+                                                               const std::string& windowsName )
 {
     const Eigen::Matrix3d F = frame.m_camera->invK().transpose() * E * frame.m_camera->invK();
-    visualizeEpipolarLinesWithFundamenalMatrix(frame, currentImg, F, windowsName);
+    visualizeEpipolarLinesWithFundamenalMatrix( frame, currentImg, F, windowsName );
 }
 
 cv::Scalar Visualization::generateColor( const double min, const double max, const float value )

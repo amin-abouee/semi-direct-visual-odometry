@@ -14,7 +14,7 @@ PinholeCamera::PinholeCamera( double width,
                               double d1,
                               double d2,
                               double d3,
-                              double d4 )
+                              double d4 ): m_width(width), m_height(height)
 {
     m_cvK          = ( cv::Mat_< double >( 3, 3 ) << fx, 0.0, cx, 0.0, fy, cy, 0.0, 0.0, 1.0 );
     m_cvDistortion = ( cv::Mat_< float >( 1, 5 ) << d0, d1, d2, d3, d4 );
@@ -151,6 +151,11 @@ double PinholeCamera::height() const
 
 bool PinholeCamera::isInFrame( const Eigen::Vector2d& imagePoint, const double boundary ) const
 {
+    // std::cout << "img width: " << width() << ", height: " << height() << ", boundry" << boundary << std::endl;
+    // std::cout << "imagePoint.x() >= boundary: " << (imagePoint.x() >= boundary) << std::endl;
+    // std::cout << "imagePoint.y() >= boundary: " << (imagePoint.y() >= boundary) << std::endl;
+    // std::cout << "imagePoint.x() < m_width - boundary: " << (imagePoint.x() < m_width - boundary) << std::endl;
+    // std::cout << "imagePoint.y() < m_height - boundary: " << (imagePoint.y() < m_height - boundary) << std::endl;
     if ( imagePoint.x() >= boundary && imagePoint.y() >= boundary && imagePoint.x() < m_width - boundary &&
          imagePoint.y() < m_height - boundary )
         return true;

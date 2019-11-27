@@ -16,6 +16,7 @@
 #include "pinhole_camera.hpp"
 #include "algorithm.hpp"
 #include "visualization.hpp"
+#include "matcher.hpp"
 
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
@@ -55,8 +56,8 @@ int main( int argc, char* argv[] )
     // std::ifstream jsonFile(configFile);
     // const nlohmann::json& filePaths = configFile[ "file_paths" ];
 
-    cv::Mat refImg = cv::imread( "../input/0000000000.png", cv::IMREAD_GRAYSCALE );
-    cv::Mat curImg = cv::imread( "../input/0000000001.png", cv::IMREAD_GRAYSCALE );
+    cv::Mat refImg = cv::imread( "/home/amin/Workspace/cplusplus/semi-direct-visual-odometry/input/0000000000.png", cv::IMREAD_GRAYSCALE );
+    cv::Mat curImg = cv::imread( "/home/amin/Workspace/cplusplus/semi-direct-visual-odometry/input/0000000001.png", cv::IMREAD_GRAYSCALE );
 
     Eigen::Matrix3d K;
     K << 7.215377e+02, 0.000000e+00, 6.095593e+02, 0.000000e+00, 7.215377e+02, 1.728540e+02, 0.000000e+00, 0.000000e+00,
@@ -108,6 +109,8 @@ int main( int argc, char* argv[] )
     std::cout << "Elapsed time for SSC: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
               << std::endl;
 
+    Matcher matcher;
+    matcher.findTemplateMatch(refFrame, curFrame, 5, 115);
     Visualization visualize;
     // Eigen::MatrixXd P1 = refFrame.m_camera->K() * refFrame.m_TransW2F.matrix3x4();
     // std::cout << "P1: " << P1 << std::endl;
@@ -139,8 +142,11 @@ int main( int argc, char* argv[] )
       //                                 mu + sigma, "Epipolar-Line-Feature-3" );
     }
 
-    visualize.visualizeEpipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0,
+    visualize.visualizeEpipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0.5,
                                       20, "Epipolar-Line-Feature-3" );
+
+    // visualize.visualizeFeaturePointsInBothImages(refFrame, curFrame, "Feature in Both Images");
+    visualize.visualizeFeaturePointsInBothImagesWithSearchRegion(refFrame, curFrame, 115, "Feature in Both Images");
 
     // visualize.visualizeEpipolarLinesWithFundamenalMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), F,
                                                           // "Epipolar-Lines-Right-With-F" );
