@@ -5,6 +5,7 @@
 #include "feature.hpp"
 
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/video/tracking.hpp>
 // #include <opencv2/highgui/highgui.hpp>
 // #include <opencv2/objdetect/objdetect.hpp>
 
@@ -27,7 +28,8 @@ void Matcher::findTemplateMatch( Frame& refFrame,
     const uint16_t halfPatchRef = patchSzRef / 2;
     const uint16_t halfPatchCur = patchSzCur / 2;
     Eigen::Vector2i px( 0.0, 0.0 );
-    cv::Mat result( cv::Size( patchSzCur - patchSzRef + 1, patchSzCur - patchSzRef + 1 ), CV_32F );
+    const uint16_t offset = patchSzCur - patchSzRef;
+    cv::Mat result( cv::Size( offset, offset ), CV_32F );
 
     double minVal, maxVal;
     cv::Point minLoc, maxLoc, matchLoc;
@@ -51,12 +53,41 @@ void Matcher::findTemplateMatch( Frame& refFrame,
             cv::matchTemplate( imagePatch, templatePatch, result, cv::TM_SQDIFF_NORMED );
             normalize( result, result, 0, 1, cv::NORM_MINMAX, -1, cv::Mat() );
             minMaxLoc( result, &minVal, &maxVal, &minLoc, &maxLoc, cv::Mat() );
-            matchLoc = minLoc;
+            // matchLoc = minLoc;
             std::cout << "corresponding loc: " << matchLoc << std::endl;
+            Eigen::Vector2d newLoc;
+            newLoc.x() = px.x() + offset + minLoc.x;
+            newLoc.y() = px.y() + offset + minLoc.y;
             std::unique_ptr< Feature > newFeature = std::make_unique< Feature >(
-              curFrame, Eigen::Vector2d( features->m_feature.x() + matchLoc.x, features->m_feature.y() + matchLoc.y ),
-              0.0, 0.0, 0 );
+              curFrame, newLoc, 0.0, 0.0, 0 );
             curFrame.addFeature( newFeature );
         }
     }
+}
+
+void Matcher::findOpticalFlowSparse(Frame& refFrame, Frame& curFrame, const uint16_t patchSize)
+{
+    std::vector <cv::Point2f> refPoints;
+    std::vector <cv::Point2f> curPoints;
+    for ( const auto& features : refFrame.m_frameFeatures )
+        refPoints.push_back(cv::Point(features->m_feature.x(), features->m_feature.y()));
+
+    std::vector<uchar> status;
+    std::vector<float> err;
+
+    const cv::Mat& refImg = refFrame.m_imagePyramid.getBaseImage();
+    const cv::Mat& curImg = curFrame.m_imagePyramid.getBaseImage();
+    cv::calcOpticalFlowPyrLK(refImg, curImg, refPoints, curPoints, status, err, cv::Size(patchSize, patchSize), 3);
+    uint32_t cnt = 0;
+    for(std::size_t i(0); i< curPoints.size(); i++)
+    {
+        if (status[i])
+        {
+            cnt++;
+            std::unique_ptr< Feature > newFeature = std::make_unique< Feature >(
+              curFrame, Eigen::Vector2d(curPoints[i].x, curPoints[i].y), 0.0, 0.0, 0 );
+            curFrame.addFeature( newFeature );
+        }
+    }
+    std::cout << "cnt: " << cnt << std::endl;
 }

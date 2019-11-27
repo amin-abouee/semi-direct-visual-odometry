@@ -15,22 +15,23 @@
 #include <iostream>
 #include "frame.hpp"
 
-class Matcher final
+// class Matcher final
+// {
+// public:
+//     // C'tor
+//     explicit Matcher() = default;
+//     // Copy C'tor
+//     Matcher( const Matcher& rhs ) = default;
+//     // move C'tor
+//     Matcher( Matcher&& rhs ) = default;
+//     // Copy assignment operator
+//     Matcher& operator=( const Matcher& rhs ) = default;
+//     // move assignment operator
+//     Matcher& operator=( Matcher&& rhs ) = default;
+//     // D'tor
+//     ~Matcher() = default;
+namespace Matcher
 {
-public:
-    // C'tor
-    explicit Matcher() = default;
-    // Copy C'tor
-    Matcher( const Matcher& rhs ) = default;
-    // move C'tor
-    Matcher( Matcher&& rhs ) = default;
-    // Copy assignment operator
-    Matcher& operator=( const Matcher& rhs ) = default;
-    // move assignment operator
-    Matcher& operator=( Matcher&& rhs ) = default;
-    // D'tor
-    ~Matcher() = default;
-
     bool findEpipolarMatch( Frame& refFrame,
                             Frame& curFrame,
                             Feature& ft,
@@ -40,7 +41,9 @@ public:
 
     void findTemplateMatch( Frame& refFrame, Frame& curFrame, const uint16_t patchSzRef, const uint16_t patchSzCur );
 
-private:
+    void findOpticalFlowSparse(Frame& refFrame, Frame& curFrame, const uint16_t patchSize);
+
+// private:
 };
 
 #endif /* __MATCHER_H__ */
