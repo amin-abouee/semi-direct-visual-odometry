@@ -3,8 +3,12 @@
 
 uint32_t Frame::m_frameCounter;
 
-Frame::Frame( PinholeCamera& camera, cv::Mat& img )
-    : m_id( m_frameCounter++ ), m_camera( &camera ), m_TransW2F(), m_imagePyramid( img, 4 ), m_keyFrame( false )
+Frame::Frame( const PinholeCamera& camera, const cv::Mat& img )
+    : m_id( m_frameCounter++ )
+    , m_camera( &camera )
+    , m_TransW2F( Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero() )
+    , m_imagePyramid( img, 4 )
+    , m_keyFrame( false )
 {
 }
 

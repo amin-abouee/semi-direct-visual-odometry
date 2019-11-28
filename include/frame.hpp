@@ -29,7 +29,7 @@ class Frame final
 public:
     static uint32_t m_frameCounter;
     uint32_t m_id;
-    PinholeCamera* m_camera;
+    const PinholeCamera* m_camera;
     // std::reference_wrapper<PinholeCamera> m_camera;
     Sophus::SE3d m_TransW2F;
     Eigen::Matrix< double, 6, 6 > m_covPose;
@@ -38,7 +38,7 @@ public:
     bool m_keyFrame;
 
     // C'tor
-    explicit Frame( PinholeCamera& camera, cv::Mat& img );
+    explicit Frame( const PinholeCamera& camera, const cv::Mat& img );
     // Copy C'tor
     Frame( const Frame& rhs ) = delete;  // non construction-copyable
     // move C'tor

@@ -1,7 +1,17 @@
 {
     "file_paths": 
     {
-        "log_file" : "/home/amin/Workspace/cplusplus/single_camera_live_tracking/art_visual_tracking_library/log.conf",
-        "camera_calibration": "/home/amin/Workspace/cplusplus/single_camera_live_tracking/config/flea3_full.yaml"
+        "log_file" : "/home/amin/Workspace/cplusplus/single_camera_live_tracking/art_visual_tracking_library/log.conf"
+    },
+    "camera":
+    {
+        "camera_calibration": "/home/amin/Workspace/cplusplus/semi-direct-visual-odometry/resource/kitti.yaml",
+        "img_width" : 1242,
+        "img_height" : 375
+    },
+    "algorithm":
+    {
+        "number_detected_features" : 20,
+        "patch_size_optical_flow" : 11
     }
 }

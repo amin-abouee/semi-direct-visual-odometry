@@ -11,12 +11,12 @@
 
 #include <Eigen/Core>
 
+#include "algorithm.hpp"
 #include "feature_selection.hpp"
 #include "frame.hpp"
-#include "pinhole_camera.hpp"
-#include "algorithm.hpp"
-#include "visualization.hpp"
 #include "matcher.hpp"
+#include "pinhole_camera.hpp"
+#include "visualization.hpp"
 
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
@@ -39,6 +39,22 @@ nlohmann::json createConfigParser( const std::string& fileName )
     return configParser;
 }
 
+bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs )
+{
+    cv::FileStorage fs( filename, cv::FileStorage::READ );
+
+    if ( !fs.isOpened() )
+    {
+        std::cout << "Failed to open " << filename << std::endl;
+        return false;
+    }
+
+    fs[ "K" ] >> cameraMatrix;
+    fs[ "d" ] >> distortionCoeffs;
+    fs.release();
+    return true;
+}
+
 int main( int argc, char* argv[] )
 {
     auto mainLogger = spdlog::stdout_color_mt( "main" );
@@ -49,15 +65,23 @@ int main( int argc, char* argv[] )
     mainLogger->warn( "Warn" );
     mainLogger->error( "Error" );
 
-    std::string configIOFile = "../config/config.json";
+    const std::string configIOFile = "../config/config.json";
 
     const nlohmann::json& configJson = createConfigParser( configIOFile );
     // std::cout << configJson[ "file_paths" ][ "camera_calibration" ].get< std::string >() << std::endl;
     // std::ifstream jsonFile(configFile);
-    // const nlohmann::json& filePaths = configFile[ "file_paths" ];
 
-    cv::Mat refImg = cv::imread( "../input/0000000000.png", cv::IMREAD_GRAYSCALE );
-    cv::Mat curImg = cv::imread( "../input/0000000001.png", cv::IMREAD_GRAYSCALE );
+    const nlohmann::json& cameraJson  = configJson[ "camera" ];
+    const std::string calibrationFile = cameraJson[ "camera_calibration" ].get< std::string >();
+    cv::Mat cameraMatrix;
+    cv::Mat distortionCoeffs;
+    loadCameraIntrinsics( calibrationFile, cameraMatrix, distortionCoeffs );
+
+    const double imgWidth  = cameraJson[ "img_width" ].get< double >();
+    const double imgHeight = cameraJson[ "img_height" ].get< double >();
+
+    const cv::Mat refImg = cv::imread( "../input/0000000000.png", cv::IMREAD_GRAYSCALE );
+    const cv::Mat curImg = cv::imread( "../input/0000000001.png", cv::IMREAD_GRAYSCALE );
 
     Eigen::Matrix3d K;
     K << 7.215377e+02, 0.000000e+00, 6.095593e+02, 0.000000e+00, 7.215377e+02, 1.728540e+02, 0.000000e+00, 0.000000e+00,
@@ -87,7 +111,8 @@ int main( int argc, char* argv[] )
     // Eigen::Vector3d t( -0.0206659, -0.00456935, 0.999776 );
     Eigen::Vector3d t( 0.0206659, 0.00456935, -0.999776 );
 
-    PinholeCamera camera( 1242, 375, K( 0, 0 ), K( 1, 1 ), K( 0, 2 ), K( 1, 2 ), 0.0, 0.0, 0.0, 0.0, 0.0 );
+    // PinholeCamera camera( 1242, 375, K( 0, 0 ), K( 1, 1 ), K( 0, 2 ), K( 1, 2 ), 0.0, 0.0, 0.0, 0.0, 0.0 );
+    PinholeCamera camera( imgWidth, imgHeight, cameraMatrix, distortionCoeffs );
     Frame refFrame( camera, refImg );
     Frame curFrame( camera, curImg );
     Eigen::AngleAxisd temp( R );  // Re-orthogonality
@@ -99,14 +124,19 @@ int main( int argc, char* argv[] )
     // Sophus::SE3d T_pre2cur = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
     // std::cout << "transformation 1 -> 2: " << T_pre2cur.params().transpose() << std::endl;
 
+    const nlohmann::json& algoJson  = configJson[ "algorithm" ];
+    const uint32_t numFeature       = algoJson[ "number_detected_features" ].get< uint32_t >();
+    const uint16_t patchSizeOptFlow = algoJson[ "patch_size_optical_flow" ].get< uint16_t >();
+
     FeatureSelection featureSelection;
     F = curFrame.m_camera->invK().transpose() * E * refFrame.m_camera->invK();
     // std::cout << "Fundamental Matrix: \n" << F << std::endl;
     // Matcher matcher;
 
     auto t1 = std::chrono::high_resolution_clock::now();
-    featureSelection.detectFeatures( refFrame, 15 );
-    Matcher::findOpticalFlowSparse(refFrame, curFrame, 11);
+    featureSelection.detectFeatures( refFrame, numFeature );
+    Matcher::findOpticalFlowSparse( refFrame, curFrame, patchSizeOptFlow );
+    // Matcher::findTemplateMatch(refFrame, curFrame, patchSizeOptFlow, 35);
     auto t2 = std::chrono::high_resolution_clock::now();
     std::cout << "Elapsed time for SSC: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
               << std::endl;
@@ -122,11 +152,10 @@ int main( int argc, char* argv[] )
     Eigen::Vector3d point;
     Eigen::Vector2d p1( 975, 123 );
     Eigen::Vector2d p2( 1004, 119 );
-    Algorithm::triangulatePointHomogenousDLT( refFrame, curFrame, p1, p2, point );
+    // Algorithm::triangulatePointHomogenousDLT( refFrame, curFrame, p1, p2, point );
     Algorithm::triangulatePointDLT( refFrame, curFrame, p1, p2, point );
     std::cout << "point in world: " << point.transpose() << std::endl;
     std::cout << "point: " << point.norm() << std::endl;
-
 
     // Visualization::featurePoints( featureSelection.m_gradientMagnitude, refFrame,
     //   "Feature Selected By SSC on Gradient Magnitude Image" );
@@ -137,20 +166,21 @@ int main( int argc, char* argv[] )
     // const double mu    = point.norm();
     // std::cout << "position feature: " << refFrame.m_frameFeatures[ 3 ]->m_feature.transpose() << std::endl;
     {
-      // const double mu    = 20.0;
-      // const double sigma = 1.0;
-      // Visualization::epipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, mu - sigma,
-      //                                 mu + sigma, "Epipolar-Line-Feature-3" );
+        // const double mu    = 20.0;
+        // const double sigma = 1.0;
+        // Visualization::epipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, mu - sigma,
+        //                                 mu + sigma, "Epipolar-Line-Feature-3" );
     }
 
-    Visualization::epipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0.5,
-                                      20, "Epipolar-Line-Feature-3" );
+    Visualization::epipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0.5, 20,
+                                 "Epipolar-Line-Feature-3" );
 
     // Visualization::featurePointsInBothImages(refFrame, curFrame, "Feature in Both Images");
-    Visualization::featurePointsInBothImagesWithSearchRegion(refFrame, curFrame, 11, "Feature in Both Images");
+    Visualization::featurePointsInBothImagesWithSearchRegion( refFrame, curFrame, patchSizeOptFlow,
+                                                              "Feature in Both Images" );
 
     // Visualization::epipolarLinesWithFundamenalMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), F,
-                                                          // "Epipolar-Lines-Right-With-F" );
+    // "Epipolar-Lines-Right-With-F" );
     // Visualization::epipolarLinesWithEssentialMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), E,
     // "Epipolar-Lines-Right-With-E" );
     // Visualization::grayImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude" );

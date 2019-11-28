@@ -12,22 +12,27 @@
 class PinholeCamera final
 {
 public:
-    explicit PinholeCamera( double width,
-                            double height,
-                            double fx,
-                            double fy,
-                            double cx,
-                            double cy,
-                            double d0,
-                            double d1,
-                            double d2,
-                            double d3,
-                            double d4 );
+    explicit PinholeCamera( const double width,
+                            const double height,
+                            const double fx,
+                            const double fy,
+                            const double cx,
+                            const double cy,
+                            const double d0,
+                            const double d1,
+                            const double d2,
+                            const double d3,
+                            const double d4 );
 
-    PinholeCamera(const PinholeCamera& rhs);
-    PinholeCamera(PinholeCamera&& rhs);
-    PinholeCamera& operator=(const PinholeCamera& rhs);
-    PinholeCamera& operator=(PinholeCamera&& rhs);
+    explicit PinholeCamera (const double width,
+                            const double height,
+                            const cv::Mat& cameraMatrix,
+                            const cv::Mat& distortionCoeffs );
+
+    PinholeCamera(const PinholeCamera& rhs) = default;
+    PinholeCamera(PinholeCamera&& rhs) =default;
+    PinholeCamera& operator=(const PinholeCamera& rhs) = default;
+    PinholeCamera& operator=(PinholeCamera&& rhs) = default;
     ~PinholeCamera() = default;
 
     Eigen::Vector2d project2d(const double x, const double y, const double z) const;
