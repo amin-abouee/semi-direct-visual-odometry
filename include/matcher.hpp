@@ -32,6 +32,10 @@
 //     ~Matcher() = default;
 namespace Matcher
 {
+    void computeOpticalFlowSparse(Frame& refFrame, Frame& curFrame, const uint16_t patchSize);
+
+    void computeEssentialMatrix(Frame& refFrame, Frame& curFrame, const double reproError, Eigen::Matrix3d& E);
+
     bool findEpipolarMatch( Frame& refFrame,
                             Frame& curFrame,
                             Feature& ft,
@@ -39,10 +43,7 @@ namespace Matcher
                             const double maxDepth,
                             double& estimatedDepth );
 
-    void findTemplateMatch( Frame& refFrame, Frame& curFrame, const uint16_t patchSzRef, const uint16_t patchSzCur );
-
-    void findOpticalFlowSparse(Frame& refFrame, Frame& curFrame, const uint16_t patchSize);
-
+    void templateMatching( const Frame& refFrame, Frame& curFrame, const uint16_t patchSzRef, const uint16_t patchSzCur );
 // private:
 };
 

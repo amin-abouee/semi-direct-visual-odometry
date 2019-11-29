@@ -11,7 +11,7 @@
     },
     "algorithm":
     {
-        "number_detected_features" : 20,
+        "number_detected_features" : 50,
         "patch_size_optical_flow" : 11
     }
 }

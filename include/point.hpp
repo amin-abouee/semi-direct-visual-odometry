@@ -8,6 +8,7 @@ class Feature;
 class Point final
 {
 public:
+EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     enum class PointType : uint32_t
     {
         GOOD,

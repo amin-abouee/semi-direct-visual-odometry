@@ -232,7 +232,7 @@ void Visualization::epipolarLine( const Frame& refFrame,
     cv::imshow( windowsName, stickImages );
 }
 
-void Visualization::epipolarLinesWithFundamenalMatrix( const Frame& frame,
+void Visualization::epipolarLinesWithFundamentalMatrix( const Frame& frame,
                                                        const cv::Mat& currentImg,
                                                        const Eigen::Matrix3d& F,
                                                        const std::string& windowsName )
@@ -261,7 +261,7 @@ void Visualization::epipolarLinesWithEssentialMatrix( const Frame& frame,
                                                       const std::string& windowsName )
 {
     const Eigen::Matrix3d F = frame.m_camera->invK().transpose() * E * frame.m_camera->invK();
-    epipolarLinesWithFundamenalMatrix( frame, currentImg, F, windowsName );
+    epipolarLinesWithFundamentalMatrix( frame, currentImg, F, windowsName );
 }
 
 cv::Scalar Visualization::generateColor( const double min, const double max, const float value )

@@ -57,6 +57,10 @@ bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, c
 
 int main( int argc, char* argv[] )
 {
+
+    // Eigen::setNbThreads(4);
+    // std::cout << "Number of Threads: " << Eigen::nbThreads( ) << std::endl;
+
     auto mainLogger = spdlog::stdout_color_mt( "main" );
     mainLogger->set_level( spdlog::level::debug );
     mainLogger->set_pattern( "[%Y-%m-%d %H:%M:%S] [%s:%#] [%n->%l] [thread:%t] %v" );
@@ -135,11 +139,12 @@ int main( int argc, char* argv[] )
 
     auto t1 = std::chrono::high_resolution_clock::now();
     featureSelection.detectFeatures( refFrame, numFeature );
-    Matcher::findOpticalFlowSparse( refFrame, curFrame, patchSizeOptFlow );
+    Matcher::computeOpticalFlowSparse( refFrame, curFrame, patchSizeOptFlow );
+    Matcher::computeEssentialMatrix(refFrame, curFrame, 1.0, E);
     // Matcher::findTemplateMatch(refFrame, curFrame, patchSizeOptFlow, 35);
     auto t2 = std::chrono::high_resolution_clock::now();
     std::cout << "Elapsed time for SSC: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
-              << std::endl;
+              << " ms" << std::endl;
 
     // matcher.findTemplateMatch(refFrame, curFrame, 5, 99);
     // Visualization visualize;
@@ -175,17 +180,35 @@ int main( int argc, char* argv[] )
     Visualization::epipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0.5, 20,
                                  "Epipolar-Line-Feature-3" );
 
-    // Visualization::featurePointsInBothImages(refFrame, curFrame, "Feature in Both Images");
-    Visualization::featurePointsInBothImagesWithSearchRegion( refFrame, curFrame, patchSizeOptFlow,
-                                                              "Feature in Both Images" );
+    Visualization::featurePointsInBothImages(refFrame, curFrame, "Feature in Both Images");
+    // Visualization::featurePointsInBothImagesWithSearchRegion( refFrame, curFrame, patchSizeOptFlow,
+                                                              // "Feature in Both Images" );
 
-    // Visualization::epipolarLinesWithFundamenalMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), F,
+    // Visualization::epipolarLinesWithFundamentalMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), F,
     // "Epipolar-Lines-Right-With-F" );
-    // Visualization::epipolarLinesWithEssentialMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), E,
-    // "Epipolar-Lines-Right-With-E" );
+    Visualization::epipolarLinesWithEssentialMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), E,
+    "Epipolar-Lines-Right-With-E" );
     // Visualization::grayImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude" );
     // Visualization::HSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
     // Visualization::HSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
+  #ifdef EIGEN_MALLOC_ALREADY_ALIGNED
+    std::cout << "EIGEN_MALLOC_ALREADY_ALIGNED" << std::endl;
+  #endif
+
+  #ifdef EIGEN_FAST_MATH
+    std::cout << "EIGEN_FAST_MATH" << std::endl;
+  #endif
+
+  #ifdef EIGEN_USE_MKL_ALL
+    std::cout << "EIGEN_USE_MKL_ALL" << std::endl;
+  #endif
+
+  #ifdef EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    std::cout << "EIGEN_MAKE_ALIGNED_OPERATOR_NEW" << std::endl;
+  #endif
+
+    // std::cout << "Number of Threads: " << Eigen::nbThreads( ) << std::endl;
+
     cv::waitKey( 0 );
     return 0;
 }

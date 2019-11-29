@@ -69,6 +69,7 @@ void Algorithm::triangulatePointDLT( const Frame& refFrame,
     point = ( A.transpose() * A ).ldlt().solve( A.transpose() * p );
 }
 
+// 9.6.2 Extraction of cameras from the essential matrix, multi view geometry
 void Algorithm::decomposeEssentialMatrix( Eigen::Matrix3d& E,
                                           Eigen::Matrix3d& R1,
                                           Eigen::Matrix3d& R2,
@@ -84,4 +85,9 @@ void Algorithm::decomposeEssentialMatrix( Eigen::Matrix3d& E,
     if ( R2.determinant() < 0 )
         R2 *= -1;
     t = svd_E.matrixU().col( 3 );
+}
+
+bool Algorithm::checkCheirality()
+{
+    return true;
 }

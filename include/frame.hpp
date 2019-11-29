@@ -27,6 +27,7 @@ class Point;
 class Frame final
 {
 public:
+EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     static uint32_t m_frameCounter;
     uint32_t m_id;
     const PinholeCamera* m_camera;

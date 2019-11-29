@@ -12,6 +12,7 @@
 class PinholeCamera final
 {
 public:
+EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     explicit PinholeCamera( const double width,
                             const double height,
                             const double fx,
@@ -43,6 +44,8 @@ public:
 
     const Eigen::Matrix3d& K() const;
     const Eigen::Matrix3d& invK() const;
+    const cv::Mat& K_cv() const;
+
     double fx() const;
     double fy() const;
     double cx() const;

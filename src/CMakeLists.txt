@@ -17,7 +17,9 @@ find_package(nlohmann_json REQUIRED)
 #   -DOpenMP_omp_LIBRARY=/usr/local/opt/libomp/lib/libomp.dylib \
 #   ..
 
-# find_package(OpenMP REQUIRED)
+# https://cliutils.gitlab.io/modern-cmake/chapters/packages/OpenMP.html
+# https://stackoverflow.com/questions/56202041/compiling-and-linking-against-openmp-with-appleclang-on-mac-os-x-mojave
+find_package(OpenMP REQUIRED)
 # https://github.com/gabime/spdlog/blob/v1.x/example/CMakeLists.txt
 find_package(spdlog REQUIRED)
 find_package(Threads)
@@ -49,6 +51,10 @@ set(LIBRARY_SOURCES
 add_executable(visual_odometry ${LIBRARY_SOURCES})
 # target_link_libraries (visual_odometry visualizer source)
 target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads spdlog::spdlog)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(visual_odometry PUBLIC OpenMP::OpenMP_CXX)
+endif()
+
 
 set_target_properties(visual_odometry PROPERTIES CMAKE_CXX_STANDARD_REQUIRED ON)
 set_target_properties(visual_odometry PROPERTIES CXX_STANDARD 17)

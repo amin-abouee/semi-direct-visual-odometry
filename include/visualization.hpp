@@ -73,7 +73,7 @@ namespace Visualization
                     const double maxDepth,
                     const std::string& windowsName );
 
-    void epipolarLinesWithFundamenalMatrix( const Frame& frame,
+    void epipolarLinesWithFundamentalMatrix( const Frame& frame,
                                             const cv::Mat& currentImg,
                                             const Eigen::Matrix3d& F,
                                             const std::string& windowsName );

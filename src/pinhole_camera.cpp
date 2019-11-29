@@ -137,6 +137,11 @@ const Eigen::Matrix3d& PinholeCamera::invK() const
     return m_invK;
 }
 
+const cv::Mat& PinholeCamera::K_cv() const
+{
+    return m_cvK;
+}
+
 double PinholeCamera::fx() const
 {
     return m_K( 0, 0 );
@@ -179,7 +184,7 @@ double PinholeCamera::height() const
 
 bool PinholeCamera::isInFrame( const Eigen::Vector2d& imagePoint, const double boundary ) const
 {
-    // std::cout << "img width: " << width() << ", height: " << height() << ", boundry" << boundary << std::endl;
+    // std::cout << "img width: " << width() << ", height: " << height() << ", boundary" << boundary << std::endl;
     // std::cout << "imagePoint.x() >= boundary: " << (imagePoint.x() >= boundary) << std::endl;
     // std::cout << "imagePoint.y() >= boundary: " << (imagePoint.y() >= boundary) << std::endl;
     // std::cout << "imagePoint.x() < m_width - boundary: " << (imagePoint.x() < m_width - boundary) << std::endl;
