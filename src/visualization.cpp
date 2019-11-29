@@ -5,6 +5,19 @@
 
 #include "feature.hpp"
 
+// std::map< std::string, cv::Scalar > colors{
+//   {"red", cv::Scalar( 65, 82, 226 )},     {"pink", cv::Scalar( 101, 57, 215 )},
+//   {"purple", cv::Scalar( 170, 55, 144 )}, {"deep-purple", cv::Scalar( 177, 65, 96 )},
+//   {"indigo", cv::Scalar( 175, 84, 65 )},  {"blue", cv::Scalar( 236, 150, 70 )},
+//   {"cyan", cv::Scalar( 209, 186, 83 )},   {"aqua", cv::Scalar( 253, 252, 115 )},
+//   {"teal", cv::Scalar( 136, 148, 65 )},   {"green", cv::Scalar( 92, 172, 103 )},
+//   {"lime", cv::Scalar( 89, 218, 209 )},   {"yellow", cv::Scalar( 96, 234, 253 )},
+//   {"amber", cv::Scalar( 68, 194, 246 )},  {"orange", cv::Scalar( 56, 156, 242 )},
+//   {"brown", cv::Scalar( 74, 86, 116 )},   {"gray", cv::Scalar( 158, 158, 158 )},
+//   {"black", cv::Scalar( 0, 0, 0 )},       {"deep-orange", cv::Scalar( 55, 99, 237 )},
+//   {"white", cv::Scalar( 356, 256, 256 )}};
+
+
 void Visualization::featurePoints( const Frame& frame, const std::string& windowsName )
 {
     cv::Mat imgBGR;
@@ -62,21 +75,22 @@ void Visualization::featurePointsInBothImagesWithSearchRegion( const Frame& refF
     for ( int i( 0 ); i < szPoints; i++ )
     {
         const auto& feature = refFrame.m_frameFeatures[ i ]->m_feature;
-        cv::circle( refImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, cv::Scalar( 255, 0, 255 ) );
+        // cv::circle( refImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, cv::Scalar( 255, 0, 255 ) );
+        cv::circle( refImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, colors.at("purple") );
     }
-    // cv::imshow( windowsName, imgBGR );
+
     cv::Mat curImgBGR;
     cv::cvtColor( curFrame.m_imagePyramid.getBaseImage(), curImgBGR, cv::COLOR_GRAY2BGR );
-
     szPoints = curFrame.numberObservation();
     for ( int i( 0 ); i < szPoints; i++ )
     {
         const auto& feature = curFrame.m_frameFeatures[ i ]->m_feature;
-        cv::circle( curImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, cv::Scalar( 0, 128, 255 ) );
+        // cv::circle( curImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, cv::Scalar( 0, 128, 255 ) );
+        cv::circle( curImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, colors.at("orange") );
         if ( patchSize > 0 )
         {
             cv::rectangle( curImgBGR, cv::Point2i( feature.x() - halfPatch, feature.y() - halfPatch ),
-                           cv::Point2i( feature.x() + halfPatch, feature.y() + halfPatch ), cv::Scalar( 0, 128, 255 ) );
+                           cv::Point2i( feature.x() + halfPatch, feature.y() + halfPatch ), colors.at("orange") );
         }
     }
 
@@ -95,7 +109,7 @@ void Visualization::featurePoints( const cv::Mat& img, const Frame& frame, const
     for ( int i( 0 ); i < szPoints; i++ )
     {
         const auto& feature = frame.m_frameFeatures[ i ]->m_feature;
-        cv::circle( imgBGR, cv::Point2i( feature.x(), feature.y() ), 2.0, cv::Scalar( 0, 255, 0 ) );
+        cv::circle( imgBGR, cv::Point2i( feature.x(), feature.y() ), 2.0, colors.at("teal") );
     }
     cv::imshow( windowsName, imgBGR );
 }
@@ -164,7 +178,7 @@ void Visualization::epipole( const Frame& frame, const Eigen::Vector3d& vec, con
     cv::Mat imgBGR = getBGRImage( frame.m_imagePyramid.getBaseImage() );
 
     const Eigen::Vector2d projected = frame.m_camera->project2d( vec );
-    cv::circle( imgBGR, cv::Point2i( projected.x(), projected.y() ), 5.0, cv::Scalar( 0, 255, 165 ) );
+    cv::circle( imgBGR, cv::Point2i( projected.x(), projected.y() ), 5.0, colors.at("lime") );
     cv::imshow( windowsName, imgBGR );
 }
 
@@ -183,7 +197,7 @@ void Visualization::epipolarLine( const Frame& frame,
 
     const cv::Point p1( 0, -line( 2 ) / line( 1 ) );
     const cv::Point p2( imgBGR.cols - 1, -( line( 2 ) + line( 0 ) * ( imgBGR.cols - 1 ) ) / line( 1 ) );
-    cv::line( imgBGR, p1, p2, cv::Scalar( 0, 160, 200 ) );
+    cv::line( imgBGR, p1, p2, colors.at("amber") );
     cv::imshow( windowsName, imgBGR );
 }
 
@@ -201,7 +215,8 @@ void Visualization::epipolarLine( const Frame& curFrame,
     // std::cout << "Position point 1: " << point1.transpose() << std::endl;
     // std::cout << "Position point 2: " << point2.transpose() << std::endl;
     cv::line( imgBGR, cv::Point( point1.x(), point1.y() ), cv::Point( point2.x(), point2.y() ),
-              cv::Scalar( 200, 160, 10 ) );
+              colors.at("amber") );
+            //   cv::Scalar( 200, 160, 10 ) );
     cv::imshow( windowsName, imgBGR );
 }
 
@@ -222,10 +237,13 @@ void Visualization::epipolarLine( const Frame& refFrame,
     const Eigen::Vector2d C      = curFrame.camera2image( T_Ref2Cur * ( refFrame.image2camera( feature, 0.0 ) ) );
     // std::cout << "Position point 1: " << point1.transpose() << std::endl;
     // std::cout << "Position point 2: " << point2.transpose() << std::endl;
-    cv::circle( refImgBGR, cv::Point2i( feature.x(), feature.y() ), 5.0, cv::Scalar( 255, 10, 255 ) );
+    // cv::circle( refImgBGR, cv::Point2i( feature.x(), feature.y() ), 5.0, cv::Scalar( 255, 10, 255 ) );
+    cv::circle( refImgBGR, cv::Point2i( feature.x(), feature.y() ), 5.0, colors.at("purple") );
     cv::line( curImgBGR, cv::Point( point1.x(), point1.y() ), cv::Point( point2.x(), point2.y() ),
-              cv::Scalar( 200, 160, 10 ) );
-    cv::circle( curImgBGR, cv::Point2i( C.x(), C.y() ), 5.0, cv::Scalar( 0, 255, 165 ) );
+              colors.at("amber") );
+            //   cv::Scalar( 200, 160, 10 ) );
+    cv::circle( curImgBGR, cv::Point2i( C.x(), C.y() ), 5.0, colors.at("orange") );
+    // cv::circle( curImgBGR, cv::Point2i( C.x(), C.y() ), 5.0, cv::Scalar( 0, 255, 165 ) );
 
     cv::Mat stickImages;
     cv::hconcat( refImgBGR, curImgBGR, stickImages );
@@ -249,9 +267,10 @@ void Visualization::epipolarLinesWithFundamentalMatrix( const Frame& frame,
         line *= nu;
         const cv::Point p1( 0, -line( 2 ) / line( 1 ) );
         const cv::Point p2( imgBGR.cols - 1, -( line( 2 ) + line( 0 ) * ( imgBGR.cols - 1 ) ) / line( 1 ) );
-        cv::line( imgBGR, p1, p2, cv::Scalar( 0, 160, 200 ) );
+        // cv::line( imgBGR, p1, p2, cv::Scalar( 0, 160, 200 ) );
+        cv::line( imgBGR, p1, p2, colors.at("deep-orange") );
     }
-    cv::circle( imgBGR, cv::Point2i( 1004, 119 ), 5.0, cv::Scalar( 0, 255, 165 ) );
+    // cv::circle( imgBGR, cv::Point2i( 1004, 119 ), 5.0, cv::Scalar( 0, 255, 165 ) );
     cv::imshow( windowsName, imgBGR );
 }
 

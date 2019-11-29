@@ -18,7 +18,7 @@
 #include "pinhole_camera.hpp"
 #include "visualization.hpp"
 
-#include "spdlog/sinks/stdout_color_sinks.h"
+// #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
 
 #include <nlohmann/json.hpp>
@@ -61,13 +61,13 @@ int main( int argc, char* argv[] )
     // Eigen::setNbThreads(4);
     // std::cout << "Number of Threads: " << Eigen::nbThreads( ) << std::endl;
 
-    auto mainLogger = spdlog::stdout_color_mt( "main" );
-    mainLogger->set_level( spdlog::level::debug );
-    mainLogger->set_pattern( "[%Y-%m-%d %H:%M:%S] [%s:%#] [%n->%l] [thread:%t] %v" );
-    mainLogger->info( "Info" );
-    mainLogger->debug( "Debug" );
-    mainLogger->warn( "Warn" );
-    mainLogger->error( "Error" );
+    // auto mainLogger = spdlog::stdout_color_mt( "main" );
+    // mainLogger->set_level( spdlog::level::debug );
+    // mainLogger->set_pattern( "[%Y-%m-%d %H:%M:%S] [%s:%#] [%n->%l] [thread:%t] %v" );
+    // mainLogger->info( "Info" );
+    // mainLogger->debug( "Debug" );
+    // mainLogger->warn( "Warn" );
+    // mainLogger->error( "Error" );
 
     const std::string configIOFile = "../config/config.json";
 

@@ -5,7 +5,7 @@
     },
     "camera":
     {
-        "camera_calibration": "/home/amin/Workspace/cplusplus/semi-direct-visual-odometry/resource/kitti.yaml",
+        "camera_calibration": "/Users/amin/Workspace/cplusplus/semi-direct-visual-odometry/resource/kitti.yaml",
         "img_width" : 1242,
         "img_height" : 375
     },
