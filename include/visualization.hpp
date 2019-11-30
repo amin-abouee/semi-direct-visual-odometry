@@ -39,7 +39,6 @@
 
 namespace Visualization
 {
-
 // https://cloford.com/resources/colours/500col.htm
 // https://www.w3schools.com/colors/colors_w3css.asp
 const std::map< std::string, cv::Scalar > colors{
@@ -54,36 +53,38 @@ const std::map< std::string, cv::Scalar > colors{
   {"black", cv::Scalar( 0, 0, 0 )},       {"deep-orange", cv::Scalar( 55, 99, 237 )},
   {"white", cv::Scalar( 356, 256, 256 )}};
 
-// extern std::map< std::string, cv::Scalar > colors;
-
+/// visualize feature points in frame image
 void featurePoints( const Frame& frame, const std::string& windowsName );
 
+/// visualize feature points in any input image (for instance on HSV image)
+void featurePoints( const cv::Mat& img, const Frame& frame, const std::string& windowsName );
+
+/// visualize feature points in both frames. images stick to each other
 void featurePointsInBothImages( const Frame& refFrame, const Frame& curFrame, const std::string& windowsName );
 
+/// visualize feature points with a search area around that in current frame and corresponding points in reference image
 void featurePointsInBothImagesWithSearchRegion( const Frame& refFrame,
                                                 const Frame& curFrame,
                                                 const uint16_t& patchSize,
                                                 const std::string& windowsName );
 
-void featurePoints( const cv::Mat& img, const Frame& frame, const std::string& windowsName );
-
-void grayImage( const cv::Mat& img, const std::string& windowsName );
-
-void HSVColoredImage( const cv::Mat& img, const std::string& windowsName );
-
+/// draw epipole point in input image
 void epipole( const Frame& frame, const Eigen::Vector3d& vec, const std::string& windowsName );
 
+/// draw epipolar line for a specific bearing vec in the range of image
 void epipolarLine( const Frame& frame,
                    const Eigen::Vector3d& vec,
                    const Eigen::Matrix3d& F,
                    const std::string& windowsName );
 
+/// draw epipolar line for a specific bearing vector in a specific range of depth
 void epipolarLine( const Frame& curFrame,
                    const Eigen::Vector3d& normalizedVec,
                    const double minDepth,
                    const double maxDepth,
                    const std::string& windowsName );
 
+/// draw epipolar line for a specific feature point in a specific range of depth
 void epipolarLine( const Frame& refFrame,
                    const Frame& curFrame,
                    const Eigen::Vector2d& feature,
@@ -91,19 +92,31 @@ void epipolarLine( const Frame& refFrame,
                    const double maxDepth,
                    const std::string& windowsName );
 
+/// draw all epipolar lines with fundamental matrix
 void epipolarLinesWithFundamentalMatrix( const Frame& frame,
                                          const cv::Mat& currentImg,
                                          const Eigen::Matrix3d& F,
                                          const std::string& windowsName );
 
+void epipolarLinesWithPointsWithFundamentalMatrix( const Frame& refFrame,
+                                                   const Frame& curframe,
+                                                   const Eigen::Matrix3d& F,
+                                                   const std::string& windowsName );
+
+/// draw all epipolar lines with essential matrix
 void epipolarLinesWithEssentialMatrix( const Frame& frame,
                                        const cv::Mat& currentImg,
                                        const Eigen::Matrix3d& E,
                                        const std::string& windowsName );
 
-// private:
+void grayImage( const cv::Mat& img, const std::string& windowsName );
+
+void HSVColoredImage( const cv::Mat& img, const std::string& windowsName );
+
 cv::Scalar generateColor( const double min, const double max, const float value );
+
 cv::Mat getBGRImage( const cv::Mat& img );
+
 };  // namespace Visualization
 
 #endif /* __VISUALIZATION_H__ */

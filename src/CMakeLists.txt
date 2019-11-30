@@ -28,6 +28,7 @@ endif()
 # https://cliutils.gitlab.io/modern-cmake/chapters/packages/OpenMP.html
 # https://stackoverflow.com/questions/56202041/compiling-and-linking-against-openmp-with-appleclang-on-mac-os-x-mojave
 find_package(OpenMP REQUIRED)
+
 # https://github.com/gabime/spdlog/blob/v1.x/example/CMakeLists.txt
 find_package(spdlog REQUIRED)
 find_package(Threads)

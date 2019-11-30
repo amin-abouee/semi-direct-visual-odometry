@@ -57,7 +57,7 @@ bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, c
 
 int main( int argc, char* argv[] )
 {
-
+    Eigen::IOFormat CommaInitFmt( 6, Eigen::DontAlignCols, ", ", ", ", "", "", " [ ", "]" );
     // Eigen::setNbThreads(4);
     // std::cout << "Number of Threads: " << Eigen::nbThreads( ) << std::endl;
 
@@ -95,18 +95,19 @@ int main( int argc, char* argv[] )
     Eigen::Matrix3d E;
     E << .22644456e-03, -7.06943058e-01, -4.05822481e-03, 7.06984545e-01, 1.22048201e-03, 1.26855863e-02,
       3.25653616e-03, -1.46073125e-02, -2.59077801e-05;
-    // std::cout << "Essential Matrix: \n" << E << std::endl;
+    std::cout << "Old E: " << E.format( CommaInitFmt ) << std::endl;
 
     Eigen::Matrix3d F;
     F << -5.33286713e-08, -1.49632194e-03, 2.67961447e-01, 1.49436356e-03, -2.27291565e-06, -9.03327631e-01,
       -2.68937438e-01, 9.02739500e-01, 1.00000000e+00;
     // std::cout << "Fundamental Matrix: \n" << F << std::endl;
 
-    const Eigen::Vector3d C( -0.01793327, -0.00577164, 1 );
+    Eigen::Vector3d C( -0.01793327, -0.00577164, 1 );
 
     // Do the cheirality check.
     Eigen::Matrix3d R;
     R << 0.99999475, 0.0017505, -0.0027263, -0.00174731, 0.99999779, 0.00117013, 0.00272834, -0.00116536, 0.9999956;
+    std::cout << "Old R1: " << R.format( CommaInitFmt ) << std::endl;
 
     // Eigen::Matrix3d R;
     // R << -0.99925367, -0.00151199, -0.03859818, 0.00191117, -0.99994505, -0.01030721, -0.03858047, -0.01037328,
@@ -114,13 +115,13 @@ int main( int argc, char* argv[] )
 
     // Eigen::Vector3d t( -0.0206659, -0.00456935, 0.999776 );
     Eigen::Vector3d t( 0.0206659, 0.00456935, -0.999776 );
+    std::cout << "Old t: " << t.format( CommaInitFmt ) << std::endl;
 
     // PinholeCamera camera( 1242, 375, K( 0, 0 ), K( 1, 1 ), K( 0, 2 ), K( 1, 2 ), 0.0, 0.0, 0.0, 0.0, 0.0 );
     PinholeCamera camera( imgWidth, imgHeight, cameraMatrix, distortionCoeffs );
     Frame refFrame( camera, refImg );
     Frame curFrame( camera, curImg );
-    Eigen::AngleAxisd temp( R );  // Re-orthogonality
-    curFrame.m_TransW2F = refFrame.m_TransW2F * Sophus::SE3d( temp.toRotationMatrix(), t );
+
     // std::cout << "transformation W -> 1: " << refFrame.m_TransW2F.params().transpose() << std::endl;
     // std::cout << "transformation W -> 2: " << curFrame.m_TransW2F.params().transpose() << std::endl;
     // std::cout << "transformation 1 -> 2: " << Sophus::SE3d( temp.toRotationMatrix(), t ).params().transpose()
@@ -133,18 +134,27 @@ int main( int argc, char* argv[] )
     const uint16_t patchSizeOptFlow = algoJson[ "patch_size_optical_flow" ].get< uint16_t >();
 
     FeatureSelection featureSelection;
-    F = curFrame.m_camera->invK().transpose() * E * refFrame.m_camera->invK();
     // std::cout << "Fundamental Matrix: \n" << F << std::endl;
     // Matcher matcher;
 
     auto t1 = std::chrono::high_resolution_clock::now();
     featureSelection.detectFeatures( refFrame, numFeature );
     Matcher::computeOpticalFlowSparse( refFrame, curFrame, patchSizeOptFlow );
-    Matcher::computeEssentialMatrix(refFrame, curFrame, 1.0, E);
+    Matcher::computeEssentialMatrix( refFrame, curFrame, 1.0, E );
+    Eigen::Matrix3d R2;
+    Algorithm::decomposeEssentialMatrix( E, R, R2, t );
+    std::cout << "E: " << E.format( CommaInitFmt ) << std::endl;
+    std::cout << "R1: " << R.format( CommaInitFmt ) << std::endl;
+    std::cout << "R2: " << R2.format( CommaInitFmt ) << std::endl;
+    std::cout << "t: " << t.format( CommaInitFmt ) << std::endl;
+    R = R2;
     // Matcher::findTemplateMatch(refFrame, curFrame, patchSizeOptFlow, 35);
     auto t2 = std::chrono::high_resolution_clock::now();
     std::cout << "Elapsed time for SSC: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
               << " ms" << std::endl;
+    F = curFrame.m_camera->invK().transpose() * E * refFrame.m_camera->invK();
+    Eigen::AngleAxisd temp( R );  // Re-orthogonality
+    curFrame.m_TransW2F = refFrame.m_TransW2F * Sophus::SE3d( temp.toRotationMatrix(), t );
 
     // matcher.findTemplateMatch(refFrame, curFrame, 5, 99);
     // Visualization visualize;
@@ -161,10 +171,12 @@ int main( int argc, char* argv[] )
     Algorithm::triangulatePointDLT( refFrame, curFrame, p1, p2, point );
     std::cout << "point in world: " << point.transpose() << std::endl;
     std::cout << "point: " << point.norm() << std::endl;
+    C = -R * t;
+    std::cout << "C: " << C.format( CommaInitFmt ) << std::endl;
 
     // Visualization::featurePoints( featureSelection.m_gradientMagnitude, refFrame,
     //   "Feature Selected By SSC on Gradient Magnitude Image" );
-    // Visualization::epipole( curFrame, C, "Epipole-Right" );
+    Visualization::epipole( curFrame, C, "Epipole-Right" );
     // Visualization::epipolarLine(img, vecHomo, K, R, t, "Epipolar-Line");
     // Visualization::epipolarLine( curFrame, refFrame.m_frameFeatures[ 0 ]->m_bearingVec, 0.0, 50.0,
     //  "Epipolar-Line-Feature-0" );
@@ -180,32 +192,35 @@ int main( int argc, char* argv[] )
     Visualization::epipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0.5, 20,
                                  "Epipolar-Line-Feature-3" );
 
-    Visualization::featurePointsInBothImages(refFrame, curFrame, "Feature in Both Images");
+    // Visualization::featurePointsInBothImages( refFrame, curFrame, "Feature in Both Images" );
     // Visualization::featurePointsInBothImagesWithSearchRegion( refFrame, curFrame, patchSizeOptFlow,
-                                                              // "Feature in Both Images" );
+    // "Feature in Both Images" );
 
     // Visualization::epipolarLinesWithFundamentalMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), F,
     // "Epipolar-Lines-Right-With-F" );
-    Visualization::epipolarLinesWithEssentialMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), E,
-    "Epipolar-Lines-Right-With-E" );
+    // Visualization::epipolarLinesWithEssentialMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), E,
+    //  "Epipolar-Lines-Right-With-E" );
+    Visualization::epipolarLinesWithPointsWithFundamentalMatrix( refFrame, curFrame, F,
+                                                                 "Epipolar-Lines-with-Points-in-Right" );
     // Visualization::grayImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude" );
     // Visualization::HSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
     // Visualization::HSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
-  #ifdef EIGEN_MALLOC_ALREADY_ALIGNED
-    std::cout << "EIGEN_MALLOC_ALREADY_ALIGNED" << std::endl;
-  #endif
+#ifdef EIGEN_MALLOC_ALREADY_ALIGNED
+        std::cout
+      << "EIGEN_MALLOC_ALREADY_ALIGNED" << std::endl;
+#endif
 
-  #ifdef EIGEN_FAST_MATH
+#ifdef EIGEN_FAST_MATH
     std::cout << "EIGEN_FAST_MATH" << std::endl;
-  #endif
+#endif
 
-  #ifdef EIGEN_USE_MKL_ALL
+#ifdef EIGEN_USE_MKL_ALL
     std::cout << "EIGEN_USE_MKL_ALL" << std::endl;
-  #endif
+#endif
 
-  #ifdef EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#ifdef EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     std::cout << "EIGEN_MAKE_ALIGNED_OPERATOR_NEW" << std::endl;
-  #endif
+#endif
 
     // std::cout << "Number of Threads: " << Eigen::nbThreads( ) << std::endl;
 
