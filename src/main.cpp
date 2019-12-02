@@ -147,7 +147,7 @@ int main( int argc, char* argv[] )
     std::cout << "R1: " << R.format( CommaInitFmt ) << std::endl;
     std::cout << "R2: " << R2.format( CommaInitFmt ) << std::endl;
     std::cout << "t: " << t.format( CommaInitFmt ) << std::endl;
-    R = R2;
+    // R = R2;
     // Matcher::findTemplateMatch(refFrame, curFrame, patchSizeOptFlow, 35);
     auto t2 = std::chrono::high_resolution_clock::now();
     std::cout << "Elapsed time for SSC: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()

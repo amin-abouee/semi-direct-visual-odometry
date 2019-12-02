@@ -84,7 +84,7 @@ void Algorithm::decomposeEssentialMatrix( Eigen::Matrix3d& E,
     R2 = svd_E.matrixU() * W.transpose() * svd_E.matrixV().transpose();
     if ( R2.determinant() < 0 )
         R2 *= -1;
-    t = svd_E.matrixU().col( 3 );
+    t = svd_E.matrixU().col( 2 );
 }
 
 bool Algorithm::checkCheirality()
