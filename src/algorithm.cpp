@@ -1,9 +1,66 @@
 #include "algorithm.hpp"
+#include "feature.hpp"
+
+void Algorithm::pointsRefCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsRefCamera )
+{
+    const uint32_t featureSz = refFrame.numberObservation();
+    Eigen::Vector2d refFeature;
+    Eigen::Vector2d curFeature;
+    Eigen::Vector3d pointWorld;
+    for ( std::size_t i( 0 ); i < featureSz; i++ )
+    {
+        refFeature = refFrame.m_frameFeatures[ i ]->m_feature;
+        curFeature = curFrame.m_frameFeatures[ i ]->m_feature;
+        triangulatePointDLT( refFrame, curFrame, refFeature, curFeature, pointWorld );
+        pointsRefCamera.col( i ) = refFrame.world2camera( pointWorld );
+    }
+}
+
+void Algorithm::pointsCurCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsCurCamera )
+{
+    const uint32_t featureSz = refFrame.numberObservation();
+    Eigen::Vector2d refFeature;
+    Eigen::Vector2d curFeature;
+    Eigen::Vector3d pointWorld;
+    for ( std::size_t i( 0 ); i < featureSz; i++ )
+    {
+        refFeature = refFrame.m_frameFeatures[ i ]->m_feature;
+        curFeature = curFrame.m_frameFeatures[ i ]->m_feature;
+        triangulatePointDLT( refFrame, curFrame, refFeature, curFeature, pointWorld );
+        pointsCurCamera.col( i ) = curFrame.world2camera( pointWorld );
+    }
+}
+
+void Algorithm::normalizedDepthRefCamera( const Frame& refFrame,
+                                          const Frame& curFrame,
+                                          Eigen::VectorXd& depthRefCamera )
+{
+    const uint32_t featureSz = refFrame.numberObservation();
+    Eigen::MatrixXd pointsRefCamera( 3, featureSz );
+    Algorithm::pointsRefCamera( refFrame, curFrame, pointsRefCamera );
+    for ( std::size_t i( 0 ); i < featureSz; i++ )
+    {
+        depthRefCamera( i ) = pointsRefCamera.col( i ).norm();
+    }
+}
+
+void Algorithm::normalizedDepthsCurCamera( const Frame& refFrame,
+                                           const Frame& curFrame,
+                                           Eigen::VectorXd& depthCurCamera )
+{
+    const uint32_t featureSz = curFrame.numberObservation();
+    Eigen::MatrixXd pointsCurCamera( 3, featureSz );
+    Algorithm::pointsCurCamera( refFrame, curFrame, pointsCurCamera );
+    for ( std::size_t i( 0 ); i < featureSz; i++ )
+    {
+        depthCurCamera( i ) = pointsCurCamera.col( i ).norm();
+    }
+}
 
 void Algorithm::triangulatePointHomogenousDLT( const Frame& refFrame,
                                                const Frame& curFrame,
-                                               Eigen::Vector2d& refFeature,
-                                               Eigen::Vector2d& curFeature,
+                                               const Eigen::Vector2d& refFeature,
+                                               const Eigen::Vector2d& curFeature,
                                                Eigen::Vector3d& point )
 {
     Eigen::MatrixXd A( 4, 4 );
@@ -20,24 +77,19 @@ void Algorithm::triangulatePointHomogenousDLT( const Frame& refFrame,
     // A.row(0) = curFeature.y() * P2.row(2) - P2.row(1);
     // A.row(1) = P2.row(0) - curFeature.x() * P2.row(2);
 
-    // std::cout << "A: " << A << std::endl;
-
     A.row( 0 ) /= A.row( 0 ).norm();
     A.row( 1 ) /= A.row( 1 ).norm();
     A.row( 2 ) /= A.row( 2 ).norm();
     A.row( 3 ) /= A.row( 3 ).norm();
 
-    // std::cout << "A norm: " << A << std::endl;
     Eigen::JacobiSVD< Eigen::MatrixXd > svd_A( A.transpose() * A, Eigen::ComputeFullV );
     Eigen::VectorXd res = svd_A.matrixV().col( 3 );
-    res /= res( 3 );
-    std::cout << "res: " << res.transpose() << std::endl;
-    // std::cout << "x: " << res.x() << ", y: " << res.y() << ", z: " << res.z() << ", w: " << res.w() << std::endl;
+    res /= res.w();
 
-    Eigen::Vector2d project1 = refFrame.world2image( res.head( 2 ) );
-    Eigen::Vector2d project2 = curFrame.world2image( res.head( 2 ) );
-    std::cout << "project 1: " << project1.transpose() << std::endl;
-    std::cout << "project 2: " << project2.transpose() << std::endl;
+    // Eigen::Vector2d project1 = refFrame.world2image( res.head( 2 ) );
+    // Eigen::Vector2d project2 = curFrame.world2image( res.head( 2 ) );
+    // std::cout << "project 1: " << project1.transpose() << std::endl;
+    // std::cout << "project 2: " << project2.transpose() << std::endl;
     // std::cout << "point in reference camera: " << refFrame.world2camera( res.head( 2 ) ).transpose() << std::endl;
     // std::cout << "point in current camera: " << curFrame.world2camera( res.head( 2 ) ).transpose() << std::endl;
     point = res.head( 2 );
@@ -45,8 +97,8 @@ void Algorithm::triangulatePointHomogenousDLT( const Frame& refFrame,
 
 void Algorithm::triangulatePointDLT( const Frame& refFrame,
                                      const Frame& curFrame,
-                                     Eigen::Vector2d& refFeature,
-                                     Eigen::Vector2d& curFeature,
+                                     const Eigen::Vector2d& refFeature,
+                                     const Eigen::Vector2d& curFeature,
                                      Eigen::Vector3d& point )
 {
     Eigen::MatrixXd A( 4, 3 );
@@ -70,6 +122,7 @@ void Algorithm::triangulatePointDLT( const Frame& refFrame,
 }
 
 // 9.6.2 Extraction of cameras from the essential matrix, multi view geometry
+// https://github.com/opencv/opencv/blob/a74fe2ec01d9218d06cb7675af633fc3f409a6a2/modules/calib3d/src/five-point.cpp
 void Algorithm::decomposeEssentialMatrix( Eigen::Matrix3d& E,
                                           Eigen::Matrix3d& R1,
                                           Eigen::Matrix3d& R2,

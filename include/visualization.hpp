@@ -85,12 +85,18 @@ void epipolarLine( const Frame& curFrame,
                    const std::string& windowsName );
 
 /// draw epipolar line for a specific feature point in a specific range of depth
-void epipolarLine( const Frame& refFrame,
-                   const Frame& curFrame,
-                   const Eigen::Vector2d& feature,
-                   const double minDepth,
-                   const double maxDepth,
-                   const std::string& windowsName );
+void epipolarLineBothImages( const Frame& refFrame,
+                             const Frame& curFrame,
+                             const Eigen::Vector2d& feature,
+                             const double minDepth,
+                             const double maxDepth,
+                             const std::string& windowsName );
+
+void epipolarLinesWithDepth( const Frame& refFrame,
+                             const Frame& curFrame,
+                             const Eigen::VectorXd& depths,
+                             const double sigma,
+                             const std::string& windowsName );
 
 /// draw all epipolar lines with fundamental matrix
 void epipolarLinesWithFundamentalMatrix( const Frame& frame,

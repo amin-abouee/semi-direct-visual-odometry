@@ -147,14 +147,18 @@ int main( int argc, char* argv[] )
     std::cout << "R1: " << R.format( CommaInitFmt ) << std::endl;
     std::cout << "R2: " << R2.format( CommaInitFmt ) << std::endl;
     std::cout << "t: " << t.format( CommaInitFmt ) << std::endl;
+    F = curFrame.m_camera->invK().transpose() * E * refFrame.m_camera->invK();
+    Eigen::AngleAxisd temp( R );  // Re-orthogonality
+    curFrame.m_TransW2F = refFrame.m_TransW2F * Sophus::SE3d( temp.toRotationMatrix(), t );
+    // Eigen::MatrixXd pointsRefCamera(3, curFrame.numberObservation());
+    // Algorithm::pointsRefCamera(refFrame, curFrame, pointsRefCamera);
+    Eigen::VectorXd depthCurFrame(curFrame.numberObservation());
+    Algorithm::normalizedDepthRefCamera(refFrame, curFrame, depthCurFrame);
     // R = R2;
     // Matcher::findTemplateMatch(refFrame, curFrame, patchSizeOptFlow, 35);
     auto t2 = std::chrono::high_resolution_clock::now();
     std::cout << "Elapsed time for SSC: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
               << " ms" << std::endl;
-    F = curFrame.m_camera->invK().transpose() * E * refFrame.m_camera->invK();
-    Eigen::AngleAxisd temp( R );  // Re-orthogonality
-    curFrame.m_TransW2F = refFrame.m_TransW2F * Sophus::SE3d( temp.toRotationMatrix(), t );
 
     // matcher.findTemplateMatch(refFrame, curFrame, 5, 99);
     // Visualization visualize;
@@ -176,7 +180,7 @@ int main( int argc, char* argv[] )
 
     // Visualization::featurePoints( featureSelection.m_gradientMagnitude, refFrame,
     //   "Feature Selected By SSC on Gradient Magnitude Image" );
-    Visualization::epipole( curFrame, C, "Epipole-Right" );
+    // Visualization::epipole( curFrame, C, "Epipole-Right" );
     // Visualization::epipolarLine(img, vecHomo, K, R, t, "Epipolar-Line");
     // Visualization::epipolarLine( curFrame, refFrame.m_frameFeatures[ 0 ]->m_bearingVec, 0.0, 50.0,
     //  "Epipolar-Line-Feature-0" );
@@ -189,12 +193,14 @@ int main( int argc, char* argv[] )
         //                                 mu + sigma, "Epipolar-Line-Feature-3" );
     }
 
-    Visualization::epipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0.5, 20,
-                                 "Epipolar-Line-Feature-3" );
+    Visualization::epipolarLinesWithDepth(refFrame, curFrame, depthCurFrame, 10.0, "Epipolar-Lines-Depths");
+
+    // Visualization::epipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0.5, 20,
+                                //  "Epipolar-Line-Feature-3" );
 
     // Visualization::featurePointsInBothImages( refFrame, curFrame, "Feature in Both Images" );
     // Visualization::featurePointsInBothImagesWithSearchRegion( refFrame, curFrame, patchSizeOptFlow,
-    // "Feature in Both Images" );
+                                                              // "Feature in Both Images" );
 
     // Visualization::epipolarLinesWithFundamentalMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), F,
     // "Epipolar-Lines-Right-With-F" );
@@ -206,8 +212,7 @@ int main( int argc, char* argv[] )
     // Visualization::HSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
     // Visualization::HSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
 #ifdef EIGEN_MALLOC_ALREADY_ALIGNED
-        std::cout
-      << "EIGEN_MALLOC_ALREADY_ALIGNED" << std::endl;
+    std::cout << "EIGEN_MALLOC_ALREADY_ALIGNED" << std::endl;
 #endif
 
 #ifdef EIGEN_FAST_MATH

@@ -46,3 +46,9 @@ sym.pprint(point, use_unicode=True)
 res = P * point
 sym.pprint(res, use_unicode=True)
 print(sym.latex(res, mode='equation'))
+
+
+# from sympy.mpmath import *
+
+# print(sym.__version__)
+# poly, err = sym.mpmath.chebyfit(cos, [-pi, pi], 5, error=True)
