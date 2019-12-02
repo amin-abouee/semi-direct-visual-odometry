@@ -86,8 +86,10 @@ void Algorithm::triangulatePointHomogenousDLT( const Frame& refFrame,
     Eigen::VectorXd res = svd_A.matrixV().col( 3 );
     res /= res.w();
 
-    // Eigen::Vector2d project1 = refFrame.world2image( res.head( 2 ) );
-    // Eigen::Vector2d project2 = curFrame.world2image( res.head( 2 ) );
+    Eigen::Vector2d project1 = refFrame.world2image( res.head( 2 ) );
+    Eigen::Vector2d project2 = curFrame.world2image( res.head( 2 ) );
+    std::cout << "Error in ref: " << ( project1 - refFeature ).norm()
+              << ", Error in cur: " << ( project2 - curFeature ).norm() << std::endl;
     // std::cout << "project 1: " << project1.transpose() << std::endl;
     // std::cout << "project 2: " << project2.transpose() << std::endl;
     // std::cout << "point in reference camera: " << refFrame.world2camera( res.head( 2 ) ).transpose() << std::endl;
@@ -119,6 +121,11 @@ void Algorithm::triangulatePointDLT( const Frame& refFrame,
       curFeature.x() * P2( 2, 3 ) - P2( 0, 3 ), curFeature.y() * P2( 2, 3 ) - P2( 1, 3 );
     // point = A.colPivHouseholderQr().solve(p);
     point = ( A.transpose() * A ).ldlt().solve( A.transpose() * p );
+
+    Eigen::Vector2d project1 = refFrame.world2image( point );
+    Eigen::Vector2d project2 = curFrame.world2image( point );
+    std::cout << "Error in ref: " << ( project1 - refFeature ).norm()
+              << ", Error in cur: " << ( project2 - curFeature ).norm() << std::endl;
 }
 
 // 9.6.2 Extraction of cameras from the essential matrix, multi view geometry

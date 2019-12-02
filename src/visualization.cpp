@@ -281,10 +281,13 @@ void Visualization::epipolarLinesWithDepth( const Frame& refFrame,
         const Eigen::Vector2d pointMax = curFrame.camera2image( T_Pre2Cur * ( normalizedVec * maxDepth ) );
         // std::cout << "Position point 1: " << pointMin.transpose() << std::endl;
         // std::cout << "Position point 2: " << pointMax.transpose() << std::endl;
-        cv::line( curImgBGR, cv::Point( pointMin.x(), pointMin.y() ), cv::Point( pointMax.x(), pointMax.y() ),
-                  colors.at( "amber" ) );
+        // cv::line( curImgBGR, cv::Point( pointMin.x(), pointMin.y() ), cv::Point( pointMax.x(), pointMax.y() ),
+                //   colors.at( "amber" ) );
         const Eigen::Vector2d pointCnnter = curFrame.camera2image( T_Pre2Cur * ( normalizedVec * depths( i ) ) );
         cv::circle( curImgBGR, cv::Point2i( pointCnnter.x(), pointCnnter.y() ), 5.0, colors.at( "orange" ) );
+
+        const auto& feature = curFrame.m_frameFeatures[ i ]->m_feature;
+        cv::circle( curImgBGR, cv::Point2i( feature.x(), feature.y() ), 8.0, colors.at( "blue" ) );
     }
 
     cv::Mat stickImages;
