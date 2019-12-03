@@ -19,7 +19,7 @@
 #include "visualization.hpp"
 
 // #include "spdlog/sinks/stdout_color_sinks.h"
-#include "spdlog/spdlog.h"
+#include <spdlog/spdlog.h>
 
 #include <nlohmann/json.hpp>
 
@@ -168,14 +168,14 @@ int main( int argc, char* argv[] )
     // std::cout << "P2: " << P2 << std::endl;
 
     // Triangulation triangulate;
-    Eigen::Vector3d point;
-    Eigen::Vector2d p1( 975, 123 );
-    Eigen::Vector2d p2( 1004, 119 );
+    // Eigen::Vector3d point;
+    // Eigen::Vector2d p1( 975, 123 );
+    // Eigen::Vector2d p2( 1004, 119 );
     // Algorithm::triangulatePointHomogenousDLT( refFrame, curFrame, p1, p2, point );
-    Algorithm::triangulatePointDLT( refFrame, curFrame, p1, p2, point );
-    std::cout << "point in world: " << point.transpose() << std::endl;
-    std::cout << "point: " << point.norm() << std::endl;
-    C = -R * t;
+    // Algorithm::triangulatePointDLT( refFrame, curFrame, p1, p2, point );
+    // std::cout << "point in world: " << point.transpose() << std::endl;
+    // std::cout << "point: " << point.norm() << std::endl;
+    C = curFrame.cameraInWorld();
     std::cout << "C: " << C.format( CommaInitFmt ) << std::endl;
 
     // Visualization::featurePoints( featureSelection.m_gradientMagnitude, refFrame,
@@ -193,7 +193,7 @@ int main( int argc, char* argv[] )
         //                                 mu + sigma, "Epipolar-Line-Feature-3" );
     }
 
-    Visualization::epipolarLinesWithDepth(refFrame, curFrame, depthCurFrame, 10.0, "Epipolar-Lines-Depths");
+    Visualization::epipolarLinesWithDepth(refFrame, curFrame, depthCurFrame, 2.0, "Epipolar-Lines-Depths");
 
     // Visualization::epipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0.5, 20,
                                 //  "Epipolar-Line-Feature-3" );

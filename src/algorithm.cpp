@@ -1,6 +1,19 @@
 #include "algorithm.hpp"
 #include "feature.hpp"
 
+// http://stackoverflow.com/questions/10167534/how-to-find-out-what-type-of-a-mat-object-is-with-mattype-in-opencv
+// +--------+----+----+----+----+------+------+------+------+
+// |        | C1 | C2 | C3 | C4 | C(5) | C(6) | C(7) | C(8) |
+// +--------+----+----+----+----+------+------+------+------+
+// | CV_8U  |  0 |  8 | 16 | 24 |   32 |   40 |   48 |   56 |
+// | CV_8S  |  1 |  9 | 17 | 25 |   33 |   41 |   49 |   57 |
+// | CV_16U |  2 | 10 | 18 | 26 |   34 |   42 |   50 |   58 |
+// | CV_16S |  3 | 11 | 19 | 27 |   35 |   43 |   51 |   59 |
+// | CV_32S |  4 | 12 | 20 | 28 |   36 |   44 |   52 |   60 |
+// | CV_32F |  5 | 13 | 21 | 29 |   37 |   45 |   53 |   61 |
+// | CV_64F |  6 | 14 | 22 | 30 |   38 |   46 |   54 |   62 |
+// +--------+----+----+----+----+------+------+------+------+
+
 void Algorithm::pointsRefCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsRefCamera )
 {
     const uint32_t featureSz = refFrame.numberObservation();
@@ -86,10 +99,10 @@ void Algorithm::triangulatePointHomogenousDLT( const Frame& refFrame,
     Eigen::VectorXd res = svd_A.matrixV().col( 3 );
     res /= res.w();
 
-    Eigen::Vector2d project1 = refFrame.world2image( res.head( 2 ) );
-    Eigen::Vector2d project2 = curFrame.world2image( res.head( 2 ) );
-    std::cout << "Error in ref: " << ( project1 - refFeature ).norm()
-              << ", Error in cur: " << ( project2 - curFeature ).norm() << std::endl;
+    // Eigen::Vector2d project1 = refFrame.world2image( res.head( 2 ) );
+    // Eigen::Vector2d project2 = curFrame.world2image( res.head( 2 ) );
+    // std::cout << "Error in ref: " << ( project1 - refFeature ).norm()
+    //           << ", Error in cur: " << ( project2 - curFeature ).norm() << std::endl;
     // std::cout << "project 1: " << project1.transpose() << std::endl;
     // std::cout << "project 2: " << project2.transpose() << std::endl;
     // std::cout << "point in reference camera: " << refFrame.world2camera( res.head( 2 ) ).transpose() << std::endl;
@@ -122,10 +135,26 @@ void Algorithm::triangulatePointDLT( const Frame& refFrame,
     // point = A.colPivHouseholderQr().solve(p);
     point = ( A.transpose() * A ).ldlt().solve( A.transpose() * p );
 
+    /*
     Eigen::Vector2d project1 = refFrame.world2image( point );
     Eigen::Vector2d project2 = curFrame.world2image( point );
-    std::cout << "Error in ref: " << ( project1 - refFeature ).norm()
-              << ", Error in cur: " << ( project2 - curFeature ).norm() << std::endl;
+    // std::cout << "Pt -> ref: " << refFeature.transpose() << ", cur: " << curFeature.transpose() << std::endl;
+    // std::cout << "2D -> Error in ref: " << ( project1 - refFeature ).norm()
+    //   << ", Error in cur: " << ( project2 - curFeature ).norm() << std::endl;
+
+    Eigen::Vector3d unproject1 = refFrame.image2camera( refFeature, point.norm() );
+    Eigen::Vector3d unproject2 = curFrame.image2camera( curFeature, point.norm() );
+    // std::cout << "3D -> Error in ref: " << (point - unproject1).norm()
+    //   << ", Error in cur: " << (point - unproject2).norm() << std::endl;
+
+    Sophus::SE3d T_pre_cur      = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
+    Eigen::Vector3d transferred = T_pre_cur * unproject1;
+    // std::cout << "3D -> Error in relative: " << (transferred - unproject2).norm() << std::endl;
+    // std::cout << "2D -> Error in relative: " << ( curFeature - curFrame.camera2image( transferred ) ).norm()
+    std::cout << "Pt ref: " << refFeature.transpose()
+              << ", error: " << ( curFeature - curFrame.camera2image( transferred ) ).norm()
+              << ", depth: " << point.norm() << std::endl;
+    */
 }
 
 // 9.6.2 Extraction of cameras from the essential matrix, multi view geometry

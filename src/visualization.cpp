@@ -256,24 +256,19 @@ void Visualization::epipolarLinesWithDepth( const Frame& refFrame,
 {
     cv::Mat refImgBGR;
     cv::cvtColor( refFrame.m_imagePyramid.getBaseImage(), refImgBGR, cv::COLOR_GRAY2BGR );
+    cv::Mat curImgBGR;
+    cv::cvtColor( curFrame.m_imagePyramid.getBaseImage(), curImgBGR, cv::COLOR_GRAY2BGR );
+    const Sophus::SE3d T_Pre2Cur = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
+    double minDepth              = 0.0;
+    double maxDepth              = 0.0;
 
     auto szPoints = refFrame.numberObservation();
     for ( int i( 0 ); i < szPoints; i++ )
     {
-        const auto& feature = refFrame.m_frameFeatures[ i ]->m_feature;
-        // cv::circle( refImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, cv::Scalar( 255, 0, 255 ) );
-        cv::circle( refImgBGR, cv::Point2i( feature.x(), feature.y() ), 5.0, colors.at( "pink" ) );
-    }
+        const auto& reFeature = refFrame.m_frameFeatures[ i ]->m_feature;
+        cv::circle( refImgBGR, cv::Point2i( reFeature.x(), reFeature.y() ), 5.0, colors.at( "pink" ) );
 
-    cv::Mat curImgBGR;
-    cv::cvtColor( curFrame.m_imagePyramid.getBaseImage(), curImgBGR, cv::COLOR_GRAY2BGR );
-    szPoints                     = curFrame.numberObservation();
-    const Sophus::SE3d T_Pre2Cur = Sophus::SE3d().inverse() * curFrame.m_TransW2F;
-    double minDepth              = 0.0;
-    double maxDepth              = 0.0;
-    for ( int i( 0 ); i < szPoints; i++ )
-    {
-        const auto& normalizedVec = curFrame.m_frameFeatures[ i ]->m_bearingVec;
+        const auto& normalizedVec = refFrame.m_frameFeatures[ i ]->m_bearingVec;
         minDepth                  = depths( i ) - sigma;
         maxDepth                  = depths( i ) + sigma;
         // std::cout << "T_Pre2Cur: " << T_Pre2Cur.params().transpose() << std::endl;
@@ -281,13 +276,15 @@ void Visualization::epipolarLinesWithDepth( const Frame& refFrame,
         const Eigen::Vector2d pointMax = curFrame.camera2image( T_Pre2Cur * ( normalizedVec * maxDepth ) );
         // std::cout << "Position point 1: " << pointMin.transpose() << std::endl;
         // std::cout << "Position point 2: " << pointMax.transpose() << std::endl;
-        // cv::line( curImgBGR, cv::Point( pointMin.x(), pointMin.y() ), cv::Point( pointMax.x(), pointMax.y() ),
-                //   colors.at( "amber" ) );
-        const Eigen::Vector2d pointCnnter = curFrame.camera2image( T_Pre2Cur * ( normalizedVec * depths( i ) ) );
-        cv::circle( curImgBGR, cv::Point2i( pointCnnter.x(), pointCnnter.y() ), 5.0, colors.at( "orange" ) );
+        cv::line( curImgBGR, cv::Point( pointMin.x(), pointMin.y() ), cv::Point( pointMax.x(), pointMax.y() ),
+          colors.at( "amber" ) );
+        const Eigen::Vector2d pointCenter = curFrame.camera2image( T_Pre2Cur * ( normalizedVec * depths( i ) ) );
+        cv::circle( curImgBGR, cv::Point2i( pointCenter.x(), pointCenter.y() ), 5.0, colors.at( "orange" ) );
 
-        const auto& feature = curFrame.m_frameFeatures[ i ]->m_feature;
-        cv::circle( curImgBGR, cv::Point2i( feature.x(), feature.y() ), 8.0, colors.at( "blue" ) );
+        const auto& curFeature = curFrame.m_frameFeatures[ i ]->m_feature;
+        cv::circle( curImgBGR, cv::Point2i( curFeature.x(), curFeature.y() ), 8.0, colors.at( "blue" ) );
+        // std::cout << "idx: " << i << ", Pt ref: " << refFrame.m_frameFeatures[ i ]->m_feature.transpose()
+                //   << ", error: " << ( pointCenter - feature ).norm() << ", depth: " << depths( i ) << std::endl;
     }
 
     cv::Mat stickImages;
@@ -324,10 +321,10 @@ void Visualization::epipolarLinesWithPointsWithFundamentalMatrix( const Frame& r
                                                                   const Eigen::Matrix3d& F,
                                                                   const std::string& windowsName )
 {
-    cv::Mat imgBGR               = getBGRImage( curFrame.m_imagePyramid.getBaseImage() );
+    cv::Mat imgBGR = getBGRImage( curFrame.m_imagePyramid.getBaseImage() );
     // const Sophus::SE3d T_Ref2Cur = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
-    const Eigen::Vector2d C      = curFrame.camera2image( curFrame.cameraInWorld() );
-    const auto szPoints          = refFrame.numberObservation();
+    const Eigen::Vector2d C = curFrame.camera2image( curFrame.cameraInWorld() );
+    const auto szPoints     = refFrame.numberObservation();
 
     for ( int i( 0 ); i < szPoints; i++ )
     {
