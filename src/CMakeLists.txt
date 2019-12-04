@@ -37,11 +37,13 @@ option(BUILD_DOC "Build documentation" OFF)
 
 # https://github.com/xianyi/OpenBLAS/wiki/Faq#debianlts
 # https://github.com/xianyi/OpenBLAS/issues/1394
+# https://stackoverflow.com/questions/38350862/cmake-findlapack-cmake-and-findblas-cmake-can-not-link-lapack-and-blas
 option(USE_BLAS_EIGEN "Use OpenBLAS and OpenLapack as backend for Eigen" OFF)
 if(USE_BLAS_EIGEN)
-    # find_package(BLAS REQUIRED)
-    find_package(LAPACK REQUIRED)
-    add_definitions(-DEIGEN_USE_BLAS -DEIGEN_USE_LAPACKE)
+    find_package(BLAS REQUIRED)
+    # find_package(LAPACK REQUIRED)
+    # add_definitions(-DEIGEN_USE_BLAS -DEIGEN_USE_LAPACKE)
+    add_definitions(-DEIGEN_USE_BLAS)
 endif()
 
 
@@ -76,9 +78,9 @@ if(OpenMP_CXX_FOUND)
 endif()
 
 if(USE_BLAS_EIGEN AND BLAS_FOUND )
-    message( ${LAPACK_LIBRARIES})
+    message( ${BLAS_LIBRARIES})
     # target_link_libraries(visual_odometry PUBLIC ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
-    target_link_libraries(visual_odometry PRIVATE  ${LAPACK_LIBRARIES})
+    target_link_libraries(visual_odometry PRIVATE  ${BLAS_LIBRARIES})
 endif()
 
 
