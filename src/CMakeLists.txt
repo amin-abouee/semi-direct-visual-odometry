@@ -86,26 +86,27 @@ endif()
 
 if(USE_BLAS_EIGEN AND BLAS_FOUND )
     message( STATUS "BLAS_LIBRARIES: ${BLAS_LIBRARIES}")
+    # message( STATUS "LAPACK_LIBRARIES: ${LAPACK_LIBRARIES}")
     # https://stackoverflow.com/a/15263203/1804533
     target_compile_definitions(visual_odometry PRIVATE -DEIGEN_USE_BLAS )
-    # target_link_libraries(visual_odometry PUBLIC ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+    # target_link_libraries(visual_odometry PRIVATE ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
     target_link_libraries(visual_odometry PRIVATE  ${BLAS_LIBRARIES})
 endif()
 
 # https://github.com/ricab/scope_guard/issues/4#issuecomment-387529287
+# https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
+# https://clang.llvm.org/docs/DiagnosticsReference.html
+# https://foonathan.net/2018/10/cmake-warnings/
+# http://www.brianlheim.com/2018/04/09/cmake-cheat-sheet.html
 target_compile_options(visual_odometry
   PRIVATE
-    $<$<CXX_COMPILER_ID:Gnu>:
-        ${CMAKE_CXX_FLAGS} -Wall
-    >
-    $<$<CXX_COMPILER_ID:Clang>:
-        ${CMAKE_CXX_FLAGS} -Wall
+    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
+        -Wall -Wextra -pedantic -Wconversion -Wsign-conversion
     >
     $<$<CXX_COMPILER_ID:MSVC>:
-      # MSVC warning flags
+        W4
     >
 )
-
 # set_target_properties(visual_odometry PROPERTIES CMAKE_CXX_STANDARD_REQUIRED ON)
 # set_target_properties(visual_odometry PROPERTIES CXX_STANDARD 20)
 

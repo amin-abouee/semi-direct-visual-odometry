@@ -242,10 +242,6 @@ int main( int argc, char* argv[] )
 #ifdef EIGEN_USE_BLAS
     std::cout << "EIGEN_USE_BLAS" << std::endl;
 #endif
-
-#ifdef EIGEN_USE_LAPACKE
-    std::cout << "EIGEN_USE_LAPACKE" << std::endl;
-#endif
     // std::cout << "Number of Threads: " << Eigen::nbThreads( ) << std::endl;
 
     cv::waitKey( 0 );
