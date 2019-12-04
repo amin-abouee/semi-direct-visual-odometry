@@ -38,18 +38,24 @@ option(BUILD_DOC "Build documentation" OFF)
 # https://github.com/xianyi/OpenBLAS/wiki/Faq#debianlts
 # https://github.com/xianyi/OpenBLAS/issues/1394
 # https://stackoverflow.com/questions/38350862/cmake-findlapack-cmake-and-findblas-cmake-can-not-link-lapack-and-blas
-option(USE_BLAS_EIGEN "Use OpenBLAS and OpenLapack as backend for Eigen" OFF)
+option(USE_BLAS_EIGEN "Use OpenBLAS as backend for Eigen" OFF)
 if(USE_BLAS_EIGEN)
     find_package(BLAS REQUIRED)
     # find_package(LAPACK REQUIRED)
     # add_definitions(-DEIGEN_USE_BLAS -DEIGEN_USE_LAPACKE)
-    add_definitions(-DEIGEN_USE_BLAS)
+    # add_definitions(-DEIGEN_USE_BLAS)
 endif()
 
 
-include_directories(${CMAKE_SOURCE_DIR}/include
-                    ${Sophus_INCLUDE_DIR})
-# include_directories(${OpenCV_INCLUDE_DIRS})
+# include_directories(${CMAKE_SOURCE_DIR}/include
+#                     ${Sophus_INCLUDE_DIR})
+
+
+# https://github.com/toeb/moderncmake/blob/master/Modern%20CMake.pdf
+set (LIBRARY_INCLUDE
+    ${CMAKE_SOURCE_DIR}/include
+    ${Sophus_INCLUDE_DIR}
+    )
 
 set(LIBRARY_SOURCES
     pinhole_camera.cpp
@@ -63,29 +69,48 @@ set(LIBRARY_SOURCES
     main.cpp
     )
 
-
-# include_directories(math.hpp)
 # add_library(source SHARED ${LIBRARY_SOURCES})
 
-# set_target_properties(source PROPERTIES CMAKE_CXX_STANDARD_REQUIRED ON)
-# set_target_properties(source PROPERTIES CXX_STANDARD 17)
-
+# Specify compile definitions to use when compiling a given <target>. 
+# The named <target> must have been created by a command such as add_executable() or add_library() and must not be an Imported Target.
 add_executable(visual_odometry ${LIBRARY_SOURCES})
+
+# https://stackoverflow.com/a/31969632/1804533
+target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE})
+
 # target_link_libraries (visual_odometry visualizer source)
 target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads spdlog::spdlog)
 if(OpenMP_CXX_FOUND)
-    target_link_libraries(visual_odometry PUBLIC OpenMP::OpenMP_CXX)
+    target_link_libraries(visual_odometry PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
 if(USE_BLAS_EIGEN AND BLAS_FOUND )
-    message( ${BLAS_LIBRARIES})
+    message( STATUS "BLAS_LIBRARIES: ${BLAS_LIBRARIES}")
+    # https://stackoverflow.com/a/15263203/1804533
+    target_compile_definitions(visual_odometry PRIVATE -DEIGEN_USE_BLAS )
     # target_link_libraries(visual_odometry PUBLIC ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
     target_link_libraries(visual_odometry PRIVATE  ${BLAS_LIBRARIES})
 endif()
 
+# https://github.com/ricab/scope_guard/issues/4#issuecomment-387529287
+target_compile_options(visual_odometry
+  PRIVATE
+    $<$<CXX_COMPILER_ID:Gnu>:
+        ${CMAKE_CXX_FLAGS} -Wall
+    >
+    $<$<CXX_COMPILER_ID:Clang>:
+        ${CMAKE_CXX_FLAGS} -Wall
+    >
+    $<$<CXX_COMPILER_ID:MSVC>:
+      # MSVC warning flags
+    >
+)
 
-set_target_properties(visual_odometry PROPERTIES CMAKE_CXX_STANDARD_REQUIRED ON)
-set_target_properties(visual_odometry PROPERTIES CXX_STANDARD 17)
+# set_target_properties(visual_odometry PROPERTIES CMAKE_CXX_STANDARD_REQUIRED ON)
+# set_target_properties(visual_odometry PROPERTIES CXX_STANDARD 20)
+
+# https://crascit.com/2015/03/28/enabling-cxx11-in-cmake/
+target_compile_features(visual_odometry PRIVATE cxx_std_17)
 
 
 if(CMAKE_BUILD_TYPE STREQUAL Debug)

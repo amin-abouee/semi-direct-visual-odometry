@@ -51,6 +51,7 @@ void Frame::removeKeyPoint( std::unique_ptr< Feature >& feature )
         return false;
     };
     auto element = std::remove_if( m_frameFeatures.begin(), m_frameFeatures.end(), find );
+    m_frameFeatures.erase(element, m_frameFeatures.end());
 }
 
 std::uint32_t Frame::numberObservation() const

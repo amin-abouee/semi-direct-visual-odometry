@@ -1,13 +1,25 @@
+# https://github.com/onqtam/awesome-cmake
+# https://cgold.readthedocs.io/en/latest/
 cmake_minimum_required(VERSION 3.0.0)
 project(semi-direct-visual-odometry VERSION 0.1.0)
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    message(STATUS "GCC or Clang detected, adding compile flags")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
-endif()
+# if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+#     message(STATUS "GCC or Clang detected, adding compile flags")
+#     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+# endif()
 
+# message("CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+# message("CMAKE_CXX_FLAGS_DEBUG: ${CMAKE_CXX_FLAGS_DEBUG}")
+# message("CMAKE_CXX_FLAGS_RELWITHDEBINFO: ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+# message("CMAKE_CXX_FLAGS_MINSIZEREL: ${CMAKE_CXX_FLAGS_MINSIZEREL}")
+
+# https://clang.llvm.org/docs/CommandGuide/clang.html#code-generation-options
+# https://stackoverflow.com/questions/15548023/clang-optimization-levels/15548189#15548189
+# https://stackoverflow.com/a/22135559/1804533
+# -DNDEBUG is the macro to be defined to turn off asserts as mandated by the C standard.
+# set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG -march=native")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
+message(STATUS "CMAKE_CXX_FLAGS_RELEASE: ${CMAKE_CXX_FLAGS_RELEASE}")
 
 if(CMAKE_BUILD_TYPE STREQUAL Debug)
 	set (BUILD_PREFIX "-d")
@@ -16,6 +28,10 @@ else()
 endif()
 
 add_subdirectory(src)
+
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -pedantic -Werror -Wextra")
+# string(REPLACE " " ";" REPLACED_FLAGS ${CMAKE_CXX_FLAGS})
+# message(STATUS "REPLACED_FLAGS: ${REPLACED_FLAGS}")
 
 # find_package(GTest REQUIRED)
 # if(GTest_FOUND)
