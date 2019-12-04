@@ -41,18 +41,25 @@ nlohmann::json createConfigParser( const std::string& fileName )
 
 bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs )
 {
-    cv::FileStorage fs( filename, cv::FileStorage::READ );
-
-    if ( !fs.isOpened() )
+    try
     {
-        std::cout << "Failed to open " << filename << std::endl;
+        cv::FileStorage fs( filename, cv::FileStorage::READ );
+        if ( !fs.isOpened() )
+        {
+            std::cout << "Failed to open " << filename << std::endl;
+            return false;
+        }
+
+        fs[ "K" ] >> cameraMatrix;
+        fs[ "d" ] >> distortionCoeffs;
+        fs.release();
+        return true;
+    }
+    catch (std::exception& e)
+    {
+        std::cout << e.what() << std::endl;
         return false;
     }
-
-    fs[ "K" ] >> cameraMatrix;
-    fs[ "d" ] >> distortionCoeffs;
-    fs.release();
-    return true;
 }
 
 int main( int argc, char* argv[] )
@@ -79,7 +86,12 @@ int main( int argc, char* argv[] )
     const std::string calibrationFile = cameraJson[ "camera_calibration" ].get< std::string >();
     cv::Mat cameraMatrix;
     cv::Mat distortionCoeffs;
-    loadCameraIntrinsics( calibrationFile, cameraMatrix, distortionCoeffs );
+    bool result = loadCameraIntrinsics( calibrationFile, cameraMatrix, distortionCoeffs );
+    if (result == false)
+    {
+        std::cout << "Failed to open the calibration file, check config.json file" << std::endl;
+        return EXIT_FAILURE;
+    }
 
     const double imgWidth  = cameraJson[ "img_width" ].get< double >();
     const double imgHeight = cameraJson[ "img_height" ].get< double >();
