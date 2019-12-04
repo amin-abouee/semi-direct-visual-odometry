@@ -23,7 +23,7 @@ void Visualization::featurePoints( const Frame& frame, const std::string& window
     cv::cvtColor( frame.m_imagePyramid.getBaseImage(), imgBGR, cv::COLOR_GRAY2BGR );
 
     const auto szPoints = frame.numberObservation();
-    for ( int i( 0 ); i < szPoints; i++ )
+    for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
         const auto& feature = frame.m_frameFeatures[ i ]->m_feature;
         cv::circle( imgBGR, cv::Point2i( feature.x(), feature.y() ), 2.0, cv::Scalar( 0, 255, 0 ) );
@@ -39,7 +39,7 @@ void Visualization::featurePointsInBothImages( const Frame& refFrame,
     // cv::cvtColor( refFrame.m_imagePyramid.getBaseImage(), refImgBGR, cv::COLOR_GRAY2BGR );
 
     // auto szPoints = refFrame.numberObservation();
-    // for ( int i( 0 ); i < szPoints; i++ )
+    // for ( std::size_t i( 0 ); i < szPoints; i++ )
     // {
     //     const auto& feature = refFrame.m_frameFeatures[ i ]->m_feature;
     //     cv::circle( refImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, cv::Scalar( 255, 0, 255 ) );
@@ -49,7 +49,7 @@ void Visualization::featurePointsInBothImages( const Frame& refFrame,
     // cv::cvtColor( curFrame.m_imagePyramid.getBaseImage(), curImgBGR, cv::COLOR_GRAY2BGR );
 
     // szPoints = curFrame.numberObservation();
-    // for ( int i( 0 ); i < szPoints; i++ )
+    // for ( std::size_t i( 0 ); i < szPoints; i++ )
     // {
     //     const auto& feature = curFrame.m_frameFeatures[ i ]->m_feature;
     //     cv::circle( curImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, cv::Scalar( 0, 128, 255 ) );
@@ -71,7 +71,7 @@ void Visualization::featurePointsInBothImagesWithSearchRegion( const Frame& refF
     cv::cvtColor( refFrame.m_imagePyramid.getBaseImage(), refImgBGR, cv::COLOR_GRAY2BGR );
 
     auto szPoints = refFrame.numberObservation();
-    for ( int i( 0 ); i < szPoints; i++ )
+    for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
         const auto& feature = refFrame.m_frameFeatures[ i ]->m_feature;
         // cv::circle( refImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, cv::Scalar( 255, 0, 255 ) );
@@ -81,7 +81,7 @@ void Visualization::featurePointsInBothImagesWithSearchRegion( const Frame& refF
     cv::Mat curImgBGR;
     cv::cvtColor( curFrame.m_imagePyramid.getBaseImage(), curImgBGR, cv::COLOR_GRAY2BGR );
     szPoints = curFrame.numberObservation();
-    for ( int i( 0 ); i < szPoints; i++ )
+    for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
         const auto& feature = curFrame.m_frameFeatures[ i ]->m_feature;
         // cv::circle( curImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, cv::Scalar( 0, 128, 255 ) );
@@ -105,7 +105,7 @@ void Visualization::featurePoints( const cv::Mat& img, const Frame& frame, const
     cv::cvtColor( normMag, imgBGR, cv::COLOR_GRAY2BGR );
 
     const auto szPoints = frame.m_frameFeatures.size();
-    for ( int i( 0 ); i < szPoints; i++ )
+    for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
         const auto& feature = frame.m_frameFeatures[ i ]->m_feature;
         cv::circle( imgBGR, cv::Point2i( feature.x(), feature.y() ), 2.0, colors.at( "teal" ) );
@@ -263,7 +263,7 @@ void Visualization::epipolarLinesWithDepth( const Frame& refFrame,
     double maxDepth              = 0.0;
 
     auto szPoints = refFrame.numberObservation();
-    for ( int i( 0 ); i < szPoints; i++ )
+    for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
         const auto& reFeature = refFrame.m_frameFeatures[ i ]->m_feature;
         cv::circle( refImgBGR, cv::Point2i( reFeature.x(), reFeature.y() ), 5.0, colors.at( "pink" ) );
@@ -300,7 +300,7 @@ void Visualization::epipolarLinesWithFundamentalMatrix( const Frame& frame,
     cv::Mat imgBGR      = getBGRImage( currentImg );
     const auto szPoints = frame.numberObservation();
 
-    for ( int i( 0 ); i < szPoints; i++ )
+    for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
         const auto& feature  = frame.m_frameFeatures[ i ]->m_feature;
         Eigen::Vector3d line = F * Eigen::Vector3d( feature.x(), feature.y(), 1.0 );
@@ -326,7 +326,7 @@ void Visualization::epipolarLinesWithPointsWithFundamentalMatrix( const Frame& r
     const Eigen::Vector2d C = curFrame.camera2image( curFrame.cameraInWorld() );
     const auto szPoints     = refFrame.numberObservation();
 
-    for ( int i( 0 ); i < szPoints; i++ )
+    for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
         const auto& refFeature = refFrame.m_frameFeatures[ i ]->m_feature;
         const auto& curFeature = curFrame.m_frameFeatures[ i ]->m_feature;

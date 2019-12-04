@@ -62,7 +62,7 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     void removeKeyPoint( std::unique_ptr<Feature>& feature );
 
-    std::uint32_t numberObservation() const;
+    uint32_t numberObservation() const;
 
     bool isVisible( const Eigen::Vector3d& point3D ) const;
 

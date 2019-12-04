@@ -35,6 +35,16 @@ find_package(Threads)
 find_package(Doxygen)
 option(BUILD_DOC "Build documentation" OFF)
 
+# https://github.com/xianyi/OpenBLAS/wiki/Faq#debianlts
+# https://github.com/xianyi/OpenBLAS/issues/1394
+option(USE_BLAS_EIGEN "Use OpenBLAS and OpenLapack as backend for Eigen" OFF)
+if(USE_BLAS_EIGEN)
+    # find_package(BLAS REQUIRED)
+    find_package(LAPACK REQUIRED)
+    add_definitions(-DEIGEN_USE_BLAS -DEIGEN_USE_LAPACKE)
+endif()
+
+
 include_directories(${CMAKE_SOURCE_DIR}/include
                     ${Sophus_INCLUDE_DIR})
 # include_directories(${OpenCV_INCLUDE_DIRS})
@@ -51,6 +61,7 @@ set(LIBRARY_SOURCES
     main.cpp
     )
 
+
 # include_directories(math.hpp)
 # add_library(source SHARED ${LIBRARY_SOURCES})
 
@@ -62,6 +73,12 @@ add_executable(visual_odometry ${LIBRARY_SOURCES})
 target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads spdlog::spdlog)
 if(OpenMP_CXX_FOUND)
     target_link_libraries(visual_odometry PUBLIC OpenMP::OpenMP_CXX)
+endif()
+
+if(USE_BLAS_EIGEN AND BLAS_FOUND )
+    message( ${LAPACK_LIBRARIES})
+    # target_link_libraries(visual_odometry PUBLIC ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+    target_link_libraries(visual_odometry PRIVATE  ${LAPACK_LIBRARIES})
 endif()
 
 
