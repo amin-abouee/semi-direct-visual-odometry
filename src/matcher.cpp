@@ -76,12 +76,12 @@ void Matcher::computeEssentialMatrix( Frame& refFrame, Frame& curFrame, const do
     cv::Mat E_cv =
       cv::findEssentialMat( refPoints, curPoints, refFrame.m_camera->K_cv(), cv::RANSAC, 0.999, reproError, status );
 
-    std::cout << "type E_cv: " << E_cv.type() << std::endl;
+    // std::cout << "type E_cv: " << E_cv.type() << std::endl;
     double* essential = E_cv.ptr< double >( 0 );
     E << essential[ 0 ], essential[ 1 ], essential[ 2 ], essential[ 3 ], essential[ 4 ], essential[ 5 ], essential[ 6 ],
       essential[ 7 ], essential[ 8 ];
 
-    std::cout << "E: " << E << std::endl;
+    // std::cout << "E: " << E << std::endl;
 
     uint32_t cnt = 0;
     /// if status[i] == true, it have to return false because we dont want to remove it from our container
