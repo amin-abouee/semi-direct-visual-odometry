@@ -23,7 +23,7 @@ PinholeCamera::PinholeCamera( double width,
     m_K << fx, 0.0, cx, 0.0, fy, cy, 0.0, 0.0, 1.0;
     m_invK << 1 / fx, 0.0, -cx / fx, 0.0, 1 / fy, -cy / fy, 0.0, 0.0, 1.0;
     cv::initUndistortRectifyMap( m_cvK, m_cvDistortion, cv::Mat_< double >::eye( 3, 3 ), m_cvK,
-                                 cv::Size( width, height ), CV_16SC2, undistortedMapX, undistortedMapY );
+                                 cv::Size( static_cast<int>(width), static_cast<int>(height) ), CV_16SC2, undistortedMapX, undistortedMapY );
     m_applyDistortion = std::fabs( d0 ) > 1e-5 ? true : false;
 }
 
@@ -43,7 +43,7 @@ PinholeCamera::PinholeCamera( const double width,
     m_K << calib[0], calib[1], calib[2], calib[3], calib[4], calib[5], calib[6], calib[7], calib[8];
     m_invK << 1 / calib[0], 0.0, - calib[2] / calib[0], 0.0, 1 / calib[4], - calib[5] / calib[4], 0.0, 0.0, 1.0;
     cv::initUndistortRectifyMap( m_cvK, m_cvDistortion, cv::Mat_< double >::eye( 3, 3 ), m_cvK,
-                                 cv::Size( width, height ), CV_16SC2, undistortedMapX, undistortedMapY );
+                                 cv::Size( static_cast<int>(width), static_cast<int>(height) ), CV_16SC2, undistortedMapX, undistortedMapY );
     m_applyDistortion = std::fabs( distro[0] ) > 1e-5 ? true : false;
 
     // std::cout << "m_cvK: " << m_cvK << std::endl;
@@ -111,9 +111,9 @@ Eigen::Vector3d PinholeCamera::inverseProject2d( const double x, const double y 
     }
     else
     {
-        cv::Point2f uv( x, y ), px;
-        const cv::Mat src_pt( 1, 1, CV_32FC2, &uv.x );
-        cv::Mat dst_pt( 1, 1, CV_32FC2, &px.x );
+        cv::Point2d uv( x, y ), px;
+        const cv::Mat src_pt( 1, 1, CV_64FC2, &uv.x );
+        cv::Mat dst_pt( 1, 1, CV_64FC2, &px.x );
         cv::undistortPoints( src_pt, dst_pt, m_cvK, m_cvDistortion );
         pointCamera( 0 ) = px.x;
         pointCamera( 1 ) = px.y;

@@ -36,5 +36,5 @@ void decomposeEssentialMatrix( Eigen::Matrix3d& E, Eigen::Matrix3d& R1, Eigen::M
 
 bool checkCheirality();
 
-};     // namespace Algorithm
+}
 #endif /* __ALGORITHM_HPP__ */

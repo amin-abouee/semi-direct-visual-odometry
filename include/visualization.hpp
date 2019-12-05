@@ -119,10 +119,10 @@ void grayImage( const cv::Mat& img, const std::string& windowsName );
 
 void HSVColoredImage( const cv::Mat& img, const std::string& windowsName );
 
-cv::Scalar generateColor( const double min, const double max, const float value );
+cv::Scalar generateColor( const float min, const float max, const float value );
 
 cv::Mat getBGRImage( const cv::Mat& img );
 
-};  // namespace Visualization
+}
 
 #endif /* __VISUALIZATION_H__ */

@@ -36,15 +36,15 @@ namespace Matcher
 
     void computeEssentialMatrix(Frame& refFrame, Frame& curFrame, const double reproError, Eigen::Matrix3d& E);
 
-    bool findEpipolarMatch( Frame& refFrame,
-                            Frame& curFrame,
-                            Feature& ft,
-                            const double minDepth,
-                            const double maxDepth,
-                            double& estimatedDepth );
+    // bool findEpipolarMatch( Frame& refFrame,
+    //                         Frame& curFrame,
+    //                         Feature& ft,
+    //                         const double minDepth,
+    //                         const double maxDepth,
+    //                         double& estimatedDepth );
 
     void templateMatching( const Frame& refFrame, Frame& curFrame, const uint16_t patchSzRef, const uint16_t patchSzCur );
 // private:
-};
+}
 
 #endif /* __MATCHER_H__ */

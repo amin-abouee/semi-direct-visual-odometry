@@ -44,7 +44,7 @@ void FeatureSelection::Ssc( Frame& frame,
     long long exp2 = ( (long long)4 * cols + (long long)4 * numRetPoints + (long long)4 * rows * numRetPoints +
                        (long long)rows * rows + (long long)cols * cols - (long long)2 * rows * cols +
                        (long long)4 * rows * cols * numRetPoints );
-    double exp3    = sqrt( exp2 );
+    double exp3    = sqrt( static_cast<double>(exp2 ));
     double exp4    = ( 2 * ( numRetPoints - 1 ) );
 
     double sol1 = -round( ( exp1 + exp3 ) / exp4 );  // first solution
@@ -58,7 +58,7 @@ void FeatureSelection::Ssc( Frame& frame,
 
     std::vector< uint32_t > ResultVec;
     bool complete     = false;
-    uint32_t K    = numRetPoints;
+    float K    = static_cast<float>(numRetPoints);
     uint32_t Kmin = static_cast<uint32_t>(round( K - ( K * tolerance ) ));
     uint32_t Kmax = static_cast<uint32_t>(round( K + ( K * tolerance ) ));
 
@@ -172,7 +172,7 @@ void FeatureSelection::detectFeatures( Frame& frame, const uint32_t numberCandid
         {
             if ( m_gradientMagnitude.at< float >( i, j ) > 75.0 )
             {
-                keyPoints.emplace_back( cv::KeyPoint( cv::Point2f( j, i ), 1.0,
+                keyPoints.emplace_back( cv::KeyPoint( cv::Point2i( j, i ), 1.0,
                                                       m_gradientOrientation.at< float >( i, j ),
                                                       m_gradientMagnitude.at< float >( i, j ) ) );
             }

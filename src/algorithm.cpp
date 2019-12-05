@@ -16,7 +16,7 @@
 
 void Algorithm::pointsRefCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsRefCamera )
 {
-    const uint32_t featureSz = refFrame.numberObservation();
+    const auto featureSz = refFrame.numberObservation();
     Eigen::Vector2d refFeature;
     Eigen::Vector2d curFeature;
     Eigen::Vector3d pointWorld;
@@ -31,7 +31,7 @@ void Algorithm::pointsRefCamera( const Frame& refFrame, const Frame& curFrame, E
 
 void Algorithm::pointsCurCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsCurCamera )
 {
-    const uint32_t featureSz = refFrame.numberObservation();
+    const auto featureSz = refFrame.numberObservation();
     Eigen::Vector2d refFeature;
     Eigen::Vector2d curFeature;
     Eigen::Vector3d pointWorld;
@@ -48,7 +48,7 @@ void Algorithm::normalizedDepthRefCamera( const Frame& refFrame,
                                           const Frame& curFrame,
                                           Eigen::VectorXd& depthRefCamera )
 {
-    const uint32_t featureSz = refFrame.numberObservation();
+    const auto featureSz = refFrame.numberObservation();
     Eigen::MatrixXd pointsRefCamera( 3, featureSz );
     Algorithm::pointsRefCamera( refFrame, curFrame, pointsRefCamera );
     for ( std::size_t i( 0 ); i < featureSz; i++ )
@@ -61,7 +61,7 @@ void Algorithm::normalizedDepthsCurCamera( const Frame& refFrame,
                                            const Frame& curFrame,
                                            Eigen::VectorXd& depthCurCamera )
 {
-    const uint32_t featureSz = curFrame.numberObservation();
+    const auto featureSz = curFrame.numberObservation();
     Eigen::MatrixXd pointsCurCamera( 3, featureSz );
     Algorithm::pointsCurCamera( refFrame, curFrame, pointsCurCamera );
     for ( std::size_t i( 0 ); i < featureSz; i++ )

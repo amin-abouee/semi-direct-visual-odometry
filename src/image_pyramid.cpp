@@ -78,7 +78,7 @@ cv::Size ImagePyramid::getImageSizeAtLevel( const std::size_t level )
 
 cv::Size ImagePyramid::getBaseImageSize() const
 {
-	return ( cv::Size( m_baseImageWidth, m_baseImageHeight ) );
+	return ( getBaseImage().size() );
 }
 
 void ImagePyramid::clear()

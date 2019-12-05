@@ -13,12 +13,8 @@ project(semi-direct-visual-odometry VERSION 0.1.0)
 # message("CMAKE_CXX_FLAGS_RELWITHDEBINFO: ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 # message("CMAKE_CXX_FLAGS_MINSIZEREL: ${CMAKE_CXX_FLAGS_MINSIZEREL}")
 
-# https://clang.llvm.org/docs/CommandGuide/clang.html#code-generation-options
-# https://stackoverflow.com/questions/15548023/clang-optimization-levels/15548189#15548189
-# https://stackoverflow.com/a/22135559/1804533
-# -DNDEBUG is the macro to be defined to turn off asserts as mandated by the C standard.
-# set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG -march=native")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
+
+# set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
 message(STATUS "CMAKE_CXX_FLAGS_RELEASE: ${CMAKE_CXX_FLAGS_RELEASE}")
 
 if(CMAKE_BUILD_TYPE STREQUAL Debug)

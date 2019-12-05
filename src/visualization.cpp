@@ -26,7 +26,7 @@ void Visualization::featurePoints( const Frame& frame, const std::string& window
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
         const auto& feature = frame.m_frameFeatures[ i ]->m_feature;
-        cv::circle( imgBGR, cv::Point2i( feature.x(), feature.y() ), 2.0, cv::Scalar( 0, 255, 0 ) );
+        cv::circle( imgBGR, cv::Point2d( feature.x(), feature.y() ), 2.0, cv::Scalar( 0, 255, 0 ) );
     }
     cv::imshow( windowsName, imgBGR );
 }
@@ -75,7 +75,7 @@ void Visualization::featurePointsInBothImagesWithSearchRegion( const Frame& refF
     {
         const auto& feature = refFrame.m_frameFeatures[ i ]->m_feature;
         // cv::circle( refImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, cv::Scalar( 255, 0, 255 ) );
-        cv::circle( refImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, colors.at( "pink" ) );
+        cv::circle( refImgBGR, cv::Point2d( feature.x(), feature.y() ), 3.0, colors.at( "pink" ) );
     }
 
     cv::Mat curImgBGR;
@@ -85,11 +85,11 @@ void Visualization::featurePointsInBothImagesWithSearchRegion( const Frame& refF
     {
         const auto& feature = curFrame.m_frameFeatures[ i ]->m_feature;
         // cv::circle( curImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, cv::Scalar( 0, 128, 255 ) );
-        cv::circle( curImgBGR, cv::Point2i( feature.x(), feature.y() ), 3.0, colors.at( "orange" ) );
+        cv::circle( curImgBGR, cv::Point2d( feature.x(), feature.y() ), 3.0, colors.at( "orange" ) );
         if ( patchSize > 0 )
         {
-            cv::rectangle( curImgBGR, cv::Point2i( feature.x() - halfPatch, feature.y() - halfPatch ),
-                           cv::Point2i( feature.x() + halfPatch, feature.y() + halfPatch ), colors.at( "orange" ) );
+            cv::rectangle( curImgBGR, cv::Point2d( feature.x() - halfPatch, feature.y() - halfPatch ),
+                           cv::Point2d( feature.x() + halfPatch, feature.y() + halfPatch ), colors.at( "orange" ) );
         }
     }
 
@@ -108,7 +108,7 @@ void Visualization::featurePoints( const cv::Mat& img, const Frame& frame, const
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
         const auto& feature = frame.m_frameFeatures[ i ]->m_feature;
-        cv::circle( imgBGR, cv::Point2i( feature.x(), feature.y() ), 2.0, colors.at( "teal" ) );
+        cv::circle( imgBGR, cv::Point2d( feature.x(), feature.y() ), 2.0, colors.at( "teal" ) );
     }
     cv::imshow( windowsName, imgBGR );
 }
@@ -159,10 +159,10 @@ void Visualization::HSVColoredImage( const cv::Mat& img, const std::string& wind
             if ( img.at< float >( i, j ) >= minMagnitude )
             {
                 cv::Vec3b& px    = imgHSV.at< cv::Vec3b >( cv::Point( j, i ) );
-                cv::Scalar color = generateColor( minMagnitude, 255.0, img.at< float >( i, j ) - minMagnitude );
-                px[ 0 ]          = color[ 0 ];
-                px[ 1 ]          = color[ 1 ];
-                px[ 2 ]          = color[ 2 ];
+                cv::Scalar color = generateColor( minMagnitude, 255.0f, img.at< float >( i, j ) - minMagnitude );
+                px[ 0 ]          = static_cast<uchar>(color[ 0 ]);
+                px[ 1 ]          = static_cast<uchar>(color[ 1 ]);
+                px[ 2 ]          = static_cast<uchar>(color[ 2 ]);
             }
         }
     }
@@ -177,7 +177,7 @@ void Visualization::epipole( const Frame& frame, const Eigen::Vector3d& vec, con
     cv::Mat imgBGR = getBGRImage( frame.m_imagePyramid.getBaseImage() );
 
     const Eigen::Vector2d projected = frame.m_camera->project2d( vec );
-    cv::circle( imgBGR, cv::Point2i( projected.x(), projected.y() ), 8.0, colors.at( "lime" ) );
+    cv::circle( imgBGR, cv::Point2d( projected.x(), projected.y() ), 8.0, colors.at( "lime" ) );
     cv::imshow( windowsName, imgBGR );
 }
 
@@ -194,8 +194,8 @@ void Visualization::epipolarLine( const Frame& frame,
     nu        = 1 / std::sqrt( nu );
     line *= nu;
 
-    const cv::Point p1( 0, -line( 2 ) / line( 1 ) );
-    const cv::Point p2( imgBGR.cols - 1, -( line( 2 ) + line( 0 ) * ( imgBGR.cols - 1 ) ) / line( 1 ) );
+    const cv::Point2d p1( 0.0, -line( 2 ) / line( 1 ) );
+    const cv::Point2d p2( imgBGR.cols - 1, -( line( 2 ) + line( 0 ) * ( imgBGR.cols - 1 ) ) / line( 1 ) );
     cv::line( imgBGR, p1, p2, colors.at( "amber" ) );
     cv::imshow( windowsName, imgBGR );
 }
@@ -213,7 +213,7 @@ void Visualization::epipolarLine( const Frame& curFrame,
     const Eigen::Vector2d point2 = curFrame.camera2image( T_Pre2Cur * ( normalizedVec * maxDepth ) );
     // std::cout << "Position point 1: " << point1.transpose() << std::endl;
     // std::cout << "Position point 2: " << point2.transpose() << std::endl;
-    cv::line( imgBGR, cv::Point( point1.x(), point1.y() ), cv::Point( point2.x(), point2.y() ), colors.at( "amber" ) );
+    cv::line( imgBGR, cv::Point2d( point1.x(), point1.y() ), cv::Point2d( point2.x(), point2.y() ), colors.at( "amber" ) );
     //   cv::Scalar( 200, 160, 10 ) );
     cv::imshow( windowsName, imgBGR );
 }
@@ -236,11 +236,11 @@ void Visualization::epipolarLineBothImages( const Frame& refFrame,
     // std::cout << "Position point 1: " << point1.transpose() << std::endl;
     // std::cout << "Position point 2: " << point2.transpose() << std::endl;
     // cv::circle( refImgBGR, cv::Point2i( feature.x(), feature.y() ), 5.0, cv::Scalar( 255, 10, 255 ) );
-    cv::circle( refImgBGR, cv::Point2i( feature.x(), feature.y() ), 5.0, colors.at( "purple" ) );
-    cv::line( curImgBGR, cv::Point( point1.x(), point1.y() ), cv::Point( point2.x(), point2.y() ),
+    cv::circle( refImgBGR, cv::Point2d( feature.x(), feature.y() ), 5.0, colors.at( "purple" ) );
+    cv::line( curImgBGR, cv::Point2d( point1.x(), point1.y() ), cv::Point2d( point2.x(), point2.y() ),
               colors.at( "amber" ) );
     //   cv::Scalar( 200, 160, 10 ) );
-    cv::circle( curImgBGR, cv::Point2i( C.x(), C.y() ), 5.0, colors.at( "orange" ) );
+    cv::circle( curImgBGR, cv::Point2d( C.x(), C.y() ), 5.0, colors.at( "orange" ) );
     // cv::circle( curImgBGR, cv::Point2i( C.x(), C.y() ), 5.0, cv::Scalar( 0, 255, 165 ) );
 
     cv::Mat stickImages;
@@ -266,7 +266,7 @@ void Visualization::epipolarLinesWithDepth( const Frame& refFrame,
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
         const auto& reFeature = refFrame.m_frameFeatures[ i ]->m_feature;
-        cv::circle( refImgBGR, cv::Point2i( reFeature.x(), reFeature.y() ), 5.0, colors.at( "pink" ) );
+        cv::circle( refImgBGR, cv::Point2d( reFeature.x(), reFeature.y() ), 5.0, colors.at( "pink" ) );
 
         const auto& normalizedVec = refFrame.m_frameFeatures[ i ]->m_bearingVec;
         minDepth                  = depths( i ) - sigma;
@@ -276,13 +276,13 @@ void Visualization::epipolarLinesWithDepth( const Frame& refFrame,
         const Eigen::Vector2d pointMax = curFrame.camera2image( T_Pre2Cur * ( normalizedVec * maxDepth ) );
         // std::cout << "Position point 1: " << pointMin.transpose() << std::endl;
         // std::cout << "Position point 2: " << pointMax.transpose() << std::endl;
-        cv::line( curImgBGR, cv::Point( pointMin.x(), pointMin.y() ), cv::Point( pointMax.x(), pointMax.y() ),
+        cv::line( curImgBGR, cv::Point2d( pointMin.x(), pointMin.y() ), cv::Point2d( pointMax.x(), pointMax.y() ),
           colors.at( "amber" ) );
         const Eigen::Vector2d pointCenter = curFrame.camera2image( T_Pre2Cur * ( normalizedVec * depths( i ) ) );
-        cv::circle( curImgBGR, cv::Point2i( pointCenter.x(), pointCenter.y() ), 5.0, colors.at( "orange" ) );
+        cv::circle( curImgBGR, cv::Point2d( pointCenter.x(), pointCenter.y() ), 5.0, colors.at( "orange" ) );
 
         const auto& curFeature = curFrame.m_frameFeatures[ i ]->m_feature;
-        cv::circle( curImgBGR, cv::Point2i( curFeature.x(), curFeature.y() ), 8.0, colors.at( "blue" ) );
+        cv::circle( curImgBGR, cv::Point2d( curFeature.x(), curFeature.y() ), 8.0, colors.at( "blue" ) );
         // std::cout << "idx: " << i << ", Pt ref: " << refFrame.m_frameFeatures[ i ]->m_feature.transpose()
                 //   << ", error: " << ( pointCenter - feature ).norm() << ", depth: " << depths( i ) << std::endl;
     }
@@ -307,8 +307,8 @@ void Visualization::epipolarLinesWithFundamentalMatrix( const Frame& frame,
         double nu            = line( 0 ) * line( 0 ) + line( 1 ) * line( 1 );
         nu                   = 1 / std::sqrt( nu );
         line *= nu;
-        const cv::Point p1( 0, -line( 2 ) / line( 1 ) );
-        const cv::Point p2( imgBGR.cols - 1, -( line( 2 ) + line( 0 ) * ( imgBGR.cols - 1 ) ) / line( 1 ) );
+        const cv::Point2d p1( 0.0, -line( 2 ) / line( 1 ) );
+        const cv::Point2d p2( imgBGR.cols - 1, -( line( 2 ) + line( 0 ) * ( imgBGR.cols - 1 ) ) / line( 1 ) );
         // cv::line( imgBGR, p1, p2, cv::Scalar( 0, 160, 200 ) );
         cv::line( imgBGR, p1, p2, colors.at( "deep-orange" ) );
     }
@@ -334,12 +334,12 @@ void Visualization::epipolarLinesWithPointsWithFundamentalMatrix( const Frame& r
         double nu              = line( 0 ) * line( 0 ) + line( 1 ) * line( 1 );
         nu                     = 1 / std::sqrt( nu );
         line *= nu;
-        const cv::Point p1( 0, -line( 2 ) / line( 1 ) );
-        const cv::Point p2( imgBGR.cols - 1, -( line( 2 ) + line( 0 ) * ( imgBGR.cols - 1 ) ) / line( 1 ) );
-        cv::circle( imgBGR, cv::Point2i( curFeature.x(), curFeature.y() ), 5.0, colors.at( "lime" ) );
+        const cv::Point2d p1( 0.0, -line( 2 ) / line( 1 ) );
+        const cv::Point2d p2( imgBGR.cols - 1, -( line( 2 ) + line( 0 ) * ( imgBGR.cols - 1 ) ) / line( 1 ) );
+        cv::circle( imgBGR, cv::Point2d( curFeature.x(), curFeature.y() ), 5.0, colors.at( "lime" ) );
         cv::line( imgBGR, p1, p2, colors.at( "teal" ) );
     }
-    cv::circle( imgBGR, cv::Point2i( C.x(), C.y() ), 8.0, colors.at( "red" ) );
+    cv::circle( imgBGR, cv::Point2d( C.x(), C.y() ), 8.0, colors.at( "red" ) );
     cv::imshow( windowsName, imgBGR );
 }
 
@@ -352,9 +352,9 @@ void Visualization::epipolarLinesWithEssentialMatrix( const Frame& frame,
     Visualization::epipolarLinesWithFundamentalMatrix( frame, currentImg, F, windowsName );
 }
 
-cv::Scalar Visualization::generateColor( const double min, const double max, const float value )
+cv::Scalar Visualization::generateColor( const float min, const float max, const float value )
 {
-    int hue = ( 120 / ( max - min ) ) * value;
+    uint8_t hue = static_cast<uint8_t>(( 120.f / ( max - min ) ) * value);
     return cv::Scalar( hue, 100, 100 );
 }
 

@@ -54,7 +54,7 @@ void Frame::removeKeyPoint( std::unique_ptr< Feature >& feature )
     m_frameFeatures.erase(element, m_frameFeatures.end());
 }
 
-std::uint32_t Frame::numberObservation() const
+std::size_t Frame::numberObservation() const
 {
     return m_frameFeatures.size();
 }

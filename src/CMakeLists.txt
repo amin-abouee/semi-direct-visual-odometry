@@ -46,7 +46,7 @@ if(USE_BLAS_EIGEN)
     # add_definitions(-DEIGEN_USE_BLAS)
 endif()
 
-
+option(COMPILE_WITH_OFAST "Compile with -Ofast optimization" OFF)
 # include_directories(${CMAKE_SOURCE_DIR}/include
 #                     ${Sophus_INCLUDE_DIR})
 
@@ -74,6 +74,19 @@ set(LIBRARY_SOURCES
 # Specify compile definitions to use when compiling a given <target>. 
 # The named <target> must have been created by a command such as add_executable() or add_library() and must not be an Imported Target.
 add_executable(visual_odometry ${LIBRARY_SOURCES})
+
+# https://clang.llvm.org/docs/CommandGuide/clang.html#code-generation-options
+# https://stackoverflow.com/questions/15548023/clang-optimization-levels/15548189#15548189
+# https://stackoverflow.com/a/22135559/1804533
+# -DNDEBUG is the macro to be defined to turn off asserts as mandated by the C standard.
+# set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG -march=native")
+if(COMPILE_WITH_OFAST)
+    set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG")
+    # https://stackoverflow.com/a/23995391/1804533
+    # target_compile_options(visual_odometry PRIVATE "$<$<CONFIG:RELEASE>:${CMAKE_CXX_FLAGS_RELEASE}>")
+endif()
+
+target_compile_options(visual_odometry PRIVATE "$<$<CONFIG:RELEASE>:-march=native>")
 
 # https://stackoverflow.com/a/31969632/1804533
 target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE})

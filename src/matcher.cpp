@@ -23,8 +23,10 @@ void Matcher::computeOpticalFlowSparse( Frame& refFrame, Frame& curFrame, const 
 
     for ( const auto& features : refFrame.m_frameFeatures )
     {
-        refPoints.emplace_back( cv::Point2f( features->m_feature.x(), features->m_feature.y() ) );
-        curPoints.emplace_back( cv::Point2f( features->m_feature.x(), features->m_feature.y() ) );
+        refPoints.emplace_back( cv::Point2f( static_cast< float >( features->m_feature.x() ),
+                                             static_cast< float >( features->m_feature.y() ) ) );
+        curPoints.emplace_back( cv::Point2f( static_cast< float >( features->m_feature.x() ),
+                                             static_cast< float >( features->m_feature.y() ) ) );
     }
 
     // std::transform(
@@ -47,7 +49,12 @@ void Matcher::computeOpticalFlowSparse( Frame& refFrame, Frame& curFrame, const 
 
     uint32_t cnt = 0;
     /// if status[i] == true, it have to return false because we dont want to remove it from our container
-    auto isNotValid = [&cnt, &status]( const auto& feature ) { return status[ cnt++ ] ? false : true; };
+    auto isNotValid = [&cnt, &status, &refFrame]( const auto& feature ) {
+        if ( feature->m_frame == &refFrame )
+            return status[ cnt++ ] ? false : true;
+        else
+            return false;
+    };
 
     // https://en.wikipedia.org/wiki/Erase%E2%80%93remove_idiom
     refFrame.m_frameFeatures.erase(
@@ -67,10 +74,10 @@ void Matcher::computeEssentialMatrix( Frame& refFrame, Frame& curFrame, const do
 
     for ( std::size_t i( 0 ); i < featureSize; i++ )
     {
-        refPoints.emplace_back(
-          cv::Point2f( refFrame.m_frameFeatures[ i ]->m_feature.x(), refFrame.m_frameFeatures[ i ]->m_feature.y() ) );
-        curPoints.emplace_back(
-          cv::Point2f( curFrame.m_frameFeatures[ i ]->m_feature.x(), curFrame.m_frameFeatures[ i ]->m_feature.y() ) );
+        refPoints.emplace_back( cv::Point2f( static_cast< float >( refFrame.m_frameFeatures[ i ]->m_feature.x() ),
+                                             static_cast< float >( refFrame.m_frameFeatures[ i ]->m_feature.y() ) ) );
+        curPoints.emplace_back( cv::Point2f( static_cast< float >( curFrame.m_frameFeatures[ i ]->m_feature.x() ),
+                                             static_cast< float >( curFrame.m_frameFeatures[ i ]->m_feature.y() ) ) );
     }
 
     cv::Mat E_cv =
@@ -85,24 +92,38 @@ void Matcher::computeEssentialMatrix( Frame& refFrame, Frame& curFrame, const do
 
     uint32_t cnt = 0;
     /// if status[i] == true, it have to return false because we dont want to remove it from our container
-    auto isNotValid = [&cnt, &status]( const auto& feature ) { return status[ cnt++ ] ? false : true; };
+    auto isNotValidinRefFrame = [&cnt, &status, &refFrame]( const auto& feature ) {
+        if ( feature->m_frame == &refFrame )
+            return status[ cnt++ ] ? false : true;
+        else
+            return false;
+    };
 
     // https://en.wikipedia.org/wiki/Erase%E2%80%93remove_idiom
-    auto refResult = std::remove_if( refFrame.m_frameFeatures.begin(), refFrame.m_frameFeatures.end(), isNotValid );
+    auto refResult =
+      std::remove_if( refFrame.m_frameFeatures.begin(), refFrame.m_frameFeatures.end(), isNotValidinRefFrame );
     refFrame.m_frameFeatures.erase( refResult, refFrame.m_frameFeatures.end() );
     // std::cout << "observation refFrame: " << refFrame.numberObservation() << std::endl;
 
-    cnt            = 0;
-    auto curResult = std::remove_if( curFrame.m_frameFeatures.begin(), curFrame.m_frameFeatures.end(), isNotValid );
+    auto isNotValidinCurFrame = [&cnt, &status, &curFrame]( const auto& feature ) {
+        if ( feature->m_frame == &curFrame )
+            return status[ cnt++ ] ? false : true;
+        else
+            return false;
+    };
+    cnt = 0;
+    auto curResult =
+      std::remove_if( curFrame.m_frameFeatures.begin(), curFrame.m_frameFeatures.end(), isNotValidinCurFrame );
     curFrame.m_frameFeatures.erase( curResult, curFrame.m_frameFeatures.end() );
     // std::cout << "observation curFrame: " << curFrame.numberObservation() << std::endl;
 }
 
-bool Matcher::findEpipolarMatch(
-  Frame& refFrame, Frame& curFrame, Feature& ft, const double minDepth, const double maxDepth, double& estimatedDepth )
-{
-    return false;
-}
+// bool Matcher::findEpipolarMatch(
+//   Frame& refFrame, Frame& curFrame, Feature& ft, const double minDepth, const double maxDepth, double& estimatedDepth
+//   )
+// {
+//     return false;
+// }
 
 void Matcher::templateMatching( const Frame& refFrame,
                                 Frame& curFrame,
@@ -117,16 +138,16 @@ void Matcher::templateMatching( const Frame& refFrame,
     const uint16_t halfPatchRef = patchSzRef / 2;
     const uint16_t halfPatchCur = patchSzCur / 2;
     Eigen::Vector2i px( 0.0, 0.0 );
-    const uint16_t offset = patchSzCur - patchSzRef;
+    const int32_t offset = patchSzCur - patchSzRef;
     cv::Mat result( cv::Size( offset, offset ), CV_32F );
 
     double minVal, maxVal;
-    cv::Point minLoc, maxLoc;
+    cv::Point2i minLoc, maxLoc;
     // cv::Mat template (cv::Size(patchSize, patchSize), CV_32F);
     // cv::Mat  (cv::Size(patchSize, patchSize), CV_32F);
     for ( const auto& features : refFrame.m_frameFeatures )
     {
-        px << features->m_feature.x(), features->m_feature.y();
+        px << static_cast< int32_t >( features->m_feature.x() ), static_cast< int32_t >( features->m_feature.y() );
         // std::cout << "px: " << px.transpose() << std::endl;
         // std::cout << "refFrame.m_camera->isInFrame: " << refFrame.m_camera->isInFrame( features->m_feature,
         // halfPatchRef ) << std::endl; std::cout << "curFrame.m_camera->isInFrame: " << curFrame.m_camera->isInFrame(
@@ -145,8 +166,8 @@ void Matcher::templateMatching( const Frame& refFrame,
             // matchLoc = minLoc;
             // std::cout << "corresponding loc: " << matchLoc << std::endl;
             Eigen::Vector2d newLoc;
-            newLoc.x()                            = px.x() + offset + minLoc.x;
-            newLoc.y()                            = px.y() + offset + minLoc.y;
+            newLoc.x()                            = static_cast< double >( px.x() + offset + minLoc.x );
+            newLoc.y()                            = static_cast< double >( px.y() + offset + minLoc.y );
             std::unique_ptr< Feature > newFeature = std::make_unique< Feature >( curFrame, newLoc, 0.0, 0.0, 0 );
             curFrame.addFeature( newFeature );
         }
