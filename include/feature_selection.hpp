@@ -58,12 +58,12 @@ private:
     // Efficient adaptive non-maximal suppression algorithms for homogeneous spatial keypoint distribution
     void Ssc( Frame& frame,
               const std::vector< cv::KeyPoint >& keyPoints,
-              const int numRetPoints,
+              const uint32_t numRetPoints,
               const float tolerance,
-              const int cols,
-              const int rows );
+              const uint32_t cols,
+              const uint32_t rows );
 
-    void computeGradient( const cv::Mat& currentTemplateImage, cv::Mat& templateGradientX, cv::Mat& templateGradientY );
+    // void computeGradient( const cv::Mat& currentTemplateImage, cv::Mat& templateGradientX, cv::Mat& templateGradientY );
 
     cv::Mat m_dx;
     cv::Mat m_dy;

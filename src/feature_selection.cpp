@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <cmath>
 
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
@@ -33,13 +34,13 @@ FeatureSelection::FeatureSelection()
 
 void FeatureSelection::Ssc( Frame& frame,
                             const std::vector< cv::KeyPoint >& keyPoints,
-                            const int numRetPoints,
+                            const uint32_t numRetPoints,
                             const float tolerance,
-                            const int cols,
-                            const int rows )
+                            const uint32_t cols,
+                            const uint32_t rows )
 {
     // several temp expression variables to simplify solution equation
-    int exp1       = rows + cols + 2 * numRetPoints;
+    uint32_t exp1       = rows + cols + 2 * numRetPoints;
     long long exp2 = ( (long long)4 * cols + (long long)4 * numRetPoints + (long long)4 * rows * numRetPoints +
                        (long long)rows * rows + (long long)cols * cols - (long long)2 * rows * cols +
                        (long long)4 * rows * cols * numRetPoints );
@@ -49,19 +50,19 @@ void FeatureSelection::Ssc( Frame& frame,
     double sol1 = -round( ( exp1 + exp3 ) / exp4 );  // first solution
     double sol2 = -round( ( exp1 - exp3 ) / exp4 );  // second solution
 
-    int high = ( sol1 > sol2 ) ? sol1 : sol2;  // binary search range initialization with positive solution
-    int low  = floor( sqrt( (double)keyPoints.size() / numRetPoints ) );
+    int high = ( sol1 > sol2 ) ? static_cast<int>(sol1) : static_cast<int>(sol2);  // binary search range initialization with positive solution
+    int low  = static_cast<int>( sqrt( (double)keyPoints.size() / numRetPoints ) );
 
     int width;
     int prevWidth = -1;
 
-    std::vector< int > ResultVec;
+    std::vector< uint32_t > ResultVec;
     bool complete     = false;
-    unsigned int K    = numRetPoints;
-    unsigned int Kmin = round( K - ( K * tolerance ) );
-    unsigned int Kmax = round( K + ( K * tolerance ) );
+    uint32_t K    = numRetPoints;
+    uint32_t Kmin = static_cast<uint32_t>(round( K - ( K * tolerance ) ));
+    uint32_t Kmax = static_cast<uint32_t>(round( K + ( K * tolerance ) ));
 
-    std::vector< int > result;
+    std::vector< uint32_t > result;
     result.reserve( keyPoints.size() );
     while ( !complete )
     {
@@ -72,28 +73,28 @@ void FeatureSelection::Ssc( Frame& frame,
             break;
         }
         result.clear();
-        double c        = width / 2;  // initializing Grid
-        int numCellCols = floor( cols / c );
-        int numCellRows = floor( rows / c );
+        double c        = width / 2.0;  // initializing Grid
+        uint32_t numCellCols = static_cast<uint32_t>( cols / c );
+        uint32_t numCellRows = static_cast<uint32_t>( rows / c );
         std::vector< std::vector< bool > > coveredVec( numCellRows + 1, std::vector< bool >( numCellCols + 1, false ) );
 
         for ( unsigned int i = 0; i < keyPoints.size(); ++i )
         {
-            int row = floor( keyPoints[ i ].pt.y / c );  // get position of the cell current point is located at
-            int col = floor( keyPoints[ i ].pt.x / c );
+            uint32_t row = static_cast<uint32_t>( keyPoints[ i ].pt.y / c );  // get position of the cell current point is located at
+            uint32_t col = static_cast<uint32_t>( keyPoints[ i ].pt.x / c );
             if ( coveredVec[ row ][ col ] == false )
             {  // if the cell is not covered
                 result.push_back( i );
-                int rowMin = ( ( row - floor( width / c ) ) >= 0 ) ? ( row - floor( width / c ) )
+                uint32_t rowMin = row >= static_cast<uint32_t>( width / c )  ? ( row - static_cast<uint32_t>( width / c ) )
                                                                    : 0;  // get range which current radius is covering
-                int rowMax =
-                  ( ( row + floor( width / c ) ) <= numCellRows ) ? ( row + floor( width / c ) ) : numCellRows;
-                int colMin = ( ( col - floor( width / c ) ) >= 0 ) ? ( col - floor( width / c ) ) : 0;
-                int colMax =
-                  ( ( col + floor( width / c ) ) <= numCellCols ) ? ( col + floor( width / c ) ) : numCellCols;
-                for ( int rowToCov = rowMin; rowToCov <= rowMax; ++rowToCov )
+                uint32_t rowMax =
+                  ( ( row + static_cast<uint32_t>( width / c ) ) <= numCellRows ) ? ( row + static_cast<uint32_t>( width / c ) ) : numCellRows;
+                uint32_t colMin = col >= static_cast<uint32_t>( width / c )  ? ( col - static_cast<uint32_t>( width / c ) ) : 0;
+                uint32_t colMax =
+                  ( ( col + static_cast<uint32_t>( width / c ) ) <= numCellCols ) ? ( col + static_cast<uint32_t>( width / c ) ) : numCellCols;
+                for ( uint32_t rowToCov = rowMin; rowToCov <= rowMax; ++rowToCov )
                 {
-                    for ( int colToCov = colMin; colToCov <= colMax; ++colToCov )
+                    for ( uint32_t colToCov = colMin; colToCov <= colMax; ++colToCov )
                     {
                         if ( !coveredVec[ rowToCov ][ colToCov ] )
                             coveredVec[ rowToCov ][ colToCov ] =
@@ -182,87 +183,87 @@ void FeatureSelection::detectFeatures( Frame& frame, const uint32_t numberCandid
                []( const cv::KeyPoint& lhs, const cv::KeyPoint& rhs ) { return lhs.response > rhs.response; } );
 
     // const int numRetPoints = 500;
-    const float tolerance = 0.1;
-    Ssc( frame, keyPoints, numberCandidate, tolerance, width, height );
+    const float tolerance = 0.1f;
+    Ssc( frame, keyPoints, numberCandidate, tolerance, static_cast<uint32_t>(width), static_cast<uint32_t>(height) );
 }
 
-void FeatureSelection::computeGradient( const cv::Mat& currentTemplateImage,
-                                            cv::Mat& templateGradientX,
-                                            cv::Mat& templateGradientY )
-{
-    int h = currentTemplateImage.rows;
-    int w = currentTemplateImage.cols;
+// void FeatureSelection::computeGradient( const cv::Mat& currentTemplateImage,
+//                                             cv::Mat& templateGradientX,
+//                                             cv::Mat& templateGradientY )
+// {
+//     int h = currentTemplateImage.rows;
+//     int w = currentTemplateImage.cols;
 
-    // ALIGNMENT_LOG( DEBUG ) << "h: " << h << ", w: " << w;
-    // [1, 1; w-1, h-1]
-    for ( int y( 1 ); y < h - 1; y++ )
-    {
-        for ( int x( 1 ); x < w - 1; x++ )
-        {
-            templateGradientX.at< float >( y, x ) =
-              0.5 * ( currentTemplateImage.at< float >( y, x + 1 ) - currentTemplateImage.at< float >( y, x - 1 ) );
-            templateGradientY.at< float >( y, x ) =
-              0.5 * ( currentTemplateImage.at< float >( y + 1, x ) - currentTemplateImage.at< float >( y - 1, x ) );
-        }
-    }
+//     // ALIGNMENT_LOG( DEBUG ) << "h: " << h << ", w: " << w;
+//     // [1, 1; w-1, h-1]
+//     for ( int y( 1 ); y < h - 1; y++ )
+//     {
+//         for ( int x( 1 ); x < w - 1; x++ )
+//         {
+//             templateGradientX.at< float >( y, x ) =
+//               0.5 * ( currentTemplateImage.at< float >( y, x + 1 ) - currentTemplateImage.at< float >( y, x - 1 ) );
+//             templateGradientY.at< float >( y, x ) =
+//               0.5 * ( currentTemplateImage.at< float >( y + 1, x ) - currentTemplateImage.at< float >( y - 1, x ) );
+//         }
+//     }
 
-    // ALIGNMENT_LOG( DEBUG ) << "center computed";
+//     // ALIGNMENT_LOG( DEBUG ) << "center computed";
 
-    // for first and last rows
-    for ( int x( 1 ); x < w - 1; x++ )
-    {
-        templateGradientX.at< float >( 0, x ) =
-          0.5 * ( currentTemplateImage.at< float >( 0, x + 1 ) - currentTemplateImage.at< float >( 0, x - 1 ) );
-        templateGradientY.at< float >( 0, x ) =
-          0.5 * ( currentTemplateImage.at< float >( 1, x ) - currentTemplateImage.at< float >( 0, x ) );
+//     // for first and last rows
+//     for ( int x( 1 ); x < w - 1; x++ )
+//     {
+//         templateGradientX.at< float >( 0, x ) =
+//           0.5 * ( currentTemplateImage.at< float >( 0, x + 1 ) - currentTemplateImage.at< float >( 0, x - 1 ) );
+//         templateGradientY.at< float >( 0, x ) =
+//           0.5 * ( currentTemplateImage.at< float >( 1, x ) - currentTemplateImage.at< float >( 0, x ) );
 
-        templateGradientX.at< float >( h - 1, x ) =
-          0.5 * ( currentTemplateImage.at< float >( h - 1, x + 1 ) - currentTemplateImage.at< float >( h - 1, x - 1 ) );
-        templateGradientY.at< float >( h - 1, x ) =
-          0.5 * ( currentTemplateImage.at< float >( h - 1, x ) - currentTemplateImage.at< float >( h - 2, x ) );
-    }
+//         templateGradientX.at< float >( h - 1, x ) =
+//           0.5 * ( currentTemplateImage.at< float >( h - 1, x + 1 ) - currentTemplateImage.at< float >( h - 1, x - 1 ) );
+//         templateGradientY.at< float >( h - 1, x ) =
+//           0.5 * ( currentTemplateImage.at< float >( h - 1, x ) - currentTemplateImage.at< float >( h - 2, x ) );
+//     }
 
-    // ALIGNMENT_LOG( DEBUG ) << "first and last rows";
+//     // ALIGNMENT_LOG( DEBUG ) << "first and last rows";
 
-    // for first and last cols
-    for ( int y( 1 ); y < h - 1; y++ )
-    {
-        templateGradientX.at< float >( y, 0 ) =
-          0.5 * ( currentTemplateImage.at< float >( y, 1 ) - currentTemplateImage.at< float >( y, 0 ) );
-        templateGradientY.at< float >( y, 0 ) =
-          0.5 * ( currentTemplateImage.at< float >( y + 1, 0 ) - currentTemplateImage.at< float >( y - 1, 0 ) );
+//     // for first and last cols
+//     for ( int y( 1 ); y < h - 1; y++ )
+//     {
+//         templateGradientX.at< float >( y, 0 ) =
+//           0.5 * ( currentTemplateImage.at< float >( y, 1 ) - currentTemplateImage.at< float >( y, 0 ) );
+//         templateGradientY.at< float >( y, 0 ) =
+//           0.5 * ( currentTemplateImage.at< float >( y + 1, 0 ) - currentTemplateImage.at< float >( y - 1, 0 ) );
 
-        templateGradientX.at< float >( y, w - 1 ) =
-          0.5 * ( currentTemplateImage.at< float >( y, w - 1 ) - currentTemplateImage.at< float >( y, w - 2 ) );
-        templateGradientY.at< float >( y, w - 1 ) =
-          0.5 * ( currentTemplateImage.at< float >( y + 1, w - 1 ) - currentTemplateImage.at< float >( y - 1, w - 1 ) );
-    }
+//         templateGradientX.at< float >( y, w - 1 ) =
+//           0.5 * ( currentTemplateImage.at< float >( y, w - 1 ) - currentTemplateImage.at< float >( y, w - 2 ) );
+//         templateGradientY.at< float >( y, w - 1 ) =
+//           0.5 * ( currentTemplateImage.at< float >( y + 1, w - 1 ) - currentTemplateImage.at< float >( y - 1, w - 1 ) );
+//     }
 
-    // ALIGNMENT_LOG( DEBUG ) << "first and last cols";
+//     // ALIGNMENT_LOG( DEBUG ) << "first and last cols";
 
-    // upper left
-    templateGradientX.at< float >( 0, 0 ) =
-      0.5 * ( currentTemplateImage.at< float >( 0, 1 ) - currentTemplateImage.at< float >( 0, 0 ) );
-    // upper right
-    templateGradientX.at< float >( 0, w - 1 ) =
-      0.5 * ( currentTemplateImage.at< float >( 0, w - 1 ) - currentTemplateImage.at< float >( 0, w - 2 ) );
-    // lower left
-    templateGradientX.at< float >( h - 1, 0 ) =
-      0.5 * ( currentTemplateImage.at< float >( h - 1, 1 ) - currentTemplateImage.at< float >( h - 1, 0 ) );
-    // lower right
-    templateGradientX.at< float >( h - 1, w - 1 ) =
-      0.5 * ( currentTemplateImage.at< float >( h - 1, w - 1 ) - currentTemplateImage.at< float >( h - 1, w - 2 ) );
+//     // upper left
+//     templateGradientX.at< float >( 0, 0 ) =
+//       0.5 * ( currentTemplateImage.at< float >( 0, 1 ) - currentTemplateImage.at< float >( 0, 0 ) );
+//     // upper right
+//     templateGradientX.at< float >( 0, w - 1 ) =
+//       0.5 * ( currentTemplateImage.at< float >( 0, w - 1 ) - currentTemplateImage.at< float >( 0, w - 2 ) );
+//     // lower left
+//     templateGradientX.at< float >( h - 1, 0 ) =
+//       0.5 * ( currentTemplateImage.at< float >( h - 1, 1 ) - currentTemplateImage.at< float >( h - 1, 0 ) );
+//     // lower right
+//     templateGradientX.at< float >( h - 1, w - 1 ) =
+//       0.5 * ( currentTemplateImage.at< float >( h - 1, w - 1 ) - currentTemplateImage.at< float >( h - 1, w - 2 ) );
 
-    // upper left
-    templateGradientY.at< float >( 0, 0 ) =
-      0.5 * ( currentTemplateImage.at< float >( 1, 0 ) - currentTemplateImage.at< float >( 0, 0 ) );
-    // upper right
-    templateGradientY.at< float >( 0, w - 1 ) =
-      0.5 * ( currentTemplateImage.at< float >( 1, w - 1 ) - currentTemplateImage.at< float >( 0, w - 1 ) );
-    // lower left
-    templateGradientY.at< float >( h - 1, 0 ) =
-      0.5 * ( currentTemplateImage.at< float >( h - 1, 0 ) - currentTemplateImage.at< float >( h - 2, 0 ) );
-    // lower right
-    templateGradientY.at< float >( h - 1, w - 1 ) =
-      0.5 * ( currentTemplateImage.at< float >( h - 1, w - 1 ) - currentTemplateImage.at< float >( h - 2, w - 1 ) );
-}
+//     // upper left
+//     templateGradientY.at< float >( 0, 0 ) =
+//       0.5 * ( currentTemplateImage.at< float >( 1, 0 ) - currentTemplateImage.at< float >( 0, 0 ) );
+//     // upper right
+//     templateGradientY.at< float >( 0, w - 1 ) =
+//       0.5 * ( currentTemplateImage.at< float >( 1, w - 1 ) - currentTemplateImage.at< float >( 0, w - 1 ) );
+//     // lower left
+//     templateGradientY.at< float >( h - 1, 0 ) =
+//       0.5 * ( currentTemplateImage.at< float >( h - 1, 0 ) - currentTemplateImage.at< float >( h - 2, 0 ) );
+//     // lower right
+//     templateGradientY.at< float >( h - 1, w - 1 ) =
+//       0.5 * ( currentTemplateImage.at< float >( h - 1, w - 1 ) - currentTemplateImage.at< float >( h - 2, w - 1 ) );
+// }

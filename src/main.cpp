@@ -76,7 +76,12 @@ int main( int argc, char* argv[] )
     // mainLogger->warn( "Warn" );
     // mainLogger->error( "Error" );
 
-    const std::string configIOFile = "../config/config.json";
+    std::string configIOFile;
+    if (argc > 1)
+        configIOFile = argv[1];
+    else
+        configIOFile = "../config/config.json";
+    
 
     const nlohmann::json& configJson = createConfigParser( configIOFile );
     // std::cout << configJson[ "file_paths" ][ "camera_calibration" ].get< std::string >() << std::endl;
