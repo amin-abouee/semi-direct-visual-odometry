@@ -113,6 +113,37 @@ void Visualization::featurePoints( const cv::Mat& img, const Frame& frame, const
     cv::imshow( windowsName, imgBGR );
 }
 
+void Visualization::featurePointsInGrid( const cv::Mat& img, const Frame& frame, const int32_t gridSize, const std::string& windowsName )
+{
+    cv::Mat normMag, imgBGR;
+    cv::normalize( img, normMag, 0, 255, cv::NORM_MINMAX, CV_8UC1 );
+    cv::cvtColor( normMag, imgBGR, cv::COLOR_GRAY2BGR );
+
+    const auto szPoints = frame.m_frameFeatures.size();
+    for ( std::size_t i( 0 ); i < szPoints; i++ )
+    {
+        const auto& feature = frame.m_frameFeatures[ i ]->m_feature;
+        cv::circle( imgBGR, cv::Point2d( feature.x(), feature.y() ), 2.0, colors.at( "amber" ) );
+    }
+
+    const int width  = img.cols;
+    const int height = img.rows;
+
+    const int cols = width / gridSize;
+    const int rows = height / gridSize;
+    for (int r(1); r <= rows; r++)
+    {
+        cv::line( imgBGR, cv::Point2i(0, r * gridSize), cv::Point2i(width, r * gridSize), colors.at( "amber" ) );
+    }
+    
+    for (int c(1); c <= cols; c++)
+    {
+        cv::line( imgBGR, cv::Point2i(c * gridSize, 0), cv::Point2i(c * gridSize, height), colors.at( "amber" ) );
+    }
+
+    cv::imshow( windowsName, imgBGR );
+}
+
 void Visualization::grayImage( const cv::Mat& img, const std::string& windowsName )
 {
     // double min, max;

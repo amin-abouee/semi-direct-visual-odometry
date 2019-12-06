@@ -12,6 +12,7 @@
     "algorithm":
     {
         "number_detected_features" : 20,
+        "grid_size_select_features" : 100,
         "patch_size_optical_flow" : 11
     }
 }

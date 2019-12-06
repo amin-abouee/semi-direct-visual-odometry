@@ -4,8 +4,8 @@
 #include <opencv2/calib3d.hpp>
 #include <opencv2/imgproc.hpp>
 
-PinholeCamera::PinholeCamera( double width,
-                              double height,
+PinholeCamera::PinholeCamera( int32_t width,
+                              int32_t height,
                               double fx,
                               double fy,
                               double cx,
@@ -23,14 +23,14 @@ PinholeCamera::PinholeCamera( double width,
     m_K << fx, 0.0, cx, 0.0, fy, cy, 0.0, 0.0, 1.0;
     m_invK << 1 / fx, 0.0, -cx / fx, 0.0, 1 / fy, -cy / fy, 0.0, 0.0, 1.0;
     cv::initUndistortRectifyMap( m_cvK, m_cvDistortion, cv::Mat_< double >::eye( 3, 3 ), m_cvK,
-                                 cv::Size( static_cast<int>(width), static_cast<int>(height) ), CV_16SC2, undistortedMapX, undistortedMapY );
+                                 cv::Size( width, height ), CV_16SC2, undistortedMapX, undistortedMapY );
     m_applyDistortion = std::fabs( d0 ) > 1e-5 ? true : false;
 }
 
 
 // http://ninghang.blogspot.com/2012/11/list-of-mat-type-in-opencv.html
-PinholeCamera::PinholeCamera( const double width,
-                              const double height,
+PinholeCamera::PinholeCamera( const int32_t width,
+                              const int32_t height,
                               const cv::Mat& cameraMatrix,
                               const cv::Mat& distortionCoeffs ) : m_width( width ), m_height( height )
 {
@@ -43,7 +43,7 @@ PinholeCamera::PinholeCamera( const double width,
     m_K << calib[0], calib[1], calib[2], calib[3], calib[4], calib[5], calib[6], calib[7], calib[8];
     m_invK << 1 / calib[0], 0.0, - calib[2] / calib[0], 0.0, 1 / calib[4], - calib[5] / calib[4], 0.0, 0.0, 1.0;
     cv::initUndistortRectifyMap( m_cvK, m_cvDistortion, cv::Mat_< double >::eye( 3, 3 ), m_cvK,
-                                 cv::Size( static_cast<int>(width), static_cast<int>(height) ), CV_16SC2, undistortedMapX, undistortedMapY );
+                                 cv::Size( width, height ), CV_16SC2, undistortedMapX, undistortedMapY );
     m_applyDistortion = std::fabs( distro[0] ) > 1e-5 ? true : false;
 
     // std::cout << "m_cvK: " << m_cvK << std::endl;
@@ -172,12 +172,12 @@ Eigen::Vector2d PinholeCamera::principlePoint() const
     return Eigen::Vector2d( cx(), cy() );
 }
 
-double PinholeCamera::width() const
+int32_t PinholeCamera::width() const
 {
     return m_width;
 }
 
-double PinholeCamera::height() const
+int32_t PinholeCamera::height() const
 {
     return m_height;
 }

@@ -59,6 +59,9 @@ void featurePoints( const Frame& frame, const std::string& windowsName );
 /// visualize feature points in any input image (for instance on HSV image)
 void featurePoints( const cv::Mat& img, const Frame& frame, const std::string& windowsName );
 
+/// visualize feature points in any input image (for instance on HSV image)
+void featurePointsInGrid( const cv::Mat& img, const Frame& frame, const int32_t gridSize, const std::string& windowsName );
+
 /// visualize feature points in both frames. images stick to each other
 void featurePointsInBothImages( const Frame& refFrame, const Frame& curFrame, const std::string& windowsName );
 

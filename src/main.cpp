@@ -98,8 +98,8 @@ int main( int argc, char* argv[] )
         return EXIT_FAILURE;
     }
 
-    const double imgWidth  = cameraJson[ "img_width" ].get< double >();
-    const double imgHeight = cameraJson[ "img_height" ].get< double >();
+    const int32_t imgWidth  = cameraJson[ "img_width" ].get< int32_t >();
+    const int32_t imgHeight = cameraJson[ "img_height" ].get< int32_t >();
 
     const cv::Mat refImg = cv::imread( "../input/0000000000.png", cv::IMREAD_GRAYSCALE );
     const cv::Mat curImg = cv::imread( "../input/0000000001.png", cv::IMREAD_GRAYSCALE );
@@ -148,14 +148,18 @@ int main( int argc, char* argv[] )
 
     const nlohmann::json& algoJson  = configJson[ "algorithm" ];
     const uint32_t numFeature       = algoJson[ "number_detected_features" ].get< uint32_t >();
+    const uint32_t patchSize       = algoJson[ "grid_size_select_features" ].get< uint32_t >();
     const uint16_t patchSizeOptFlow = algoJson[ "patch_size_optical_flow" ].get< uint16_t >();
 
-    FeatureSelection featureSelection;
+    FeatureSelection featureSelection(refFrame.m_imagePyramid.getBaseImage());
     // std::cout << "Fundamental Matrix: \n" << F << std::endl;
     // Matcher matcher;
 
     auto t1 = std::chrono::high_resolution_clock::now();
-    featureSelection.detectFeatures( refFrame, numFeature );
+    // featureSelection.detectFeaturesSSC( refFrame, numFeature );
+    featureSelection.detectFeaturesInGrid( refFrame, patchSize );
+    // Visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize, "Feature-Point-In-Grid");
+
     Matcher::computeOpticalFlowSparse( refFrame, curFrame, patchSizeOptFlow );
     Matcher::computeEssentialMatrix( refFrame, curFrame, 1.0, E );
     Eigen::Matrix3d R2;
@@ -211,6 +215,7 @@ int main( int argc, char* argv[] )
     }
 
     Visualization::epipolarLinesWithDepth(refFrame, curFrame, depthCurFrame, 2.0, "Epipolar-Lines-Depths");
+    Visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize, "Feature-Point-In-Grid");
 
     // Visualization::epipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0.5, 20,
                                 //  "Epipolar-Line-Feature-3" );

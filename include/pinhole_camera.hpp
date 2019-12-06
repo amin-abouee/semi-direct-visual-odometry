@@ -13,8 +13,8 @@ class PinholeCamera final
 {
 public:
 EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    explicit PinholeCamera( const double width,
-                            const double height,
+    explicit PinholeCamera( const int32_t width,
+                            const int32_t height,
                             const double fx,
                             const double fy,
                             const double cx,
@@ -25,8 +25,8 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
                             const double d3,
                             const double d4 );
 
-    explicit PinholeCamera (const double width,
-                            const double height,
+    explicit PinholeCamera (const int32_t width,
+                            const int32_t height,
                             const cv::Mat& cameraMatrix,
                             const cv::Mat& distortionCoeffs );
 
@@ -52,8 +52,8 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     double cy() const;
     Eigen::Vector2d focalLength() const;
     Eigen::Vector2d principlePoint() const;
-    double width() const;
-    double height() const;
+    int32_t width() const;
+    int32_t height() const;
 
     bool isInFrame(const Eigen::Vector2d& imagePoint, const double boundary = 0.0 ) const;
     bool isInFrame(const Eigen::Vector2d& imagePoint, const uint8_t level, const double boundary ) const;
@@ -61,8 +61,8 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     void undistortImage(const cv::Mat& distorted, cv::Mat& undistorted);
 
 private:
-    double m_width;
-    double m_height;
+    int32_t m_width;
+    int32_t m_height;
     Eigen::Matrix3d m_K;
     Eigen::Matrix3d m_invK;
     Eigen::Matrix<double, 1, 5> m_distortion;

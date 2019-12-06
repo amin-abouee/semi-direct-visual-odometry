@@ -12,11 +12,45 @@
 
 #include "spdlog/sinks/stdout_color_sinks.h"
 
-FeatureSelection::FeatureSelection()
+FeatureSelection::FeatureSelection(const cv::Mat& imgGray)
 {
     featureLogger = spdlog::stdout_color_mt( "FeatureSelection" );
     featureLogger->set_level( spdlog::level::debug );
     featureLogger->set_pattern( "[%Y-%m-%d %H:%M:%S] [%s:%#] [%n->%l] [thread:%t] %v" );
+
+    // https://answers.opencv.org/question/199237/most-accurate-visual-representation-of-gradient-magnitude/
+    // https://answers.opencv.org/question/136622/how-to-calculate-gradient-in-c-using-opencv/
+    // https://docs.opencv.org/master/d5/d0f/tutorial_py_gradients.html
+    // https://docs.opencv.org/2.4/doc/tutorials/imgproc/imgtrans/sobel_derivatives/sobel_derivatives.html
+    // http://ninghang.blogspot.com/2012/11/list-of-mat-type-in-opencv.html
+
+    int ddepth     = CV_32F;
+    int ksize      = 1;
+    double scale   = 1.0;
+    double delta   = 0.0;
+    int borderType = cv::BORDER_DEFAULT;
+
+    // const cv::Mat imgGray = frame.m_imagePyramid.getBaseImage();
+    auto t1 = std::chrono::high_resolution_clock::now();
+    // cv::Mat dx, absDx;
+    cv::Sobel( imgGray, m_dx, ddepth, 1, 0, ksize, scale, delta, borderType );
+    // cv::convertScaleAbs( dx, absDx );
+
+    // cv::Mat dy, absDy;
+    cv::Sobel( imgGray, m_dy, CV_32F, 0, 1, ksize, scale, delta, borderType );
+
+
+    // m_dx = cv::Mat ( imgGray.size(), CV_32F );
+    // m_dy = cv::Mat ( imgGray.size(), CV_32F );
+    // computeGradient(imgGray, m_dx, m_dy);
+
+    // cv::Mat mag, angle;
+    cv::cartToPolar( m_dx, m_dy, m_gradientMagnitude, m_gradientOrientation, true );
+    auto t2 = std::chrono::high_resolution_clock::now();
+    // std::cout << "Elapsed time for gradient magnitude: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
+            //   << std::endl;
+
+    featureLogger->info("Elapsed time for gradient magnitude: {}", std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count());
 }
 
 // FeatureSelection::FeatureSelection( const cv::Mat& imgGray )
@@ -125,44 +159,11 @@ void FeatureSelection::Ssc( Frame& frame,
     }
 }
 
-void FeatureSelection::detectFeatures( Frame& frame, const uint32_t numberCandidate )
+void FeatureSelection::detectFeaturesWithSSC( Frame& frame, const uint32_t numberCandidate )
 {
-    // https://answers.opencv.org/question/199237/most-accurate-visual-representation-of-gradient-magnitude/
-    // https://answers.opencv.org/question/136622/how-to-calculate-gradient-in-c-using-opencv/
-    // https://docs.opencv.org/master/d5/d0f/tutorial_py_gradients.html
-    // https://docs.opencv.org/2.4/doc/tutorials/imgproc/imgtrans/sobel_derivatives/sobel_derivatives.html
-    // http://ninghang.blogspot.com/2012/11/list-of-mat-type-in-opencv.html
-
-    int ddepth     = CV_32F;
-    int ksize      = 1;
-    double scale   = 1.0;
-    double delta   = 0.0;
-    int borderType = cv::BORDER_DEFAULT;
-
-    const cv::Mat imgGray = frame.m_imagePyramid.getBaseImage();
-    auto t1 = std::chrono::high_resolution_clock::now();
-    // cv::Mat dx, absDx;
-    cv::Sobel( imgGray, m_dx, ddepth, 1, 0, ksize, scale, delta, borderType );
-    // cv::convertScaleAbs( dx, absDx );
-
-    // cv::Mat dy, absDy;
-    cv::Sobel( imgGray, m_dy, CV_32F, 0, 1, ksize, scale, delta, borderType );
-
-
-    // m_dx = cv::Mat ( imgGray.size(), CV_32F );
-    // m_dy = cv::Mat ( imgGray.size(), CV_32F );
-    // computeGradient(imgGray, m_dx, m_dy);
-
-    // cv::Mat mag, angle;
-    cv::cartToPolar( m_dx, m_dy, m_gradientMagnitude, m_gradientOrientation, true );
-    auto t2 = std::chrono::high_resolution_clock::now();
-    // std::cout << "Elapsed time for gradient magnitude: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
-            //   << std::endl;
-
-    featureLogger->info("Elapsed time for gradient magnitude: {}", std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count());
-
-    const int width  = imgGray.cols;
-    const int height = imgGray.rows;
+    // const cv::Mat imgGray = frame.m_imagePyramid.getBaseImage();
+    const int width  = frame.m_camera->width();
+    const int height = frame.m_camera->height();
 
     std::vector< cv::KeyPoint > keyPoints;
     keyPoints.reserve( 10 * numberCandidate );
@@ -185,6 +186,59 @@ void FeatureSelection::detectFeatures( Frame& frame, const uint32_t numberCandid
     // const int numRetPoints = 500;
     const float tolerance = 0.1f;
     Ssc( frame, keyPoints, numberCandidate, tolerance, static_cast<uint32_t>(width), static_cast<uint32_t>(height) );
+}
+
+
+void FeatureSelection::detectFeaturesInGrid( Frame& frame, const int32_t gridSize )
+{
+    const int width  = frame.m_camera->width();
+    const int height = frame.m_camera->height();
+
+    const int cols = width / gridSize + 1;
+    const int rows = height / gridSize + 1;
+
+    // std::cout << "rows: " << rows << ", cols: " << cols << std::endl;
+
+    // std::vector< cv::KeyPoint > keyPoints;
+    // keyPoints.reserve( 10 * numberCandidate );
+    for (int r(0); r < rows; r++)
+    {
+        for (int c(0); c < cols; c++)
+        {
+            const int maxColIdx = (c+1) * gridSize < width ? gridSize : width - (c * gridSize);
+            const int maxROwIdx = (r+1) * gridSize < height ? gridSize : height - (r * gridSize);
+            const cv::Rect PatchROI( c * gridSize, r * gridSize, maxColIdx, maxROwIdx );
+            // std::cout << "left corner: [" << r * gridSize << " , " << c * gridSize << "] -> ";
+            const cv::Mat gradientPatch = m_gradientMagnitude( PatchROI );
+            float max = -1;
+            int rowIdx = -1;
+            int colIdx = -1;
+            for ( int i( 0 ); i < maxROwIdx; i++ )
+            {
+                for ( int j( 0 ); j < maxColIdx; j++ )
+                {
+                    if (gradientPatch.at< float >( i, j ) > max)
+                    {
+                        rowIdx = r * gridSize + i;
+                        colIdx = c * gridSize + j;
+                        max = gradientPatch.at< float >( i, j );
+                    }
+                }
+            }
+            // std::cout << " selected at [" << rowIdx << " , " << colIdx << "]" << std::endl;
+            // if ( gradientPatch.at< float >( i, j ) > 75.0 )
+            // {
+            std::unique_ptr< Feature > feature = std::make_unique< Feature >(
+                    frame, Eigen::Vector2d( colIdx, rowIdx ), 
+                    m_gradientMagnitude.at< float >( rowIdx, colIdx ),  
+                    m_gradientOrientation.at< float >( rowIdx, colIdx ), 0 );
+            frame.addFeature(feature);
+            // keyPoints.emplace_back( cv::KeyPoint( cv::Point2i( coldIdx, rowIdx ), 1.0,
+            //                                     m_gradientOrientation.at< float >( rowIdx, coldIdx ),
+            //                                     m_gradentMagnitude.at< float >( rowIdx, coldIdx ) ) );
+            // }
+        }
+    }
 }
 
 // void FeatureSelection::computeGradient( const cv::Mat& currentTemplateImage,
