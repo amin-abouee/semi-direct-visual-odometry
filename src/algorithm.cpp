@@ -159,7 +159,7 @@ void Algorithm::triangulatePointDLT( const Frame& refFrame,
 
 // 9.6.2 Extraction of cameras from the essential matrix, multi view geometry
 // https://github.com/opencv/opencv/blob/a74fe2ec01d9218d06cb7675af633fc3f409a6a2/modules/calib3d/src/five-point.cpp
-void Algorithm::decomposeEssentialMatrix( Eigen::Matrix3d& E,
+void Algorithm::decomposeEssentialMatrix( const Eigen::Matrix3d& E,
                                           Eigen::Matrix3d& R1,
                                           Eigen::Matrix3d& R2,
                                           Eigen::Vector3d& t )
@@ -176,7 +176,61 @@ void Algorithm::decomposeEssentialMatrix( Eigen::Matrix3d& E,
     t = svd_E.matrixU().col( 2 );
 }
 
+void Algorithm::recoverPose(
+  const Eigen::Matrix3d& E, const Frame& refFrame, Frame& curFrame, Eigen::Matrix3d& R, Eigen::Vector3d& t )
+{
+    Eigen::Matrix3d R1;
+    Eigen::Matrix3d R2;
+    // Eigen::Vector3d t;
+    decomposeEssentialMatrix(E, R1, R2, t);
+
+    Eigen::Vector2d topLeftCorner(1.0, 1.0);
+    Eigen::Vector2d downRightCorner(refFrame.m_camera->width(), refFrame.m_camera->height());
+
+    std::vector< Sophus::SE3d, Eigen::aligned_allocator< Sophus::SE3d > > poses;
+    poses.reserve(4);
+    Eigen::AngleAxisd temp( R1 );  // Re-orthogonality
+    poses.emplace_back(Sophus::SE3d(temp.toRotationMatrix(), t ));
+    poses.emplace_back(Sophus::SE3d(temp.toRotationMatrix(), -t ));
+    temp = Eigen::AngleAxisd(R2);
+    poses.emplace_back(Sophus::SE3d(temp.toRotationMatrix(), t ));
+    poses.emplace_back(Sophus::SE3d(temp.toRotationMatrix(), -t ));
+
+    for (std::size_t i(0); i<4; i++)
+    {
+        Eigen::Vector3d point1;
+        Eigen::Vector3d point2;
+        curFrame.m_TransW2F = refFrame.m_TransW2F * poses[i];
+        triangulatePointDLT(refFrame, curFrame, topLeftCorner, topLeftCorner, point1);
+        triangulatePointDLT(refFrame, curFrame, downRightCorner, downRightCorner, point2);
+        Eigen::Vector3d refProject1 = refFrame.world2camera( point1 );
+        Eigen::Vector3d curProject1 = curFrame.world2camera( point1 );
+        Eigen::Vector3d refProject2 = refFrame.world2camera( point2 );
+        Eigen::Vector3d curProject2 = curFrame.world2camera( point2 );
+        std::cout << "output projct left corner, ref: " << refProject1.z() << ", cur: " << curProject1.z() << std::endl;
+        std::cout << "output projct right corner, ref: " << refProject2.z() << ", cur: " << curProject2.z() << std::endl;
+        if (refProject1.z() > 0 && refProject2.z() > 0 && curProject1.z() > 0 && curProject2.z() > 0)
+        {
+            R = poses[i].rotationMatrix();
+            t = poses[i].translation();
+            std::cout << "R: " << R << std::endl;
+            std::cout << "t: " << t << std::endl;
+            break;
+        }
+    }
+
+}
+
 bool Algorithm::checkCheirality()
 {
     return true;
+}
+
+Eigen::Matrix3d Algorithm::hat( const Eigen::Vector3d& vec )
+{
+    // std::cout << "Vec: " << vec.transpose() << std::endl;
+    Eigen::Matrix3d skew;
+    skew << 0.0, -vec.z(), vec.y(), vec.z(), 0.0, -vec.x(), -vec.y(), vec.x(), 0.0;
+    // std::cout << "skew: " << skew << std::endl;
+    return skew;
 }

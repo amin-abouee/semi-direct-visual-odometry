@@ -64,7 +64,7 @@ bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, c
 
 int main( int argc, char* argv[] )
 {
-    Eigen::IOFormat CommaInitFmt( 6, Eigen::DontAlignCols, ", ", ", ", "", "", " [ ", "]" );
+    Eigen::IOFormat CommaInitFmt( 6, Eigen::DontAlignCols, ", ", ", ", "[", "]", " [ ", "]" );
     // Eigen::setNbThreads(4);
     // std::cout << "Number of Threads: " << Eigen::nbThreads( ) << std::endl;
 
@@ -112,7 +112,7 @@ int main( int argc, char* argv[] )
     Eigen::Matrix3d E;
     E << .22644456e-03, -7.06943058e-01, -4.05822481e-03, 7.06984545e-01, 1.22048201e-03, 1.26855863e-02,
       3.25653616e-03, -1.46073125e-02, -2.59077801e-05;
-    std::cout << "Old E: " << E.format( CommaInitFmt ) << std::endl;
+    // std::cout << "Old E: " << E.format( CommaInitFmt ) << std::endl;
 
     Eigen::Matrix3d F;
     F << -5.33286713e-08, -1.49632194e-03, 2.67961447e-01, 1.49436356e-03, -2.27291565e-06, -9.03327631e-01,
@@ -124,7 +124,7 @@ int main( int argc, char* argv[] )
     // Do the cheirality check.
     Eigen::Matrix3d R;
     R << 0.99999475, 0.0017505, -0.0027263, -0.00174731, 0.99999779, 0.00117013, 0.00272834, -0.00116536, 0.9999956;
-    std::cout << "Old R1: " << R.format( CommaInitFmt ) << std::endl;
+    // std::cout << "Old R1: " << R.format( CommaInitFmt ) << std::endl;
 
     // Eigen::Matrix3d R;
     // R << -0.99925367, -0.00151199, -0.03859818, 0.00191117, -0.99994505, -0.01030721, -0.03858047, -0.01037328,
@@ -132,7 +132,7 @@ int main( int argc, char* argv[] )
 
     // Eigen::Vector3d t( -0.0206659, -0.00456935, 0.999776 );
     Eigen::Vector3d t( 0.0206659, 0.00456935, -0.999776 );
-    std::cout << "Old t: " << t.format( CommaInitFmt ) << std::endl;
+    // std::cout << "Old t: " << t.format( CommaInitFmt ) << std::endl;
 
     // PinholeCamera camera( 1242, 375, K( 0, 0 ), K( 1, 1 ), K( 0, 2 ), K( 1, 2 ), 0.0, 0.0, 0.0, 0.0, 0.0 );
     PinholeCamera camera( imgWidth, imgHeight, cameraMatrix, distortionCoeffs );
@@ -148,7 +148,7 @@ int main( int argc, char* argv[] )
 
     const nlohmann::json& algoJson  = configJson[ "algorithm" ];
     const uint32_t numFeature       = algoJson[ "number_detected_features" ].get< uint32_t >();
-    const uint32_t patchSize       = algoJson[ "grid_size_select_features" ].get< uint32_t >();
+    const int32_t patchSize       = algoJson[ "grid_size_select_features" ].get< int32_t >();
     const uint16_t patchSizeOptFlow = algoJson[ "patch_size_optical_flow" ].get< uint16_t >();
 
     FeatureSelection featureSelection(refFrame.m_imagePyramid.getBaseImage());
@@ -169,6 +169,9 @@ int main( int argc, char* argv[] )
     std::cout << "R2: " << R2.format( CommaInitFmt ) << std::endl;
     std::cout << "t: " << t.format( CommaInitFmt ) << std::endl;
     F = curFrame.m_camera->invK().transpose() * E * refFrame.m_camera->invK();
+    std::cout << "F: " << F.format( CommaInitFmt ) << std::endl;
+    Algorithm::recoverPose(E, refFrame, curFrame, R, t);
+
     Eigen::AngleAxisd temp( R );  // Re-orthogonality
     curFrame.m_TransW2F = refFrame.m_TransW2F * Sophus::SE3d( temp.toRotationMatrix(), t );
     // Eigen::MatrixXd pointsRefCamera(3, curFrame.numberObservation());

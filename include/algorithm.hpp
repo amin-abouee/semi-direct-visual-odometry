@@ -32,9 +32,14 @@ void triangulatePointDLT( const Frame& refFrame,
 
 // https://paperpile.com/app/p/5bafd339-43e6-0f8e-b976-951e527f7a45
 // Multi view geometry, Result 9.19, page 259
-void decomposeEssentialMatrix( Eigen::Matrix3d& E, Eigen::Matrix3d& R1, Eigen::Matrix3d& R2, Eigen::Vector3d& t );
+void decomposeEssentialMatrix( const Eigen::Matrix3d& E, Eigen::Matrix3d& R1, Eigen::Matrix3d& R2, Eigen::Vector3d& t );
+
+void recoverPose(
+  const Eigen::Matrix3d& E, const Frame& refFrame, Frame& curFrame, Eigen::Matrix3d& R, Eigen::Vector3d& t );
 
 bool checkCheirality();
 
-}
+Eigen::Matrix3d hat( const Eigen::Vector3d& vec );
+
+}  // namespace Algorithm
 #endif /* __ALGORITHM_HPP__ */

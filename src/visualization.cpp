@@ -4,6 +4,7 @@
 #include <opencv2/imgproc.hpp>
 
 #include "feature.hpp"
+#include "algorithm.hpp"
 
 // std::map< std::string, cv::Scalar > colors{
 //   {"red", cv::Scalar( 65, 82, 226 )},     {"pink", cv::Scalar( 101, 57, 215 )},
@@ -290,6 +291,10 @@ void Visualization::epipolarLinesWithDepth( const Frame& refFrame,
     cv::Mat curImgBGR;
     cv::cvtColor( curFrame.m_imagePyramid.getBaseImage(), curImgBGR, cv::COLOR_GRAY2BGR );
     const Sophus::SE3d T_Pre2Cur = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
+    const Eigen::Matrix3d E = Algorithm::hat(T_Pre2Cur.translation()) * T_Pre2Cur.rotationMatrix();
+    std::cout << "E matrix from epipolar: " << E << std::endl;
+    const Eigen::Matrix3d F = refFrame.m_camera->invK().transpose() * E * curFrame.m_camera->invK();
+    std::cout << "F matrix from epipolar: " << F << std::endl;
     double minDepth              = 0.0;
     double maxDepth              = 0.0;
 

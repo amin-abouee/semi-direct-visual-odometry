@@ -39,6 +39,8 @@
 
 namespace Visualization
 {
+  // Eigen::IOFormat CommaInitFmt( 6, Eigen::DontAlignCols, ", ", ", ", "[", "]", " [ ", "]" );
+
 // https://cloford.com/resources/colours/500col.htm
 // https://www.w3schools.com/colors/colors_w3css.asp
 const std::map< std::string, cv::Scalar > colors{
