@@ -7,7 +7,7 @@
 
 #include "frame.hpp"
 
-namespace Algorithm
+namespace algorithm
 {
 void pointsRefCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsRefCamera );
 

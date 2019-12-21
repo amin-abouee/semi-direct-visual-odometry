@@ -66,6 +66,7 @@ set(LIBRARY_SOURCES
     feature_selection.cpp
     algorithm.cpp
     visualization.cpp
+    utils.cpp
     main.cpp
     )
 
@@ -97,6 +98,7 @@ if(OpenMP_CXX_FOUND)
     target_link_libraries(visual_odometry PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
+# https://stackoverflow.com/a/27558697/1804533
 if(USE_BLAS_EIGEN AND BLAS_FOUND )
     message( STATUS "BLAS_LIBRARIES: ${BLAS_LIBRARIES}")
     # message( STATUS "LAPACK_LIBRARIES: ${LAPACK_LIBRARIES}")

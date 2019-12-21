@@ -17,6 +17,8 @@
 #include "matcher.hpp"
 #include "pinhole_camera.hpp"
 #include "visualization.hpp"
+#include "utils.hpp"
+#include "algorithm.hpp"
 
 // #include "spdlog/sinks/stdout_color_sinks.h"
 #include <spdlog/spdlog.h>
@@ -64,7 +66,6 @@ bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, c
 
 int main( int argc, char* argv[] )
 {
-    Eigen::IOFormat CommaInitFmt( 6, Eigen::DontAlignCols, ", ", ", ", "[", "]", " [ ", "]" );
     // Eigen::setNbThreads(4);
     // std::cout << "Number of Threads: " << Eigen::nbThreads( ) << std::endl;
 
@@ -112,7 +113,7 @@ int main( int argc, char* argv[] )
     Eigen::Matrix3d E;
     E << .22644456e-03, -7.06943058e-01, -4.05822481e-03, 7.06984545e-01, 1.22048201e-03, 1.26855863e-02,
       3.25653616e-03, -1.46073125e-02, -2.59077801e-05;
-    // std::cout << "Old E: " << E.format( CommaInitFmt ) << std::endl;
+    // std::cout << "Old E: " << E.format( utils::eigenFormat() ) << std::endl;
 
     Eigen::Matrix3d F;
     F << -5.33286713e-08, -1.49632194e-03, 2.67961447e-01, 1.49436356e-03, -2.27291565e-06, -9.03327631e-01,
@@ -124,7 +125,7 @@ int main( int argc, char* argv[] )
     // Do the cheirality check.
     Eigen::Matrix3d R;
     R << 0.99999475, 0.0017505, -0.0027263, -0.00174731, 0.99999779, 0.00117013, 0.00272834, -0.00116536, 0.9999956;
-    // std::cout << "Old R1: " << R.format( CommaInitFmt ) << std::endl;
+    // std::cout << "Old R1: " << R.format( utils::eigenFormat() ) << std::endl;
 
     // Eigen::Matrix3d R;
     // R << -0.99925367, -0.00151199, -0.03859818, 0.00191117, -0.99994505, -0.01030721, -0.03858047, -0.01037328,
@@ -132,7 +133,7 @@ int main( int argc, char* argv[] )
 
     // Eigen::Vector3d t( -0.0206659, -0.00456935, 0.999776 );
     Eigen::Vector3d t( 0.0206659, 0.00456935, -0.999776 );
-    // std::cout << "Old t: " << t.format( CommaInitFmt ) << std::endl;
+    // std::cout << "Old t: " << t.format( utils::eigenFormat() ) << std::endl;
 
     // PinholeCamera camera( 1242, 375, K( 0, 0 ), K( 1, 1 ), K( 0, 2 ), K( 1, 2 ), 0.0, 0.0, 0.0, 0.0, 0.0 );
     PinholeCamera camera( imgWidth, imgHeight, cameraMatrix, distortionCoeffs );
@@ -158,26 +159,30 @@ int main( int argc, char* argv[] )
     auto t1 = std::chrono::high_resolution_clock::now();
     // featureSelection.detectFeaturesSSC( refFrame, numFeature );
     featureSelection.detectFeaturesInGrid( refFrame, patchSize );
-    // Visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize, "Feature-Point-In-Grid");
+    // visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize, "Feature-Point-In-Grid");
 
     Matcher::computeOpticalFlowSparse( refFrame, curFrame, patchSizeOptFlow );
     Matcher::computeEssentialMatrix( refFrame, curFrame, 1.0, E );
-    Eigen::Matrix3d R2;
-    Algorithm::decomposeEssentialMatrix( E, R, R2, t );
-    std::cout << "E: " << E.format( CommaInitFmt ) << std::endl;
-    std::cout << "R1: " << R.format( CommaInitFmt ) << std::endl;
-    std::cout << "R2: " << R2.format( CommaInitFmt ) << std::endl;
-    std::cout << "t: " << t.format( CommaInitFmt ) << std::endl;
+    // Eigen::Matrix3d R2;
+    // algorithm::decomposeEssentialMatrix( E, R, R2, t );
+    std::cout << "E: " << E.format( utils::eigenFormat() ) << std::endl;
+    // std::cout << "R: " << R.format( utils::eigenFormat() ) << std::endl;
+    // std::cout << "R2: " << R2.format( utils::eigenFormat() ) << std::endl;
+    // std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
     F = curFrame.m_camera->invK().transpose() * E * refFrame.m_camera->invK();
-    std::cout << "F: " << F.format( CommaInitFmt ) << std::endl;
-    Algorithm::recoverPose(E, refFrame, curFrame, R, t);
+    std::cout << "F: " << F.format( utils::eigenFormat() ) << std::endl;
+    algorithm::recoverPose(E, refFrame, curFrame, R, t);
+    std::cout << "R: " << R.format( utils::eigenFormat() ) << std::endl;
+    std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
+    // std::cout << "E new: " << (R * algorithm::hat(t)).format( utils::eigenFormat() ) << std::endl;
+    // std::cout << "determinant: " << R.determinant() << std::endl;
 
-    Eigen::AngleAxisd temp( R );  // Re-orthogonality
-    curFrame.m_TransW2F = refFrame.m_TransW2F * Sophus::SE3d( temp.toRotationMatrix(), t );
+    // Eigen::AngleAxisd temp( R );  // Re-orthogonality
+    // curFrame.m_TransW2F = refFrame.m_TransW2F * Sophus::SE3d( temp.toRotationMatrix(), t );
     // Eigen::MatrixXd pointsRefCamera(3, curFrame.numberObservation());
-    // Algorithm::pointsRefCamera(refFrame, curFrame, pointsRefCamera);
+    // algorithm::pointsRefCamera(refFrame, curFrame, pointsRefCamera);
     Eigen::VectorXd depthCurFrame(curFrame.numberObservation());
-    Algorithm::normalizedDepthRefCamera(refFrame, curFrame, depthCurFrame);
+    algorithm::normalizedDepthRefCamera(refFrame, curFrame, depthCurFrame);
     // R = R2;
     // Matcher::findTemplateMatch(refFrame, curFrame, patchSizeOptFlow, 35);
     auto t2 = std::chrono::high_resolution_clock::now();
@@ -185,7 +190,7 @@ int main( int argc, char* argv[] )
               << " ms" << std::endl;
 
     // matcher.findTemplateMatch(refFrame, curFrame, 5, 99);
-    // Visualization visualize;
+    // visualization visualize;
     // Eigen::MatrixXd P1 = refFrame.m_camera->K() * refFrame.m_TransW2F.matrix3x4();
     // std::cout << "P1: " << P1 << std::endl;
     // Eigen::MatrixXd P2 = curFrame.m_camera->K() * curFrame.m_TransW2F.matrix3x4();
@@ -195,47 +200,47 @@ int main( int argc, char* argv[] )
     // Eigen::Vector3d point;
     // Eigen::Vector2d p1( 975, 123 );
     // Eigen::Vector2d p2( 1004, 119 );
-    // Algorithm::triangulatePointHomogenousDLT( refFrame, curFrame, p1, p2, point );
-    // Algorithm::triangulatePointDLT( refFrame, curFrame, p1, p2, point );
+    // algorithm::triangulatePointHomogenousDLT( refFrame, curFrame, p1, p2, point );
+    // algorithm::triangulatePointDLT( refFrame, curFrame, p1, p2, point );
     // std::cout << "point in world: " << point.transpose() << std::endl;
     // std::cout << "point: " << point.norm() << std::endl;
     C = curFrame.cameraInWorld();
-    std::cout << "C: " << C.format( CommaInitFmt ) << std::endl;
+    std::cout << "C: " << C.format( utils::eigenFormat() ) << std::endl;
 
-    // Visualization::featurePoints( featureSelection.m_gradientMagnitude, refFrame,
+    // visualization::featurePoints( featureSelection.m_gradientMagnitude, refFrame,
     //   "Feature Selected By SSC on Gradient Magnitude Image" );
-    // Visualization::epipole( curFrame, C, "Epipole-Right" );
-    // Visualization::epipolarLine(img, vecHomo, K, R, t, "Epipolar-Line");
-    // Visualization::epipolarLine( curFrame, refFrame.m_frameFeatures[ 0 ]->m_bearingVec, 0.0, 50.0,
+    // visualization::epipole( curFrame, C, "Epipole-Right" );
+    // visualization::epipolarLine(img, vecHomo, K, R, t, "Epipolar-Line");
+    // visualization::epipolarLine( curFrame, refFrame.m_frameFeatures[ 0 ]->m_bearingVec, 0.0, 50.0,
     //  "Epipolar-Line-Feature-0" );
     // const double mu    = point.norm();
     // std::cout << "position feature: " << refFrame.m_frameFeatures[ 3 ]->m_feature.transpose() << std::endl;
     {
         // const double mu    = 20.0;
         // const double sigma = 1.0;
-        // Visualization::epipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, mu - sigma,
+        // visualization::epipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, mu - sigma,
         //                                 mu + sigma, "Epipolar-Line-Feature-3" );
     }
 
-    Visualization::epipolarLinesWithDepth(refFrame, curFrame, depthCurFrame, 2.0, "Epipolar-Lines-Depths");
-    Visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize, "Feature-Point-In-Grid");
+    visualization::epipolarLinesWithDepth(refFrame, curFrame, depthCurFrame, 150.0, "Epipolar-Lines-Depths");
+    // visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize, "Feature-Point-In-Grid");
 
-    // Visualization::epipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0.5, 20,
+    // visualization::epipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0.5, 20,
                                 //  "Epipolar-Line-Feature-3" );
 
-    // Visualization::featurePointsInBothImages( refFrame, curFrame, "Feature in Both Images" );
-    // Visualization::featurePointsInBothImagesWithSearchRegion( refFrame, curFrame, patchSizeOptFlow,
+    // visualization::featurePointsInBothImages( refFrame, curFrame, "Feature in Both Images" );
+    // visualization::featurePointsInBothImagesWithSearchRegion( refFrame, curFrame, patchSizeOptFlow,
                                                               // "Feature in Both Images" );
 
-    // Visualization::epipolarLinesWithFundamentalMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), F,
+    // visualization::epipolarLinesWithFundamentalMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), F,
     // "Epipolar-Lines-Right-With-F" );
-    // Visualization::epipolarLinesWithEssentialMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), E,
+    // visualization::epipolarLinesWithEssentialMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), E,
     //  "Epipolar-Lines-Right-With-E" );
-    Visualization::epipolarLinesWithPointsWithFundamentalMatrix( refFrame, curFrame, F,
+    visualization::epipolarLinesWithPointsWithFundamentalMatrix( refFrame, curFrame, F,
                                                                  "Epipolar-Lines-with-Points-in-Right" );
-    // Visualization::grayImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude" );
-    // Visualization::HSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
-    // Visualization::HSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
+    // visualization::grayImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude" );
+    // visualization::HSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
+    // visualization::HSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
 #ifdef EIGEN_MALLOC_ALREADY_ALIGNED
     std::cout << "EIGEN_MALLOC_ALREADY_ALIGNED" << std::endl;
 #endif

@@ -37,7 +37,7 @@
 //     // D'tor
 //     ~Visualization() = default;
 
-namespace Visualization
+namespace visualization
 {
   // Eigen::IOFormat CommaInitFmt( 6, Eigen::DontAlignCols, ", ", ", ", "[", "]", " [ ", "]" );
 

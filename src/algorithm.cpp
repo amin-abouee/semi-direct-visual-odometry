@@ -1,5 +1,8 @@
 #include "algorithm.hpp"
 #include "feature.hpp"
+#include "utils.hpp"
+#include <opencv2/core/eigen.hpp>
+#include <opencv2/calib3d.hpp>
 
 // http://stackoverflow.com/questions/10167534/how-to-find-out-what-type-of-a-mat-object-is-with-mattype-in-opencv
 // +--------+----+----+----+----+------+------+------+------+
@@ -14,7 +17,7 @@
 // | CV_64F |  6 | 14 | 22 | 30 |   38 |   46 |   54 |   62 |
 // +--------+----+----+----+----+------+------+------+------+
 
-void Algorithm::pointsRefCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsRefCamera )
+void algorithm::pointsRefCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsRefCamera )
 {
     const auto featureSz = refFrame.numberObservation();
     Eigen::Vector2d refFeature;
@@ -29,7 +32,7 @@ void Algorithm::pointsRefCamera( const Frame& refFrame, const Frame& curFrame, E
     }
 }
 
-void Algorithm::pointsCurCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsCurCamera )
+void algorithm::pointsCurCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsCurCamera )
 {
     const auto featureSz = refFrame.numberObservation();
     Eigen::Vector2d refFeature;
@@ -44,33 +47,33 @@ void Algorithm::pointsCurCamera( const Frame& refFrame, const Frame& curFrame, E
     }
 }
 
-void Algorithm::normalizedDepthRefCamera( const Frame& refFrame,
+void algorithm::normalizedDepthRefCamera( const Frame& refFrame,
                                           const Frame& curFrame,
                                           Eigen::VectorXd& depthRefCamera )
 {
     const auto featureSz = refFrame.numberObservation();
     Eigen::MatrixXd pointsRefCamera( 3, featureSz );
-    Algorithm::pointsRefCamera( refFrame, curFrame, pointsRefCamera );
+    algorithm::pointsRefCamera( refFrame, curFrame, pointsRefCamera );
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
         depthRefCamera( i ) = pointsRefCamera.col( i ).norm();
     }
 }
 
-void Algorithm::normalizedDepthsCurCamera( const Frame& refFrame,
+void algorithm::normalizedDepthsCurCamera( const Frame& refFrame,
                                            const Frame& curFrame,
                                            Eigen::VectorXd& depthCurCamera )
 {
     const auto featureSz = curFrame.numberObservation();
     Eigen::MatrixXd pointsCurCamera( 3, featureSz );
-    Algorithm::pointsCurCamera( refFrame, curFrame, pointsCurCamera );
+    algorithm::pointsCurCamera( refFrame, curFrame, pointsCurCamera );
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
         depthCurCamera( i ) = pointsCurCamera.col( i ).norm();
     }
 }
 
-void Algorithm::triangulatePointHomogenousDLT( const Frame& refFrame,
+void algorithm::triangulatePointHomogenousDLT( const Frame& refFrame,
                                                const Frame& curFrame,
                                                const Eigen::Vector2d& refFeature,
                                                const Eigen::Vector2d& curFeature,
@@ -110,7 +113,7 @@ void Algorithm::triangulatePointHomogenousDLT( const Frame& refFrame,
     point = res.head( 2 );
 }
 
-void Algorithm::triangulatePointDLT( const Frame& refFrame,
+void algorithm::triangulatePointDLT( const Frame& refFrame,
                                      const Frame& curFrame,
                                      const Eigen::Vector2d& refFeature,
                                      const Eigen::Vector2d& curFeature,
@@ -159,7 +162,7 @@ void Algorithm::triangulatePointDLT( const Frame& refFrame,
 
 // 9.6.2 Extraction of cameras from the essential matrix, multi view geometry
 // https://github.com/opencv/opencv/blob/a74fe2ec01d9218d06cb7675af633fc3f409a6a2/modules/calib3d/src/five-point.cpp
-void Algorithm::decomposeEssentialMatrix( const Eigen::Matrix3d& E,
+void algorithm::decomposeEssentialMatrix( const Eigen::Matrix3d& E,
                                           Eigen::Matrix3d& R1,
                                           Eigen::Matrix3d& R2,
                                           Eigen::Vector3d& t )
@@ -170,67 +173,83 @@ void Algorithm::decomposeEssentialMatrix( const Eigen::Matrix3d& E,
     R1 = svd_E.matrixU() * W * svd_E.matrixV().transpose();
     if ( R1.determinant() < 0 )
         R1 *= -1;
+    std::cout << "R1: " << R1.format( utils::eigenFormat() ) << std::endl;
+
     R2 = svd_E.matrixU() * W.transpose() * svd_E.matrixV().transpose();
     if ( R2.determinant() < 0 )
         R2 *= -1;
+    std::cout << "R2: " << R2.format( utils::eigenFormat() ) << std::endl;
+    
     t = svd_E.matrixU().col( 2 );
+    std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
+
+
+    // cv::Mat R2c;
+    // cv::Mat R1c;
+    // cv::Mat tc;
+    // cv::Mat Ec;
+    // cv::eigen2cv(E, Ec);
+    // cv::decomposeEssentialMat(Ec, R1c, R2c, tc);
+    // std::cout << "R1: " << R1c << std::endl;
+    // std::cout << "R2: " << R2c << std::endl;
+    // std::cout << "t: " << tc << std::endl;
 }
 
-void Algorithm::recoverPose(
+void algorithm::recoverPose(
   const Eigen::Matrix3d& E, const Frame& refFrame, Frame& curFrame, Eigen::Matrix3d& R, Eigen::Vector3d& t )
 {
     Eigen::Matrix3d R1;
     Eigen::Matrix3d R2;
-    // Eigen::Vector3d t;
-    decomposeEssentialMatrix(E, R1, R2, t);
+    Eigen::Vector3d tm;
+    decomposeEssentialMatrix(E, R1, R2, tm);
+    // std::cout << "R1: " << R1.format( utils::eigenFormat() ) << std::endl;
+    // std::cout << "R2: " << R2.format( utils::eigenFormat() ) << std::endl;
+    // std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
 
-    Eigen::Vector2d topLeftCorner(1.0, 1.0);
-    Eigen::Vector2d downRightCorner(refFrame.m_camera->width(), refFrame.m_camera->height());
+    // Eigen::Vector2d topLeftCorner(1.0, 1.0);
+    // Eigen::Vector2d downRightCorner(refFrame.m_camera->width(), refFrame.m_camera->height());
 
     std::vector< Sophus::SE3d, Eigen::aligned_allocator< Sophus::SE3d > > poses;
     poses.reserve(4);
     Eigen::AngleAxisd temp( R1 );  // Re-orthogonality
-    poses.emplace_back(Sophus::SE3d(temp.toRotationMatrix(), t ));
-    poses.emplace_back(Sophus::SE3d(temp.toRotationMatrix(), -t ));
+    poses.emplace_back(Sophus::SE3d(temp.toRotationMatrix(), tm ));
+    poses.emplace_back(Sophus::SE3d(temp.toRotationMatrix(), -tm ));
     temp = Eigen::AngleAxisd(R2);
-    poses.emplace_back(Sophus::SE3d(temp.toRotationMatrix(), t ));
-    poses.emplace_back(Sophus::SE3d(temp.toRotationMatrix(), -t ));
+    poses.emplace_back(Sophus::SE3d(temp.toRotationMatrix(), tm ));
+    poses.emplace_back(Sophus::SE3d(temp.toRotationMatrix(), -tm ));
 
     for (std::size_t i(0); i<4; i++)
     {
         Eigen::Vector3d point1;
         Eigen::Vector3d point2;
         curFrame.m_TransW2F = refFrame.m_TransW2F * poses[i];
-        triangulatePointDLT(refFrame, curFrame, topLeftCorner, topLeftCorner, point1);
-        triangulatePointDLT(refFrame, curFrame, downRightCorner, downRightCorner, point2);
+        triangulatePointDLT(refFrame, curFrame, refFrame.m_frameFeatures[0]->m_feature, curFrame.m_frameFeatures[0]->m_feature, point1);
+        triangulatePointDLT(refFrame, curFrame, refFrame.m_frameFeatures[1]->m_feature, curFrame.m_frameFeatures[1]->m_feature, point2);
         Eigen::Vector3d refProject1 = refFrame.world2camera( point1 );
         Eigen::Vector3d curProject1 = curFrame.world2camera( point1 );
         Eigen::Vector3d refProject2 = refFrame.world2camera( point2 );
         Eigen::Vector3d curProject2 = curFrame.world2camera( point2 );
-        std::cout << "output projct left corner, ref: " << refProject1.z() << ", cur: " << curProject1.z() << std::endl;
-        std::cout << "output projct right corner, ref: " << refProject2.z() << ", cur: " << curProject2.z() << std::endl;
+        // std::cout << "output projct left corner, ref: " << refProject1.z() << ", cur: " << curProject1.z() << std::endl;
+        // std::cout << "output projct right corner, ref: " << refProject2.z() << ", cur: " << curProject2.z() << std::endl;
         if (refProject1.z() > 0 && refProject2.z() > 0 && curProject1.z() > 0 && curProject2.z() > 0)
         {
             R = poses[i].rotationMatrix();
             t = poses[i].translation();
-            std::cout << "R: " << R << std::endl;
-            std::cout << "t: " << t << std::endl;
+            // std::cout << "R: " << R.format( utils::eigenFormat() ) << std::endl;
+            // std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
             break;
         }
     }
-
 }
 
-bool Algorithm::checkCheirality()
+bool algorithm::checkCheirality()
 {
     return true;
 }
 
-Eigen::Matrix3d Algorithm::hat( const Eigen::Vector3d& vec )
+Eigen::Matrix3d algorithm::hat( const Eigen::Vector3d& vec )
 {
-    // std::cout << "Vec: " << vec.transpose() << std::endl;
     Eigen::Matrix3d skew;
     skew << 0.0, -vec.z(), vec.y(), vec.z(), 0.0, -vec.x(), -vec.y(), vec.x(), 0.0;
-    // std::cout << "skew: " << skew << std::endl;
     return skew;
 }
