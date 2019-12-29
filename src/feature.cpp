@@ -29,3 +29,8 @@ Feature::Feature( Frame& frame,
     , m_point(nullptr)
 {
 }
+
+void Feature::setPoint(Point* point)
+{
+    m_point = point;
+}

@@ -1,8 +1,12 @@
+#include <algorithm>
+#include <vector>
+
 #include "algorithm.hpp"
 #include "feature.hpp"
 #include "utils.hpp"
-#include <opencv2/core/eigen.hpp>
+
 #include <opencv2/calib3d.hpp>
+#include <opencv2/core/eigen.hpp>
 
 // http://stackoverflow.com/questions/10167534/how-to-find-out-what-type-of-a-mat-object-is-with-mattype-in-opencv
 // +--------+----+----+----+----+------+------+------+------+
@@ -17,59 +21,105 @@
 // | CV_64F |  6 | 14 | 22 | 30 |   38 |   46 |   54 |   62 |
 // +--------+----+----+----+----+------+------+------+------+
 
-void algorithm::pointsRefCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsRefCamera )
-{
-    const auto featureSz = refFrame.numberObservation();
-    Eigen::Vector2d refFeature;
-    Eigen::Vector2d curFeature;
-    Eigen::Vector3d pointWorld;
-    for ( std::size_t i( 0 ); i < featureSz; i++ )
-    {
-        refFeature = refFrame.m_frameFeatures[ i ]->m_feature;
-        curFeature = curFrame.m_frameFeatures[ i ]->m_feature;
-        triangulatePointDLT( refFrame, curFrame, refFeature, curFeature, pointWorld );
-        pointsRefCamera.col( i ) = refFrame.world2camera( pointWorld );
-    }
-}
+// void algorithm::pointsRefCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsRefCamera )
+// {
+//     const auto featureSz = refFrame.numberObservation();
+//     Eigen::Vector2d refFeature;
+//     Eigen::Vector2d curFeature;
+//     Eigen::Vector3d pointWorld;
+//     for ( std::size_t i( 0 ); i < featureSz; i++ )
+//     {
+//         refFeature = refFrame.m_frameFeatures[ i ]->m_feature;
+//         curFeature = curFrame.m_frameFeatures[ i ]->m_feature;
+//         triangulatePointDLT( refFrame, curFrame, refFeature, curFeature, pointWorld );
+//         pointsRefCamera.col( i ) = refFrame.world2camera( pointWorld );
+//     }
+// }
 
-void algorithm::pointsCurCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsCurCamera )
+// void algorithm::pointsCurCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsCurCamera )
+// {
+//     const auto featureSz = refFrame.numberObservation();
+//     Eigen::Vector2d refFeature;
+//     Eigen::Vector2d curFeature;
+//     Eigen::Vector3d pointWorld;
+//     for ( std::size_t i( 0 ); i < featureSz; i++ )
+//     {
+//         refFeature = refFrame.m_frameFeatures[ i ]->m_feature;
+//         curFeature = curFrame.m_frameFeatures[ i ]->m_feature;
+//         triangulatePointDLT( refFrame, curFrame, refFeature, curFeature, pointWorld );
+//         pointsCurCamera.col( i ) = curFrame.world2camera( pointWorld );
+//     }
+// }
+
+void algorithm::points3DWorld( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsWorld )
 {
     const auto featureSz = refFrame.numberObservation();
-    Eigen::Vector2d refFeature;
-    Eigen::Vector2d curFeature;
+    // Eigen::Vector2d refFeature;
+    // Eigen::Vector2d curFeature;
     Eigen::Vector3d pointWorld;
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
-        refFeature = refFrame.m_frameFeatures[ i ]->m_feature;
-        curFeature = curFrame.m_frameFeatures[ i ]->m_feature;
+        const Eigen::Vector2d refFeature = refFrame.m_frameFeatures[ i ]->m_feature;
+        const Eigen::Vector2d curFeature = curFrame.m_frameFeatures[ i ]->m_feature;
         triangulatePointDLT( refFrame, curFrame, refFeature, curFeature, pointWorld );
-        pointsCurCamera.col( i ) = curFrame.world2camera( pointWorld );
+        pointsWorld.col( i ) = pointWorld;
+        // pointsCurCamera.col( i ) = curFrame.world2camera( pointWorld );
     }
 }
 
 void algorithm::normalizedDepthRefCamera( const Frame& refFrame,
-                                          const Frame& curFrame,
-                                          Eigen::VectorXd& depthRefCamera )
+                                          const Eigen::MatrixXd& pointsWorld,
+                                          Eigen::VectorXd& normalizedDepthRefCamera )
 {
     const auto featureSz = refFrame.numberObservation();
-    Eigen::MatrixXd pointsRefCamera( 3, featureSz );
-    algorithm::pointsRefCamera( refFrame, curFrame, pointsRefCamera );
+    // Eigen::MatrixXd pointsWorld( 3, featureSz );
+    // algorithm::points3DWorld( refFrame, curFrame, pointsWorld );
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
-        depthRefCamera( i ) = pointsRefCamera.col( i ).norm();
+        const auto pointRefCamera     = refFrame.world2camera( pointsWorld.col( i ) );
+        normalizedDepthRefCamera( i ) = pointRefCamera.norm();
     }
 }
 
-void algorithm::normalizedDepthsCurCamera( const Frame& refFrame,
-                                           const Frame& curFrame,
-                                           Eigen::VectorXd& depthCurCamera )
+void algorithm::depthRefCamera( const Frame& refFrame,
+                                const Eigen::MatrixXd& pointsWorld,
+                                Eigen::VectorXd& depthRefCamera )
 {
-    const auto featureSz = curFrame.numberObservation();
-    Eigen::MatrixXd pointsCurCamera( 3, featureSz );
-    algorithm::pointsCurCamera( refFrame, curFrame, pointsCurCamera );
+    const auto featureSz = refFrame.numberObservation();
+    // Eigen::MatrixXd pointsWorld( 3, featureSz );
+    // algorithm::points3DWorld( refFrame, curFrame, pointsWorld );
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
-        depthCurCamera( i ) = pointsCurCamera.col( i ).norm();
+        const auto pointRefCamera = refFrame.world2camera( pointsWorld.col( i ) );
+        depthRefCamera( i )       = pointRefCamera.z();
+    }
+}
+
+void algorithm::normalizedDepthsCurCamera( const Frame& curFrame,
+                                           const Eigen::MatrixXd& pointsWorld,
+                                           Eigen::VectorXd& normalizedDepthCurCamera )
+{
+    const auto featureSz = curFrame.numberObservation();
+    // Eigen::MatrixXd pointsWorld( 3, featureSz );
+    // algorithm::points3DWorld( refFrame, curFrame, pointsWorld );
+    for ( std::size_t i( 0 ); i < featureSz; i++ )
+    {
+        const auto pointCurCamera     = curFrame.world2camera( pointsWorld.col( i ) );
+        normalizedDepthCurCamera( i ) = pointCurCamera.norm();
+    }
+}
+
+void algorithm::depthsCurCamera( const Frame& curFrame,
+                                 const Eigen::MatrixXd& pointsWorld,
+                                 Eigen::VectorXd& depthCurCamera )
+{
+    const auto featureSz = curFrame.numberObservation();
+    // Eigen::MatrixXd pointsWorld( 3, featureSz );
+    // algorithm::points3DWorld( refFrame, curFrame, pointsWorld );
+    for ( std::size_t i( 0 ); i < featureSz; i++ )
+    {
+        const auto pointCurCamera = curFrame.world2camera( pointsWorld.col( i ) );
+        depthCurCamera( i )       = pointCurCamera.z();
     }
 }
 
@@ -173,16 +223,15 @@ void algorithm::decomposeEssentialMatrix( const Eigen::Matrix3d& E,
     R1 = svd_E.matrixU() * W * svd_E.matrixV().transpose();
     if ( R1.determinant() < 0 )
         R1 *= -1;
-    std::cout << "R1: " << R1.format( utils::eigenFormat() ) << std::endl;
+    // std::cout << "R1: " << R1.format( utils::eigenFormat() ) << std::endl;
 
     R2 = svd_E.matrixU() * W.transpose() * svd_E.matrixV().transpose();
     if ( R2.determinant() < 0 )
         R2 *= -1;
-    std::cout << "R2: " << R2.format( utils::eigenFormat() ) << std::endl;
-    
-    t = svd_E.matrixU().col( 2 );
-    std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
+    // std::cout << "R2: " << R2.format( utils::eigenFormat() ) << std::endl;
 
+    t = svd_E.matrixU().col( 2 );
+    // std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
 
     // cv::Mat R2c;
     // cv::Mat R1c;
@@ -201,7 +250,7 @@ void algorithm::recoverPose(
     Eigen::Matrix3d R1;
     Eigen::Matrix3d R2;
     Eigen::Vector3d tm;
-    decomposeEssentialMatrix(E, R1, R2, tm);
+    decomposeEssentialMatrix( E, R1, R2, tm );
     // std::cout << "R1: " << R1.format( utils::eigenFormat() ) << std::endl;
     // std::cout << "R2: " << R2.format( utils::eigenFormat() ) << std::endl;
     // std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
@@ -210,31 +259,34 @@ void algorithm::recoverPose(
     // Eigen::Vector2d downRightCorner(refFrame.m_camera->width(), refFrame.m_camera->height());
 
     std::vector< Sophus::SE3d, Eigen::aligned_allocator< Sophus::SE3d > > poses;
-    poses.reserve(4);
+    poses.reserve( 4 );
     Eigen::AngleAxisd temp( R1 );  // Re-orthogonality
-    poses.emplace_back(Sophus::SE3d(temp.toRotationMatrix(), tm ));
-    poses.emplace_back(Sophus::SE3d(temp.toRotationMatrix(), -tm ));
-    temp = Eigen::AngleAxisd(R2);
-    poses.emplace_back(Sophus::SE3d(temp.toRotationMatrix(), tm ));
-    poses.emplace_back(Sophus::SE3d(temp.toRotationMatrix(), -tm ));
+    poses.emplace_back( Sophus::SE3d( temp.toRotationMatrix(), tm ) );
+    poses.emplace_back( Sophus::SE3d( temp.toRotationMatrix(), -tm ) );
+    temp = Eigen::AngleAxisd( R2 );
+    poses.emplace_back( Sophus::SE3d( temp.toRotationMatrix(), tm ) );
+    poses.emplace_back( Sophus::SE3d( temp.toRotationMatrix(), -tm ) );
 
-    for (std::size_t i(0); i<4; i++)
+    for ( std::size_t i( 0 ); i < 4; i++ )
     {
         Eigen::Vector3d point1;
         Eigen::Vector3d point2;
-        curFrame.m_TransW2F = refFrame.m_TransW2F * poses[i];
-        triangulatePointDLT(refFrame, curFrame, refFrame.m_frameFeatures[0]->m_feature, curFrame.m_frameFeatures[0]->m_feature, point1);
-        triangulatePointDLT(refFrame, curFrame, refFrame.m_frameFeatures[1]->m_feature, curFrame.m_frameFeatures[1]->m_feature, point2);
+        curFrame.m_TransW2F = refFrame.m_TransW2F * poses[ i ];
+        triangulatePointDLT( refFrame, curFrame, refFrame.m_frameFeatures[ 0 ]->m_feature,
+                             curFrame.m_frameFeatures[ 0 ]->m_feature, point1 );
+        triangulatePointDLT( refFrame, curFrame, refFrame.m_frameFeatures[ 1 ]->m_feature,
+                             curFrame.m_frameFeatures[ 1 ]->m_feature, point2 );
         Eigen::Vector3d refProject1 = refFrame.world2camera( point1 );
         Eigen::Vector3d curProject1 = curFrame.world2camera( point1 );
         Eigen::Vector3d refProject2 = refFrame.world2camera( point2 );
         Eigen::Vector3d curProject2 = curFrame.world2camera( point2 );
-        // std::cout << "output projct left corner, ref: " << refProject1.z() << ", cur: " << curProject1.z() << std::endl;
-        // std::cout << "output projct right corner, ref: " << refProject2.z() << ", cur: " << curProject2.z() << std::endl;
-        if (refProject1.z() > 0 && refProject2.z() > 0 && curProject1.z() > 0 && curProject2.z() > 0)
+        // std::cout << "output projct left corner, ref: " << refProject1.z() << ", cur: " << curProject1.z() <<
+        // std::endl; std::cout << "output projct right corner, ref: " << refProject2.z() << ", cur: " <<
+        // curProject2.z() << std::endl;
+        if ( refProject1.z() > 0 && refProject2.z() > 0 && curProject1.z() > 0 && curProject2.z() > 0 )
         {
-            R = poses[i].rotationMatrix();
-            t = poses[i].translation();
+            R = poses[ i ].rotationMatrix();
+            t = poses[ i ].translation();
             // std::cout << "R: " << R.format( utils::eigenFormat() ) << std::endl;
             // std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
             break;
@@ -253,3 +305,45 @@ Eigen::Matrix3d algorithm::hat( const Eigen::Vector3d& vec )
     skew << 0.0, -vec.z(), vec.y(), vec.z(), 0.0, -vec.x(), -vec.y(), vec.x(), 0.0;
     return skew;
 }
+
+double algorithm::computeMedian( const Eigen::VectorXd& input )
+{
+    std::vector< double > vec( input.data(), input.data() + input.rows() * input.cols() );
+    // return doubleVec[ middleSize ];
+    const auto middleSize = vec.size() / 2;
+    std::nth_element( vec.begin(), vec.begin() + middleSize, vec.end() );
+
+    if ( vec.size() == 0 )
+    {
+        return std::numeric_limits< double >::quiet_NaN();
+    }
+    else if ( vec.size() % 2 != 0 )  // Odd
+    {
+        return vec[ middleSize ];
+    }
+    else  // Even
+    {
+        return ( vec[ middleSize - 1 ] + vec[ middleSize ] ) / 2.0;
+    }
+}
+
+// double computeMedianInplace( const Eigen::VectorXd& vec )
+// {
+//     const auto middleSize = vec.size() / 2;
+//     // std::nth_element( vec.begin(), vec.begin() + middleSize, vec.end() );
+//     auto beginIter = vec.data();
+//     std::sort(beginIter, beginIter + middleSize);
+
+//     if (vec.size() == 0)
+//     {
+//         return std::numeric_limits<double>::quiet_NaN();
+//     }
+//     else if(vec.size() % 2 != 0) // Odd
+//     {
+//         return vec(middleSize);
+//     }
+//     else //Even
+//     {
+//         return (vec(middleSize - 1) + vec(middleSize)) / 2.0;
+//     }
+// }

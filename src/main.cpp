@@ -1,3 +1,6 @@
+// #define EIGEN_DEFAULT_DENSE_INDEX_TYPE long
+// #define EIGEN_DEFAULT_IO_FORMAT Eigen::IOFormat( 10, Eigen::DontAlignCols, ", ", " , ", "[", "]", "[", "]" )
+
 #include <algorithm>
 #include <chrono>
 #include <fstream>
@@ -16,9 +19,9 @@
 #include "frame.hpp"
 #include "matcher.hpp"
 #include "pinhole_camera.hpp"
-#include "visualization.hpp"
+#include "point.hpp"
 #include "utils.hpp"
-#include "algorithm.hpp"
+#include "visualization.hpp"
 
 // #include "spdlog/sinks/stdout_color_sinks.h"
 #include <spdlog/spdlog.h>
@@ -57,7 +60,7 @@ bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, c
         fs.release();
         return true;
     }
-    catch (std::exception& e)
+    catch ( std::exception& e )
     {
         std::cout << e.what() << std::endl;
         return false;
@@ -78,11 +81,10 @@ int main( int argc, char* argv[] )
     // mainLogger->error( "Error" );
 
     std::string configIOFile;
-    if (argc > 1)
-        configIOFile = argv[1];
+    if ( argc > 1 )
+        configIOFile = argv[ 1 ];
     else
         configIOFile = "../config/config.json";
-    
 
     const nlohmann::json& configJson = createConfigParser( configIOFile );
     // std::cout << configJson[ "file_paths" ][ "camera_calibration" ].get< std::string >() << std::endl;
@@ -93,7 +95,7 @@ int main( int argc, char* argv[] )
     cv::Mat cameraMatrix;
     cv::Mat distortionCoeffs;
     bool result = loadCameraIntrinsics( calibrationFile, cameraMatrix, distortionCoeffs );
-    if (result == false)
+    if ( result == false )
     {
         std::cout << "Failed to open the calibration file, check config.json file" << std::endl;
         return EXIT_FAILURE;
@@ -149,17 +151,18 @@ int main( int argc, char* argv[] )
 
     const nlohmann::json& algoJson  = configJson[ "algorithm" ];
     const uint32_t numFeature       = algoJson[ "number_detected_features" ].get< uint32_t >();
-    const int32_t patchSize       = algoJson[ "grid_size_select_features" ].get< int32_t >();
+    const int32_t patchSize         = algoJson[ "grid_size_select_features" ].get< int32_t >();
     const uint16_t patchSizeOptFlow = algoJson[ "patch_size_optical_flow" ].get< uint16_t >();
 
-    FeatureSelection featureSelection(refFrame.m_imagePyramid.getBaseImage());
+    FeatureSelection featureSelection( refFrame.m_imagePyramid.getBaseImage() );
     // std::cout << "Fundamental Matrix: \n" << F << std::endl;
     // Matcher matcher;
 
     auto t1 = std::chrono::high_resolution_clock::now();
     // featureSelection.detectFeaturesSSC( refFrame, numFeature );
     featureSelection.detectFeaturesInGrid( refFrame, patchSize );
-    // visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize, "Feature-Point-In-Grid");
+    // visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize,
+    // "Feature-Point-In-Grid");
 
     Matcher::computeOpticalFlowSparse( refFrame, curFrame, patchSizeOptFlow );
     Matcher::computeEssentialMatrix( refFrame, curFrame, 1.0, E );
@@ -171,7 +174,7 @@ int main( int argc, char* argv[] )
     // std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
     F = curFrame.m_camera->invK().transpose() * E * refFrame.m_camera->invK();
     std::cout << "F: " << F.format( utils::eigenFormat() ) << std::endl;
-    algorithm::recoverPose(E, refFrame, curFrame, R, t);
+    algorithm::recoverPose( E, refFrame, curFrame, R, t );
     std::cout << "R: " << R.format( utils::eigenFormat() ) << std::endl;
     std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
     // std::cout << "E new: " << (R * algorithm::hat(t)).format( utils::eigenFormat() ) << std::endl;
@@ -181,10 +184,32 @@ int main( int argc, char* argv[] )
     // curFrame.m_TransW2F = refFrame.m_TransW2F * Sophus::SE3d( temp.toRotationMatrix(), t );
     // Eigen::MatrixXd pointsRefCamera(3, curFrame.numberObservation());
     // algorithm::pointsRefCamera(refFrame, curFrame, pointsRefCamera);
-    Eigen::VectorXd depthCurFrame(curFrame.numberObservation());
-    algorithm::normalizedDepthRefCamera(refFrame, curFrame, depthCurFrame);
+    const std::size_t numObserves = curFrame.numberObservation();
+    Eigen::MatrixXd pointsWorld( 3, numObserves );
+    Eigen::VectorXd depthCurFrame( numObserves );
+    algorithm::points3DWorld( refFrame, curFrame, pointsWorld );
+    algorithm::normalizedDepthsCurCamera( curFrame, pointsWorld, depthCurFrame );
+
+    const double medianDepth = algorithm::computeMedian( depthCurFrame );
+    std::cout << "Median: " << medianDepth << std::endl;
+    const double scale = 1.0 / medianDepth;
+    std::cout << "translation without scale: " << curFrame.m_TransW2F.translation().transpose() << std::endl;
+    curFrame.m_TransW2F.translation() =
+      -curFrame.m_TransW2F.rotationMatrix() *
+      ( refFrame.cameraInWorld() + scale * ( curFrame.cameraInWorld() - refFrame.cameraInWorld() ) );
+    std::cout << "translation with scale: " << curFrame.m_TransW2F.translation().transpose() << std::endl;
+
+    depthCurFrame *= scale;
+    for ( std::size_t i( 0 ); i < numObserves; i++ )
+    {
+       std::shared_ptr<Point> point = std::make_shared<Point>(pointsWorld.col(i));
+       refFrame.m_frameFeatures[i]->setPoint(point.get());
+       curFrame.m_frameFeatures[i]->setPoint(point.get());
+    }
+    // algorithm::normalizedDepthRefCamera(refFrame, curFrame, depthCurFrame);
     // R = R2;
     // Matcher::findTemplateMatch(refFrame, curFrame, patchSizeOptFlow, 35);
+
     auto t2 = std::chrono::high_resolution_clock::now();
     std::cout << "Elapsed time for SSC: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
               << " ms" << std::endl;
@@ -222,15 +247,16 @@ int main( int argc, char* argv[] )
         //                                 mu + sigma, "Epipolar-Line-Feature-3" );
     }
 
-    visualization::epipolarLinesWithDepth(refFrame, curFrame, depthCurFrame, 150.0, "Epipolar-Lines-Depths");
-    // visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize, "Feature-Point-In-Grid");
+    visualization::epipolarLinesWithDepth( refFrame, curFrame, depthCurFrame, 150.0, "Epipolar-Lines-Depths" );
+    // visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize,
+    // "Feature-Point-In-Grid");
 
     // visualization::epipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, 0.5, 20,
-                                //  "Epipolar-Line-Feature-3" );
+    //  "Epipolar-Line-Feature-3" );
 
     // visualization::featurePointsInBothImages( refFrame, curFrame, "Feature in Both Images" );
     // visualization::featurePointsInBothImagesWithSearchRegion( refFrame, curFrame, patchSizeOptFlow,
-                                                              // "Feature in Both Images" );
+    // "Feature in Both Images" );
 
     // visualization::epipolarLinesWithFundamentalMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), F,
     // "Epipolar-Lines-Right-With-F" );
@@ -260,6 +286,9 @@ int main( int argc, char* argv[] )
 #ifdef EIGEN_USE_BLAS
     std::cout << "EIGEN_USE_BLAS" << std::endl;
 #endif
+    std::cout << "EIGEN_HAS_CXX11_CONTAINERS: "  << EIGEN_HAS_CXX11_CONTAINERS << std::endl;
+    std::cout << "EIGEN_MAX_CPP_VER: "  << EIGEN_MAX_CPP_VER << std::endl;
+    std::cout << "EIGEN_HAS_CXX11_MATH: "  << EIGEN_HAS_CXX11_MATH << std::endl;
     // std::cout << "Number of Threads: " << Eigen::nbThreads( ) << std::endl;
 
     cv::waitKey( 0 );

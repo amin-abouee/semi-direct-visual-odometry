@@ -41,6 +41,8 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Feature& operator=( Feature&& rhs );
     // ~Feature()       = default;
 
+    void setPoint(Point* point);
+
 private:
 };
 

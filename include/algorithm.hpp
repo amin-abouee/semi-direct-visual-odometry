@@ -9,13 +9,23 @@
 
 namespace algorithm
 {
-void pointsRefCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsRefCamera );
+// void pointsRefCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsRefCamera );
 
-void pointsCurCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsCurCamera );
+// void pointsCurCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsCurCamera );
 
-void normalizedDepthRefCamera( const Frame& refFrame, const Frame& curFrame, Eigen::VectorXd& depthRefCamera );
+void points3DWorld( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsWorld );
 
-void normalizedDepthsCurCamera( const Frame& refFrame, const Frame& curFrame, Eigen::VectorXd& depthCurCamera );
+void normalizedDepthRefCamera( const Frame& refFrame,
+                               const Eigen::MatrixXd& pointsWorld,
+                               Eigen::VectorXd& normalizedDepthRefCamera );
+
+void depthRefCamera( const Frame& refFrame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& depthRefCamera );
+
+void normalizedDepthsCurCamera( const Frame& curFrame,
+                                const Eigen::MatrixXd& pointsWorld,
+                                Eigen::VectorXd& normalizedDepthCurCamera );
+
+void depthsCurCamera( const Frame& curFrame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& depthCurCamera );
 
 void triangulatePointHomogenousDLT( const Frame& refFrame,
                                     const Frame& curFrame,
@@ -41,5 +51,9 @@ bool checkCheirality();
 
 Eigen::Matrix3d hat( const Eigen::Vector3d& vec );
 
-}  // namespace Algorithm
+double computeMedian( const Eigen::VectorXd& vec );
+
+// double computeMedianInplace( const Eigen::VectorXd& vec );
+
+}  // namespace algorithm
 #endif /* __ALGORITHM_HPP__ */

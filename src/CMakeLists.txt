@@ -62,6 +62,7 @@ set(LIBRARY_SOURCES
     frame.cpp
     image_pyramid.cpp
     feature.cpp
+    point.cpp
     matcher.cpp
     feature_selection.cpp
     algorithm.cpp
@@ -88,6 +89,11 @@ if(COMPILE_WITH_OFAST)
 endif()
 
 target_compile_options(visual_odometry PRIVATE "$<$<CONFIG:RELEASE>:-march=native>")
+
+# https://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
+target_compile_definitions(visual_odometry PRIVATE -DEIGEN_MAX_CPP_VER=17 )
+# target_compile_definitions(visual_odometry PRIVATE -DEIGEN_DEFAULT_IO_FORMAT="Eigen::IOFormat(10)")
+# target_compile_definitions(visual_odometry PRIVATE -DEIGEN_DEFAULT_DENSE_INDEX_TYPE="int64_t" )
 
 # https://stackoverflow.com/a/31969632/1804533
 target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE})
