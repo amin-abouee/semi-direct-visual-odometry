@@ -22,7 +22,7 @@
 #include "pinhole_camera.hpp"
 
 class Feature;
-class Point;
+// class Point;
 
 class Frame final
 {

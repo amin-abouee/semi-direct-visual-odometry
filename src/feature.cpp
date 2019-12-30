@@ -30,7 +30,8 @@ Feature::Feature( Frame& frame,
 {
 }
 
-void Feature::setPoint(Point* point)
+void Feature::setPoint(std::shared_ptr<Point>& point)
 {
+    // http://www.cplusplus.com/reference/memory/shared_ptr/operator=/
     m_point = point;
 }

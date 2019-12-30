@@ -108,5 +108,6 @@ Eigen::Vector3d Frame::image2camera( const Eigen::Vector2d& point2D, const doubl
 /// compute position of camera in world cordinate C = -R^t * t
 Eigen::Vector3d Frame::cameraInWorld() const
 {
-    return m_TransW2F.inverse().translation();
+    // return m_TransW2F.inverse().translation();
+    return -m_TransW2F.rotationMatrix().transpose() * m_TransW2F.translation();
 }

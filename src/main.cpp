@@ -178,7 +178,11 @@ int main( int argc, char* argv[] )
     std::cout << "R: " << R.format( utils::eigenFormat() ) << std::endl;
     std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
     // std::cout << "E new: " << (R * algorithm::hat(t)).format( utils::eigenFormat() ) << std::endl;
-    // std::cout << "determinant: " << R.determinant() << std::endl;
+    std::cout << "determinant: " << R.determinant() << std::endl;
+    std::cout << "ref C: " << refFrame.cameraInWorld().format( utils::eigenFormat() ) << std::endl;
+    std::cout << "cur C: " << curFrame.cameraInWorld().format( utils::eigenFormat() ) << std::endl;
+    std::cout << "ref w-T: " << refFrame.m_TransW2F.translation().format( utils::eigenFormat() ) << std::endl;
+    std::cout << "cur w-T: " << curFrame.m_TransW2F.translation().format( utils::eigenFormat() ) << std::endl;
 
     // Eigen::AngleAxisd temp( R );  // Re-orthogonality
     // curFrame.m_TransW2F = refFrame.m_TransW2F * Sophus::SE3d( temp.toRotationMatrix(), t );
@@ -188,12 +192,16 @@ int main( int argc, char* argv[] )
     Eigen::MatrixXd pointsWorld( 3, numObserves );
     Eigen::VectorXd depthCurFrame( numObserves );
     algorithm::points3DWorld( refFrame, curFrame, pointsWorld );
-    algorithm::normalizedDepthsCurCamera( curFrame, pointsWorld, depthCurFrame );
+    algorithm::depthsCurCamera( curFrame, pointsWorld, depthCurFrame );
+    // algorithm::normalizedDepthsCurCamera( curFrame, pointsWorld, depthCurFrame );
 
     const double medianDepth = algorithm::computeMedian( depthCurFrame );
     std::cout << "Median: " << medianDepth << std::endl;
     const double scale = 1.0 / medianDepth;
     std::cout << "translation without scale: " << curFrame.m_TransW2F.translation().transpose() << std::endl;
+
+    // C_1 = C_0 + scale * (C_1 - C_0)
+    // t = -R * C_1
     curFrame.m_TransW2F.translation() =
       -curFrame.m_TransW2F.rotationMatrix() *
       ( refFrame.cameraInWorld() + scale * ( curFrame.cameraInWorld() - refFrame.cameraInWorld() ) );
@@ -203,9 +211,18 @@ int main( int argc, char* argv[] )
     for ( std::size_t i( 0 ); i < numObserves; i++ )
     {
        std::shared_ptr<Point> point = std::make_shared<Point>(pointsWorld.col(i));
-       refFrame.m_frameFeatures[i]->setPoint(point.get());
-       curFrame.m_frameFeatures[i]->setPoint(point.get());
+    //    std::cout << "3D points: " << point->m_position.format(utils::eigenFormat()) << std::endl;
+       refFrame.m_frameFeatures[i]->setPoint(point);
+       curFrame.m_frameFeatures[i]->setPoint(point);
+    //    std::cout << "ref points: " << refFrame.m_frameFeatures[i]->m_point->m_position.format(utils::eigenFormat()) << std::endl;
+    //    std::cout << "cur points: " << refFrame.m_frameFeatures[i]->m_point->m_position.format(utils::eigenFormat()) << std::endl;
     }
+
+    // for ( std::size_t i( 0 ); i < numObserves; i++ )
+    // {
+    //     std::cout << "ref points 3D: " << refFrame.m_frameFeatures[i]->m_point->m_position.format(utils::eigenFormat()) << std::endl;
+    //     std::cout << "cur points 3D: " << curFrame.m_frameFeatures[i]->m_point->m_position.format(utils::eigenFormat()) << std::endl;
+    // }
     // algorithm::normalizedDepthRefCamera(refFrame, curFrame, depthCurFrame);
     // R = R2;
     // Matcher::findTemplateMatch(refFrame, curFrame, patchSizeOptFlow, 35);
@@ -262,8 +279,8 @@ int main( int argc, char* argv[] )
     // "Epipolar-Lines-Right-With-F" );
     // visualization::epipolarLinesWithEssentialMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), E,
     //  "Epipolar-Lines-Right-With-E" );
-    visualization::epipolarLinesWithPointsWithFundamentalMatrix( refFrame, curFrame, F,
-                                                                 "Epipolar-Lines-with-Points-in-Right" );
+    // visualization::epipolarLinesWithPointsWithFundamentalMatrix( refFrame, curFrame, F,
+                                                                //  "Epipolar-Lines-with-Points-in-Right" );
     // visualization::grayImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude" );
     // visualization::HSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
     // visualization::HSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );

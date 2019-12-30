@@ -72,8 +72,6 @@ void algorithm::normalizedDepthRefCamera( const Frame& refFrame,
                                           Eigen::VectorXd& normalizedDepthRefCamera )
 {
     const auto featureSz = refFrame.numberObservation();
-    // Eigen::MatrixXd pointsWorld( 3, featureSz );
-    // algorithm::points3DWorld( refFrame, curFrame, pointsWorld );
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
         const auto pointRefCamera     = refFrame.world2camera( pointsWorld.col( i ) );
@@ -86,8 +84,6 @@ void algorithm::depthRefCamera( const Frame& refFrame,
                                 Eigen::VectorXd& depthRefCamera )
 {
     const auto featureSz = refFrame.numberObservation();
-    // Eigen::MatrixXd pointsWorld( 3, featureSz );
-    // algorithm::points3DWorld( refFrame, curFrame, pointsWorld );
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
         const auto pointRefCamera = refFrame.world2camera( pointsWorld.col( i ) );
@@ -100,8 +96,6 @@ void algorithm::normalizedDepthsCurCamera( const Frame& curFrame,
                                            Eigen::VectorXd& normalizedDepthCurCamera )
 {
     const auto featureSz = curFrame.numberObservation();
-    // Eigen::MatrixXd pointsWorld( 3, featureSz );
-    // algorithm::points3DWorld( refFrame, curFrame, pointsWorld );
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
         const auto pointCurCamera     = curFrame.world2camera( pointsWorld.col( i ) );
@@ -114,8 +108,6 @@ void algorithm::depthsCurCamera( const Frame& curFrame,
                                  Eigen::VectorXd& depthCurCamera )
 {
     const auto featureSz = curFrame.numberObservation();
-    // Eigen::MatrixXd pointsWorld( 3, featureSz );
-    // algorithm::points3DWorld( refFrame, curFrame, pointsWorld );
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
         const auto pointCurCamera = curFrame.world2camera( pointsWorld.col( i ) );
@@ -294,10 +286,16 @@ void algorithm::recoverPose(
     }
 }
 
-bool algorithm::checkCheirality()
+Sophus::SE3d computeRelativePose (const Frame& refFrame, const Frame& curFrame)
 {
-    return true;
+    // T_K-1_K = T_K-1_W * T_W_K 
+    return refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
 }
+
+// bool algorithm::checkCheirality()
+// {
+//     return true;
+// }
 
 Eigen::Matrix3d algorithm::hat( const Eigen::Vector3d& vec )
 {

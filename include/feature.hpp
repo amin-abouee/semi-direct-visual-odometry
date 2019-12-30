@@ -3,11 +3,14 @@
 
 #include <functional>
 #include <iostream>
+#include <memory>
 
 #include <Eigen/Core>
 #include <iostream>
+#include <memory>
 
 #include "frame.hpp"
+#include "point.hpp"
 
 class Feature final
 {
@@ -27,7 +30,7 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     uint8_t m_level;
     double m_gradientOrientation;
     double m_gradientMagnitude;
-    Point* m_point;
+    std::shared_ptr<Point> m_point;
 
     explicit Feature( Frame& frame, const Eigen::Vector2d& feature, const uint8_t level );
     explicit Feature( Frame& frame,
@@ -41,7 +44,7 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Feature& operator=( Feature&& rhs );
     // ~Feature()       = default;
 
-    void setPoint(Point* point);
+    void setPoint(std::shared_ptr<Point>& point);
 
 private:
 };

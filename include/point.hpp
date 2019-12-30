@@ -22,7 +22,7 @@ public:
 
     static uint32_t m_pointCounter;
     uint32_t m_id;
-    Eigen::Vector3d m_point;
+    Eigen::Vector3d m_position;
     Eigen::Vector3d m_normal;
     Eigen::Matrix3d m_normalCov;
     bool isNormalEstimated;

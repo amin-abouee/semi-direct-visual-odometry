@@ -47,7 +47,7 @@ void decomposeEssentialMatrix( const Eigen::Matrix3d& E, Eigen::Matrix3d& R1, Ei
 void recoverPose(
   const Eigen::Matrix3d& E, const Frame& refFrame, Frame& curFrame, Eigen::Matrix3d& R, Eigen::Vector3d& t );
 
-bool checkCheirality();
+Sophus::SE3d computeRelativePose (const Frame& refFrame, const Frame& curFrame);
 
 Eigen::Matrix3d hat( const Eigen::Vector3d& vec );
 
