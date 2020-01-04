@@ -67,53 +67,102 @@ void algorithm::points3DWorld( const Frame& refFrame, const Frame& curFrame, Eig
     }
 }
 
-void algorithm::normalizedDepthRefCamera( const Frame& refFrame,
+void algorithm::transferPointsWorldToCam( const Frame& frame,
                                           const Eigen::MatrixXd& pointsWorld,
-                                          Eigen::VectorXd& normalizedDepthRefCamera )
+                                          Eigen::MatrixXd& pointsCamera )
 {
-    const auto featureSz = refFrame.numberObservation();
+    const auto featureSz = frame.numberObservation();
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
-        const auto pointRefCamera     = refFrame.world2camera( pointsWorld.col( i ) );
-        normalizedDepthRefCamera( i ) = pointRefCamera.norm();
+        pointsCamera.col( i ) = frame.world2camera( pointsWorld.col( i ) );
     }
 }
 
-void algorithm::depthRefCamera( const Frame& refFrame,
+void algorithm::transferPointsCamToWorld( const Frame& frame,
+                                          const Eigen::MatrixXd& pointsCamera,
+                                          Eigen::MatrixXd& pointsWorld )
+{
+    const auto featureSz = frame.numberObservation();
+    for ( std::size_t i( 0 ); i < featureSz; i++ )
+    {
+        pointsWorld.col( i ) = frame.camera2world( pointsCamera.col( i ) );
+    }
+}
+
+void algorithm::normalizedDepthCamera( const Frame& frame,
+                                          const Eigen::MatrixXd& pointsWorld,
+                                          Eigen::VectorXd& normalizedDepthCamera )
+{
+    const auto featureSz = frame.numberObservation();
+    for ( std::size_t i( 0 ); i < featureSz; i++ )
+    {
+        normalizedDepthCamera( i )     = frame.world2camera( pointsWorld.col( i ) ).norm();
+    }
+}
+
+void algorithm::depthCamera( const Frame& frame,
                                 const Eigen::MatrixXd& pointsWorld,
-                                Eigen::VectorXd& depthRefCamera )
+                                Eigen::VectorXd& depthCamera )
 {
-    const auto featureSz = refFrame.numberObservation();
+    const auto featureSz = frame.numberObservation();
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
-        const auto pointRefCamera = refFrame.world2camera( pointsWorld.col( i ) );
-        depthRefCamera( i )       = pointRefCamera.z();
+        depthCamera( i ) = frame.world2camera( pointsWorld.col( i ) ).z();
     }
 }
 
-void algorithm::normalizedDepthsCurCamera( const Frame& curFrame,
-                                           const Eigen::MatrixXd& pointsWorld,
-                                           Eigen::VectorXd& normalizedDepthCurCamera )
-{
-    const auto featureSz = curFrame.numberObservation();
-    for ( std::size_t i( 0 ); i < featureSz; i++ )
-    {
-        const auto pointCurCamera     = curFrame.world2camera( pointsWorld.col( i ) );
-        normalizedDepthCurCamera( i ) = pointCurCamera.norm();
-    }
-}
+// void algorithm::transferPointsCurCamera( const Frame& curFrame,
+//                                          const Eigen::MatrixXd& pointsWorld,
+//                                          Eigen::MatrixXd& pointsCurCamera )
+// {
+//     const auto featureSz = curFrame.numberObservation();
+//     for ( std::size_t i( 0 ); i < featureSz; i++ )
+//     {
+//         pointsCurCamera.col( i ) = curFrame.world2camera( pointsWorld.col( i ) );
+//     }
+//     // pointsCurCamera = curFrame.m_TransW2F * pointsWorld;
+//     // std::cout << "pose: " << curFrame.m_TransW2F.translation() << std::endl;
+//     // for(int i(0); i< pointsCurCamera.cols(); i++)
+//     // {
+//     //     std::cout << "world pos: " << pointsWorld.col(i).transpose() << ", cur pos: " <<
+//     //     pointsCurCamera.col(i).transpose() << std::endl;
+//     // }
+// }
 
-void algorithm::depthsCurCamera( const Frame& curFrame,
-                                 const Eigen::MatrixXd& pointsWorld,
-                                 Eigen::VectorXd& depthCurCamera )
-{
-    const auto featureSz = curFrame.numberObservation();
-    for ( std::size_t i( 0 ); i < featureSz; i++ )
-    {
-        const auto pointCurCamera = curFrame.world2camera( pointsWorld.col( i ) );
-        depthCurCamera( i )       = pointCurCamera.z();
-    }
-}
+// void algorithm::transferPointsCurToWorld( const Frame& curFrame,
+//                                           const Eigen::MatrixXd& pointsCurCamera,
+//                                           Eigen::MatrixXd& pointsWorld )
+// {
+//     const auto featureSz = curFrame.numberObservation();
+//     for ( std::size_t i( 0 ); i < featureSz; i++ )
+//     {
+//         pointsWorld.col( i ) = curFrame.camera2world( pointsCurCamera.col( i ) );
+//     }
+// }
+
+// void algorithm::normalizedDepthsCurCamera( const Frame& curFrame,
+//                                            const Eigen::MatrixXd& pointsWorld,
+//                                            Eigen::VectorXd& normalizedDepthCurCamera )
+// {
+//     const auto featureSz = curFrame.numberObservation();
+//     for ( std::size_t i( 0 ); i < featureSz; i++ )
+//     {
+//         const auto pointCurCamera     = curFrame.world2camera( pointsWorld.col( i ) );
+//         normalizedDepthCurCamera( i ) = pointCurCamera.norm();
+//     }
+// }
+
+// void algorithm::depthsCurCamera( const Frame& curFrame,
+//                                  const Eigen::MatrixXd& pointsWorld,
+//                                  Eigen::VectorXd& depthCurCamera )
+// {
+//     const auto featureSz = curFrame.numberObservation();
+//     for ( std::size_t i( 0 ); i < featureSz; i++ )
+//     {
+//         const auto pointCurCamera = curFrame.world2camera( pointsWorld.col( i ) );
+//         depthCurCamera( i )       = pointCurCamera.z();
+//     }
+// }
 
 void algorithm::triangulatePointHomogenousDLT( const Frame& refFrame,
                                                const Frame& curFrame,
@@ -286,9 +335,9 @@ void algorithm::recoverPose(
     }
 }
 
-Sophus::SE3d computeRelativePose (const Frame& refFrame, const Frame& curFrame)
+Sophus::SE3d computeRelativePose( const Frame& refFrame, const Frame& curFrame )
 {
-    // T_K-1_K = T_K-1_W * T_W_K 
+    // T_K-1_K = T_K-1_W * T_W_K
     return refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
 }
 

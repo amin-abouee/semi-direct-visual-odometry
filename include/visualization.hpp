@@ -103,6 +103,12 @@ void epipolarLinesWithDepth( const Frame& refFrame,
                              const double sigma,
                              const std::string& windowsName );
 
+void epipolarLinesWithPoints( const Frame& refFrame,
+                             const Frame& curFrame,
+                             const Eigen::MatrixXd& points,
+                             const double sigma,
+                             const std::string& windowsName );
+
 /// draw all epipolar lines with fundamental matrix
 void epipolarLinesWithFundamentalMatrix( const Frame& frame,
                                          const cv::Mat& currentImg,

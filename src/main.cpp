@@ -179,10 +179,10 @@ int main( int argc, char* argv[] )
     std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
     // std::cout << "E new: " << (R * algorithm::hat(t)).format( utils::eigenFormat() ) << std::endl;
     std::cout << "determinant: " << R.determinant() << std::endl;
-    std::cout << "ref C: " << refFrame.cameraInWorld().format( utils::eigenFormat() ) << std::endl;
-    std::cout << "cur C: " << curFrame.cameraInWorld().format( utils::eigenFormat() ) << std::endl;
-    std::cout << "ref w-T: " << refFrame.m_TransW2F.translation().format( utils::eigenFormat() ) << std::endl;
-    std::cout << "cur w-T: " << curFrame.m_TransW2F.translation().format( utils::eigenFormat() ) << std::endl;
+    // std::cout << "ref C: " << refFrame.cameraInWorld().format( utils::eigenFormat() ) << std::endl;
+    // std::cout << "cur C: " << curFrame.cameraInWorld().format( utils::eigenFormat() ) << std::endl;
+    // std::cout << "ref w-T: " << refFrame.m_TransW2F.translation().format( utils::eigenFormat() ) << std::endl;
+    // std::cout << "cur w-T: " << curFrame.m_TransW2F.translation().format( utils::eigenFormat() ) << std::endl;
 
     // Eigen::AngleAxisd temp( R );  // Re-orthogonality
     // curFrame.m_TransW2F = refFrame.m_TransW2F * Sophus::SE3d( temp.toRotationMatrix(), t );
@@ -190,12 +190,23 @@ int main( int argc, char* argv[] )
     // algorithm::pointsRefCamera(refFrame, curFrame, pointsRefCamera);
     const std::size_t numObserves = curFrame.numberObservation();
     Eigen::MatrixXd pointsWorld( 3, numObserves );
+    Eigen::MatrixXd pointsCurCamera( 3, numObserves );
     Eigen::VectorXd depthCurFrame( numObserves );
     algorithm::points3DWorld( refFrame, curFrame, pointsWorld );
-    algorithm::depthsCurCamera( curFrame, pointsWorld, depthCurFrame );
+    algorithm::transferPointsWorldToCam( curFrame, pointsWorld, pointsCurCamera );
+    algorithm::depthCamera( curFrame, pointsWorld, depthCurFrame );
+
+    // for(int i(0); i< numObserves; i++)
+    // {
+    //     std::cout << "world pos: " << pointsWorld.col(i).transpose() << ", cur pos: " <<
+    //     pointsCurCamera.col(i).transpose() << std::endl;
+    // }
+    // visualization::epipolarLinesWithDepth( refFrame, curFrame, depthCurFrame, 150.0, "Epipolar-Lines-Depths-first" );
+    // visualization::epipolarLinesWithPoints( refFrame, curFrame, pointsWorld, 15.0, "Epipolar-Lines-Depths-first" );
     // algorithm::normalizedDepthsCurCamera( curFrame, pointsWorld, depthCurFrame );
 
     const double medianDepth = algorithm::computeMedian( depthCurFrame );
+    // std::cout << "Mean: " << depthCurFrame.mean() << std::endl;
     std::cout << "Median: " << medianDepth << std::endl;
     const double scale = 1.0 / medianDepth;
     std::cout << "translation without scale: " << curFrame.m_TransW2F.translation().transpose() << std::endl;
@@ -207,29 +218,58 @@ int main( int argc, char* argv[] )
       ( refFrame.cameraInWorld() + scale * ( curFrame.cameraInWorld() - refFrame.cameraInWorld() ) );
     std::cout << "translation with scale: " << curFrame.m_TransW2F.translation().transpose() << std::endl;
 
-    depthCurFrame *= scale;
+    // std::cout << "Before scaling depth 0: " << depthCurFrame(0) << std::endl;
+    // depthCurFrame *= scale;
+    // std::cout << "After scaling depth 0: " << depthCurFrame(0) << std::endl;
+
+    pointsCurCamera *= scale;
+    algorithm::transferPointsCamToWorld( curFrame, pointsCurCamera, pointsWorld );
+    uint32_t cnt = 0;
     for ( std::size_t i( 0 ); i < numObserves; i++ )
     {
-       std::shared_ptr<Point> point = std::make_shared<Point>(pointsWorld.col(i));
-    //    std::cout << "3D points: " << point->m_position.format(utils::eigenFormat()) << std::endl;
-       refFrame.m_frameFeatures[i]->setPoint(point);
-       curFrame.m_frameFeatures[i]->setPoint(point);
-    //    std::cout << "ref points: " << refFrame.m_frameFeatures[i]->m_point->m_position.format(utils::eigenFormat()) << std::endl;
-    //    std::cout << "cur points: " << refFrame.m_frameFeatures[i]->m_point->m_position.format(utils::eigenFormat()) << std::endl;
+        const Eigen::Vector2d refFeature = refFrame.m_frameFeatures[ i ]->m_feature;
+        const Eigen::Vector2d curFeature = curFrame.m_frameFeatures[ i ]->m_feature;
+        if ( refFrame.m_camera->isInFrame( refFeature, 5.0 ) == true &&
+             curFrame.m_camera->isInFrame( curFeature, 5.0 ) == true && pointsCurCamera.col( i ).z() > 0 )
+        {
+            std::shared_ptr< Point > point = std::make_shared< Point >( pointsWorld.col( i ) );
+            //    std::cout << "3D points: " << point->m_position.format(utils::eigenFormat()) << std::endl;
+            refFrame.m_frameFeatures[ i ]->setPoint( point );
+            curFrame.m_frameFeatures[ i ]->setPoint( point );
+            cnt++;
+        }
+        //    std::cout << "ref points: " <<
+        //    refFrame.m_frameFeatures[i]->m_point->m_position.format(utils::eigenFormat()) << std::endl; std::cout <<
+        //    "cur points: " << refFrame.m_frameFeatures[i]->m_point->m_position.format(utils::eigenFormat()) <<
+        //    std::endl;
     }
+    refFrame.m_frameFeatures.erase( std::remove_if( refFrame.m_frameFeatures.begin(), refFrame.m_frameFeatures.end(),
+                                                    []( const auto& feature ) { return feature->m_point == nullptr; } ),
+                                    refFrame.m_frameFeatures.end() );
+
+    curFrame.m_frameFeatures.erase( std::remove_if( curFrame.m_frameFeatures.begin(), curFrame.m_frameFeatures.end(),
+                                                    []( const auto& feature ) { return feature->m_point == nullptr; } ),
+                                    curFrame.m_frameFeatures.end() );
+
+    std::cout << "Points: " << pointsWorld.cols() << " cnt: " << cnt << " num ref observes: " << refFrame.numberObservation()
+              << " num cur observes: " << curFrame.numberObservation() << std::endl;
+    // algorithm::transferPointsCurToWorld(curFrame, pointsCurCamera, pointsWorld);
 
     // for ( std::size_t i( 0 ); i < numObserves; i++ )
     // {
-    //     std::cout << "ref points 3D: " << refFrame.m_frameFeatures[i]->m_point->m_position.format(utils::eigenFormat()) << std::endl;
-    //     std::cout << "cur points 3D: " << curFrame.m_frameFeatures[i]->m_point->m_position.format(utils::eigenFormat()) << std::endl;
+    //     std::cout << "ref points 3D: " <<
+    //     refFrame.m_frameFeatures[i]->m_point->m_position.format(utils::eigenFormat()) << std::endl; std::cout << "cur
+    //     points 3D: " << curFrame.m_frameFeatures[i]->m_point->m_position.format(utils::eigenFormat()) << std::endl;
     // }
     // algorithm::normalizedDepthRefCamera(refFrame, curFrame, depthCurFrame);
     // R = R2;
     // Matcher::findTemplateMatch(refFrame, curFrame, patchSizeOptFlow, 35);
 
     auto t2 = std::chrono::high_resolution_clock::now();
-    std::cout << "Elapsed time for SSC: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
-              << " ms" << std::endl;
+    std::cout << "Elapsed time for matching: "
+              << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count() << " ms" << std::endl;
+
+    curFrame.setKeyframe();
 
     // matcher.findTemplateMatch(refFrame, curFrame, 5, 99);
     // visualization visualize;
@@ -264,7 +304,7 @@ int main( int argc, char* argv[] )
         //                                 mu + sigma, "Epipolar-Line-Feature-3" );
     }
 
-    visualization::epipolarLinesWithDepth( refFrame, curFrame, depthCurFrame, 150.0, "Epipolar-Lines-Depths" );
+    visualization::epipolarLinesWithPoints( refFrame, curFrame, pointsWorld, 150.0, "Epipolar-Lines-Depths" );
     // visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize,
     // "Feature-Point-In-Grid");
 
@@ -280,7 +320,7 @@ int main( int argc, char* argv[] )
     // visualization::epipolarLinesWithEssentialMatrix( refFrame, curFrame.m_imagePyramid.getBaseImage(), E,
     //  "Epipolar-Lines-Right-With-E" );
     // visualization::epipolarLinesWithPointsWithFundamentalMatrix( refFrame, curFrame, F,
-                                                                //  "Epipolar-Lines-with-Points-in-Right" );
+    //  "Epipolar-Lines-with-Points-in-Right" );
     // visualization::grayImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude" );
     // visualization::HSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
     // visualization::HSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
@@ -303,9 +343,9 @@ int main( int argc, char* argv[] )
 #ifdef EIGEN_USE_BLAS
     std::cout << "EIGEN_USE_BLAS" << std::endl;
 #endif
-    std::cout << "EIGEN_HAS_CXX11_CONTAINERS: "  << EIGEN_HAS_CXX11_CONTAINERS << std::endl;
-    std::cout << "EIGEN_MAX_CPP_VER: "  << EIGEN_MAX_CPP_VER << std::endl;
-    std::cout << "EIGEN_HAS_CXX11_MATH: "  << EIGEN_HAS_CXX11_MATH << std::endl;
+    std::cout << "EIGEN_HAS_CXX11_CONTAINERS: " << EIGEN_HAS_CXX11_CONTAINERS << std::endl;
+    std::cout << "EIGEN_MAX_CPP_VER: " << EIGEN_MAX_CPP_VER << std::endl;
+    std::cout << "EIGEN_HAS_CXX11_MATH: " << EIGEN_HAS_CXX11_MATH << std::endl;
     // std::cout << "Number of Threads: " << Eigen::nbThreads( ) << std::endl;
 
     cv::waitKey( 0 );

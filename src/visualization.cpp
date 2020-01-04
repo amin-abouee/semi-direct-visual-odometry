@@ -315,13 +315,13 @@ void visualization::epipolarLinesWithDepth( const Frame& refFrame,
         minDepth                  = depths( i ) - sigma;
         maxDepth                  = depths( i ) + sigma;
         // std::cout << "T_Pre2Cur: " << T_Pre2Cur.params().transpose() << std::endl;
-        Eigen::Vector2d pointMin = curFrame.camera2image( T_Pre2Cur * ( normalizedVec * minDepth ) );
-        Eigen::Vector2d pointMax = curFrame.camera2image( T_Pre2Cur * ( normalizedVec * maxDepth ) );
+        Eigen::Vector2d pointMin = curFrame.camera2image( normalizedVec * minDepth );
+        Eigen::Vector2d pointMax = curFrame.camera2image( normalizedVec * maxDepth );
         // std::cout << "Position point 1: " << pointMin.transpose() << std::endl;
         // std::cout << "Position point 2: " << pointMax.transpose() << std::endl;
         // cv::line( curImgBGR, cv::Point2d( pointMin.x(), pointMin.y() ), cv::Point2d( pointMax.x(), pointMax.y() ),
         //   colors.at( "amber" ) );
-        const Eigen::Vector2d pointCenter = curFrame.camera2image( T_Pre2Cur * ( normalizedVec * depths( i ) ) );
+        const Eigen::Vector2d pointCenter = curFrame.camera2image( normalizedVec * depths( i ) );
         cv::circle( curImgBGR, cv::Point2d( pointCenter.x(), pointCenter.y() ), 5.0, colors.at( "orange" ) );
 
         pointMin.x() = pointCenter.x() - sigma;
@@ -331,6 +331,74 @@ void visualization::epipolarLinesWithDepth( const Frame& refFrame,
         pointMax.y() = (line(0) * pointMax.x() + line(2))/(-line(1));
         cv::line( curImgBGR, cv::Point2d( pointMin.x(), pointMin.y() ), cv::Point2d( pointMax.x(), pointMax.y() ),
           colors.at( "amber" ) );
+
+        const auto& curFeature = curFrame.m_frameFeatures[ i ]->m_feature;
+        cv::circle( curImgBGR, cv::Point2d( curFeature.x(), curFeature.y() ), 8.0, colors.at( "blue" ) );
+        // std::cout << "idx: " << i << ", Pt ref: " << refFrame.m_frameFeatures[ i ]->m_feature.transpose()
+                //   << ", error: " << ( pointCenter - feature ).norm() << ", depth: " << depths( i ) << std::endl;
+        // const Eigen::Vector2d C      = curFrame.world2image(curFrame.cameraInWorld());
+    }
+    cv::circle( curImgBGR, cv::Point2d( C.x(), C.y() ), 8.0, colors.at( "red" ) );
+
+    cv::Mat stickImages;
+    cv::hconcat( refImgBGR, curImgBGR, stickImages );
+    cv::imshow( windowsName, stickImages );
+}
+
+
+void visualization::epipolarLinesWithPoints( const Frame& refFrame,
+                             const Frame& curFrame,
+                             const Eigen::MatrixXd& points,
+                             const double sigma,
+                             const std::string& windowsName )
+{
+    cv::Mat refImgBGR;
+    cv::cvtColor( refFrame.m_imagePyramid.getBaseImage(), refImgBGR, cv::COLOR_GRAY2BGR );
+    cv::Mat curImgBGR;
+    cv::cvtColor( curFrame.m_imagePyramid.getBaseImage(), curImgBGR, cv::COLOR_GRAY2BGR );
+    // const Sophus::SE3d T_Pre2Cur = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
+    // const Eigen::Matrix3d E = T_Pre2Cur.rotationMatrix() * algorithm::hat(T_Pre2Cur.translation());
+    // std::cout << "E matrix: " << E.format( utils::eigenFormat() ) << std::endl;
+    // const Eigen::Matrix3d F = refFrame.m_camera->invK().transpose() * E * curFrame.m_camera->invK();
+    // std::cout << "F matrix: " << F.format( utils::eigenFormat() ) << std::endl;
+    double minDepth              = 0.0;
+    double maxDepth              = 0.0;
+    const Eigen::Vector2d C = curFrame.camera2image( curFrame.cameraInWorld() );
+
+    auto szPoints = refFrame.numberObservation();
+    for ( std::size_t i( 0 ); i < szPoints; i++ )
+    {
+        const auto& reFeature = refFrame.m_frameFeatures[ i ]->m_feature;
+        cv::circle( refImgBGR, cv::Point2d( reFeature.x(), reFeature.y() ), 5.0, colors.at( "pink" ) );
+
+        // Eigen::Vector3d line = F * Eigen::Vector3d( reFeature.x(), reFeature.y(), 1.0 );
+        // double nu            = line( 0 ) * line( 0 ) + line( 1 ) * line( 1 );
+        // nu                   = 1 / std::sqrt( nu );
+        // line *= nu;
+
+        // const auto& normalizedVec = refFrame.m_frameFeatures[ i ]->m_bearingVec;
+        const auto& point = refFrame.m_frameFeatures[i]->m_point->m_position;
+        // std::cout << "idx " << i << ", pos: " << point.transpose() << std::endl;
+        // const double curDepth = point.z();
+        // minDepth                  = curDepth - sigma;
+        // maxDepth                  = curDepth + sigma;
+        // std::cout << "T_Pre2Cur: " << T_Pre2Cur.params().transpose() << std::endl;
+        // Eigen::Vector2d pointMin = curFrame.camera2image( normalizedVec * minDepth );
+        // Eigen::Vector2d pointMax = curFrame.camera2image( normalizedVec * maxDepth );
+        // std::cout << "Position point 1: " << pointMin.transpose() << std::endl;
+        // std::cout << "Position point 2: " << pointMax.transpose() << std::endl;
+        // cv::line( curImgBGR, cv::Point2d( pointMin.x(), pointMin.y() ), cv::Point2d( pointMax.x(), pointMax.y() ),
+        //   colors.at( "amber" ) );
+        const Eigen::Vector2d pointCenter = curFrame.world2image( point );
+        cv::circle( curImgBGR, cv::Point2d( pointCenter.x(), pointCenter.y() ), 5.0, colors.at( "orange" ) );
+
+        // pointMin.x() = pointCenter.x() - sigma;
+        // pointMin.y() = (line(0) * pointMin.x() + line(2))/(-line(1));
+
+        // pointMax.x() = pointCenter.x() + sigma;
+        // pointMax.y() = (line(0) * pointMax.x() + line(2))/(-line(1));
+        // cv::line( curImgBGR, cv::Point2d( pointMin.x(), pointMin.y() ), cv::Point2d( pointMax.x(), pointMax.y() ),
+        //   colors.at( "amber" ) );
 
         const auto& curFeature = curFrame.m_frameFeatures[ i ]->m_feature;
         cv::circle( curImgBGR, cv::Point2d( curFeature.x(), curFeature.y() ), 8.0, colors.at( "blue" ) );

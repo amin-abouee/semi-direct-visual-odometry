@@ -15,17 +15,34 @@ namespace algorithm
 
 void points3DWorld( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsWorld );
 
-void normalizedDepthRefCamera( const Frame& refFrame,
+void transferPointsWorldToCam( const Frame& frame,
                                const Eigen::MatrixXd& pointsWorld,
-                               Eigen::VectorXd& normalizedDepthRefCamera );
+                               Eigen::MatrixXd& pointsCamera );
 
-void depthRefCamera( const Frame& refFrame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& depthRefCamera );
+void transferPointsCamToWorld( const Frame& frame,
+                               const Eigen::MatrixXd& pointsCamera,
+                               Eigen::MatrixXd&  pointsWorld);
 
-void normalizedDepthsCurCamera( const Frame& curFrame,
-                                const Eigen::MatrixXd& pointsWorld,
-                                Eigen::VectorXd& normalizedDepthCurCamera );
+void normalizedDepthCamera( const Frame& frame,
+                               const Eigen::MatrixXd& pointsWorld,
+                               Eigen::VectorXd& normalizedDepthCamera );
 
-void depthsCurCamera( const Frame& curFrame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& depthCurCamera );
+void depthCamera( const Frame& frame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& depthCamera );
+
+
+// void transferPointsCurCamera( const Frame& curFrame,
+//                                const Eigen::MatrixXd& pointsWorld,
+//                                Eigen::MatrixXd& pointsCurCamera );
+
+// void transferPointsCurToWorld( const Frame& curFrame,
+//                                const Eigen::MatrixXd& pointsCurCamera,
+//                                Eigen::MatrixXd&  pointsWorld);
+
+// void normalizedDepthsCurCamera( const Frame& curFrame,
+//                                 const Eigen::MatrixXd& pointsWorld,
+//                                 Eigen::VectorXd& normalizedDepthCurCamera );
+
+// void depthsCurCamera( const Frame& curFrame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& depthCurCamera );
 
 void triangulatePointHomogenousDLT( const Frame& refFrame,
                                     const Frame& curFrame,
