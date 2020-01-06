@@ -11,9 +11,7 @@
 class ImageAlignment
 {
 public:
-    explicit ImageAlignment( uint32_t halfPatchSize,
-                             uint32_t patchSize,
-                             uint32_t patchArea,
+    explicit ImageAlignment( uint32_t patchSize,
                              uint32_t minLevel,
                              uint32_t maxLevel );
     ImageAlignment( const ImageAlignment& rhs );

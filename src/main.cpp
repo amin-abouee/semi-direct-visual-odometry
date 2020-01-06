@@ -280,7 +280,7 @@ int main( int argc, char* argv[] )
 
     const cv::Mat newImg = cv::imread( "../input/0000000002.png", cv::IMREAD_GRAYSCALE );
     Frame newFrame( camera, newImg );
-    ImageAlignment aligner(2, 5, 25, 0, 4);
+    ImageAlignment aligner(5, 0, 4);
     aligner.solve(curFrame, newFrame);
 
 
