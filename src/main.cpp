@@ -22,6 +22,7 @@
 #include "point.hpp"
 #include "utils.hpp"
 #include "visualization.hpp"
+#include "image_alignment.hpp"
 
 // #include "spdlog/sinks/stdout_color_sinks.h"
 #include <spdlog/spdlog.h>
@@ -188,7 +189,7 @@ int main( int argc, char* argv[] )
     // curFrame.m_TransW2F = refFrame.m_TransW2F * Sophus::SE3d( temp.toRotationMatrix(), t );
     // Eigen::MatrixXd pointsRefCamera(3, curFrame.numberObservation());
     // algorithm::pointsRefCamera(refFrame, curFrame, pointsRefCamera);
-    const std::size_t numObserves = curFrame.numberObservation();
+    std::size_t numObserves = curFrame.numberObservation();
     Eigen::MatrixXd pointsWorld( 3, numObserves );
     Eigen::MatrixXd pointsCurCamera( 3, numObserves );
     Eigen::VectorXd depthCurFrame( numObserves );
@@ -205,7 +206,7 @@ int main( int argc, char* argv[] )
     // visualization::epipolarLinesWithPoints( refFrame, curFrame, pointsWorld, 15.0, "Epipolar-Lines-Depths-first" );
     // algorithm::normalizedDepthsCurCamera( curFrame, pointsWorld, depthCurFrame );
 
-    const double medianDepth = algorithm::computeMedian( depthCurFrame );
+    double medianDepth = algorithm::computeMedian( depthCurFrame );
     // std::cout << "Mean: " << depthCurFrame.mean() << std::endl;
     std::cout << "Median: " << medianDepth << std::endl;
     const double scale = 1.0 / medianDepth;
@@ -269,7 +270,19 @@ int main( int argc, char* argv[] )
     std::cout << "Elapsed time for matching: "
               << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count() << " ms" << std::endl;
 
+    numObserves = refFrame.numberObservation();
+    Eigen::VectorXd newCurDepths(numObserves);
+    algorithm::depthCamera(curFrame, newCurDepths);
+    medianDepth = algorithm::computeMedian( newCurDepths );
+    const double minDepth = newCurDepths.minCoeff();
+    std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
     curFrame.setKeyframe();
+
+    const cv::Mat newImg = cv::imread( "../input/0000000002.png", cv::IMREAD_GRAYSCALE );
+    Frame newFrame( camera, newImg );
+    ImageAlignment aligner(2, 5, 25, 0, 4);
+    aligner.solve(curFrame, newFrame);
+
 
     // matcher.findTemplateMatch(refFrame, curFrame, 5, 99);
     // visualization visualize;

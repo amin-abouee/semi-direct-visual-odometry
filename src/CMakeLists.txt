@@ -63,6 +63,7 @@ set(LIBRARY_SOURCES
     image_pyramid.cpp
     feature.cpp
     point.cpp
+    image_alignment.cpp
     matcher.cpp
     feature_selection.cpp
     algorithm.cpp

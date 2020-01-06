@@ -15,34 +15,19 @@ namespace algorithm
 
 void points3DWorld( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsWorld );
 
-void transferPointsWorldToCam( const Frame& frame,
-                               const Eigen::MatrixXd& pointsWorld,
-                               Eigen::MatrixXd& pointsCamera );
+void transferPointsWorldToCam( const Frame& frame, const Eigen::MatrixXd& pointsWorld, Eigen::MatrixXd& pointsCamera );
 
-void transferPointsCamToWorld( const Frame& frame,
-                               const Eigen::MatrixXd& pointsCamera,
-                               Eigen::MatrixXd&  pointsWorld);
+void transferPointsCamToWorld( const Frame& frame, const Eigen::MatrixXd& pointsCamera, Eigen::MatrixXd& pointsWorld );
 
 void normalizedDepthCamera( const Frame& frame,
-                               const Eigen::MatrixXd& pointsWorld,
-                               Eigen::VectorXd& normalizedDepthCamera );
+                            const Eigen::MatrixXd& pointsWorld,
+                            Eigen::VectorXd& normalizedDepthCamera );
+
+void normalizedDepthCamera( const Frame& frame, Eigen::VectorXd& normalizedDepthCamera );
 
 void depthCamera( const Frame& frame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& depthCamera );
 
-
-// void transferPointsCurCamera( const Frame& curFrame,
-//                                const Eigen::MatrixXd& pointsWorld,
-//                                Eigen::MatrixXd& pointsCurCamera );
-
-// void transferPointsCurToWorld( const Frame& curFrame,
-//                                const Eigen::MatrixXd& pointsCurCamera,
-//                                Eigen::MatrixXd&  pointsWorld);
-
-// void normalizedDepthsCurCamera( const Frame& curFrame,
-//                                 const Eigen::MatrixXd& pointsWorld,
-//                                 Eigen::VectorXd& normalizedDepthCurCamera );
-
-// void depthsCurCamera( const Frame& curFrame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& depthCurCamera );
+void depthCamera( const Frame& frame, Eigen::VectorXd& depthCamera );
 
 void triangulatePointHomogenousDLT( const Frame& refFrame,
                                     const Frame& curFrame,
@@ -64,7 +49,7 @@ void decomposeEssentialMatrix( const Eigen::Matrix3d& E, Eigen::Matrix3d& R1, Ei
 void recoverPose(
   const Eigen::Matrix3d& E, const Frame& refFrame, Frame& curFrame, Eigen::Matrix3d& R, Eigen::Vector3d& t );
 
-Sophus::SE3d computeRelativePose (const Frame& refFrame, const Frame& curFrame);
+Sophus::SE3d computeRelativePose( const Frame& refFrame, const Frame& curFrame );
 
 Eigen::Matrix3d hat( const Eigen::Vector3d& vec );
 

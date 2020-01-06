@@ -100,6 +100,16 @@ void algorithm::normalizedDepthCamera( const Frame& frame,
     }
 }
 
+void algorithm::normalizedDepthCamera( const Frame& frame, Eigen::VectorXd& normalizedDepthCamera )
+{
+    const auto featureSz = frame.numberObservation();
+    for ( std::size_t i( 0 ); i < featureSz; i++ )
+    {
+        normalizedDepthCamera( i )     = frame.world2camera( frame.m_frameFeatures[i]->m_point->m_position ).norm();
+    }
+}
+
+
 void algorithm::depthCamera( const Frame& frame,
                                 const Eigen::MatrixXd& pointsWorld,
                                 Eigen::VectorXd& depthCamera )
@@ -111,58 +121,15 @@ void algorithm::depthCamera( const Frame& frame,
     }
 }
 
-// void algorithm::transferPointsCurCamera( const Frame& curFrame,
-//                                          const Eigen::MatrixXd& pointsWorld,
-//                                          Eigen::MatrixXd& pointsCurCamera )
-// {
-//     const auto featureSz = curFrame.numberObservation();
-//     for ( std::size_t i( 0 ); i < featureSz; i++ )
-//     {
-//         pointsCurCamera.col( i ) = curFrame.world2camera( pointsWorld.col( i ) );
-//     }
-//     // pointsCurCamera = curFrame.m_TransW2F * pointsWorld;
-//     // std::cout << "pose: " << curFrame.m_TransW2F.translation() << std::endl;
-//     // for(int i(0); i< pointsCurCamera.cols(); i++)
-//     // {
-//     //     std::cout << "world pos: " << pointsWorld.col(i).transpose() << ", cur pos: " <<
-//     //     pointsCurCamera.col(i).transpose() << std::endl;
-//     // }
-// }
+void algorithm::depthCamera( const Frame& frame, Eigen::VectorXd& depthCamera )
+{
+    const auto featureSz = frame.numberObservation();
+    for ( std::size_t i( 0 ); i < featureSz; i++ )
+    {
+        depthCamera( i ) = frame.world2camera( frame.m_frameFeatures[i]->m_point->m_position ).z();
+    }
+}
 
-// void algorithm::transferPointsCurToWorld( const Frame& curFrame,
-//                                           const Eigen::MatrixXd& pointsCurCamera,
-//                                           Eigen::MatrixXd& pointsWorld )
-// {
-//     const auto featureSz = curFrame.numberObservation();
-//     for ( std::size_t i( 0 ); i < featureSz; i++ )
-//     {
-//         pointsWorld.col( i ) = curFrame.camera2world( pointsCurCamera.col( i ) );
-//     }
-// }
-
-// void algorithm::normalizedDepthsCurCamera( const Frame& curFrame,
-//                                            const Eigen::MatrixXd& pointsWorld,
-//                                            Eigen::VectorXd& normalizedDepthCurCamera )
-// {
-//     const auto featureSz = curFrame.numberObservation();
-//     for ( std::size_t i( 0 ); i < featureSz; i++ )
-//     {
-//         const auto pointCurCamera     = curFrame.world2camera( pointsWorld.col( i ) );
-//         normalizedDepthCurCamera( i ) = pointCurCamera.norm();
-//     }
-// }
-
-// void algorithm::depthsCurCamera( const Frame& curFrame,
-//                                  const Eigen::MatrixXd& pointsWorld,
-//                                  Eigen::VectorXd& depthCurCamera )
-// {
-//     const auto featureSz = curFrame.numberObservation();
-//     for ( std::size_t i( 0 ); i < featureSz; i++ )
-//     {
-//         const auto pointCurCamera = curFrame.world2camera( pointsWorld.col( i ) );
-//         depthCurCamera( i )       = pointCurCamera.z();
-//     }
-// }
 
 void algorithm::triangulatePointHomogenousDLT( const Frame& refFrame,
                                                const Frame& curFrame,
