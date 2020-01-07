@@ -40,7 +40,7 @@ print(sym.latex(K, mode='equation'))
 print(sym.latex(E, mode='equation'))
 print(sym.latex(P, mode='equation'))
 
-x, y, z = sym.symbols('x y z')
+x, y, z, z2 = sym.symbols('x y z z2')
 point = sym.Matrix([[x], [y], [z], [1.0]])
 sym.pprint(point, use_unicode=True)
 res = P * point

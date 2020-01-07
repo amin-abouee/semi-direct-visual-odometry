@@ -302,7 +302,7 @@ void algorithm::recoverPose(
     }
 }
 
-Sophus::SE3d computeRelativePose( const Frame& refFrame, const Frame& curFrame )
+Sophus::SE3d algorithm::computeRelativePose( const Frame& refFrame, const Frame& curFrame )
 {
     // T_K-1_K = T_K-1_W * T_W_K
     return refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;

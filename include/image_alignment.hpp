@@ -20,7 +20,7 @@ public:
     ImageAlignment& operator=( ImageAlignment&& rhs );
     ~ImageAlignment()       = default;
 
-    double solve (Frame& refFrame, Frame& curFrame);
+    double align (Frame& refFrame, Frame& curFrame);
 
 private:
     uint32_t m_halfPatchSize;
@@ -29,6 +29,9 @@ private:
     uint32_t m_currentLevel;
     uint32_t m_minLevel;
     uint32_t m_maxLevel;
+
+    void preCompute(Frame& refFrame, uint32_t level);
+    void computeImageJac(Eigen::Vector3d& point, const double fx, const double fy);
 };
 
 #endif /* __IMAGE_ALIGNMENT_HPP__ */
