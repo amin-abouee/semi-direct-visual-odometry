@@ -37,6 +37,5 @@ compile_commands.json
 /build
 /bin
 /.vscode
-/input
 /output
 /docs/output

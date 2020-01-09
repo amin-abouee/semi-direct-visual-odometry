@@ -341,6 +341,28 @@ double algorithm::computeMedian( const Eigen::VectorXd& input )
     }
 }
 
+float algorithm::bilinearInterpolation( const MapXRow& image, const double x, const double y )
+{
+    const int x1 = static_cast< int >( x );
+    const int y1 = static_cast< int >( y );
+    const int x2 = x1 + 1;
+    const int y2 = y1 + 1;
+    const float a     = ( x2 - x ) * image( y1, x1 ) + ( x - x1 ) * image( y1, x2 );
+    const float b     = ( x2 - x ) * image( y2, x1 ) + ( x - x1 ) * image( y2, x2 );
+    return ( ( y2 - y ) * a + ( y - y1 ) * b );
+}
+
+float algorithm::bilinearInterpolation( const MapXRowConst& image, const double x, const double y )
+{
+    const int x1 = static_cast< int >( x );
+    const int y1 = static_cast< int >( y );
+    const int x2 = x1 + 1;
+    const int y2 = y1 + 1;
+    const float a     = ( x2 - x ) * image( y1, x1 ) + ( x - x1 ) * image( y1, x2 );
+    const float b     = ( x2 - x ) * image( y2, x1 ) + ( x - x1 ) * image( y2, x2 );
+    return ( ( y2 - y ) * a + ( y - y1 ) * b );
+}
+
 // double computeMedianInplace( const Eigen::VectorXd& vec )
 // {
 //     const auto middleSize = vec.size() / 2;

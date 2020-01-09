@@ -9,6 +9,10 @@
 
 namespace algorithm
 {
+
+// https://forum.kde.org/viewtopic.php?f=74&t=96718
+using MapXRow = Eigen::Map< Eigen::Matrix< float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor > >;
+using MapXRowConst = Eigen::Map< const Eigen::Matrix< float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor > >;
 // void pointsRefCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsRefCamera );
 
 // void pointsCurCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsCurCamera );
@@ -54,6 +58,10 @@ Sophus::SE3d computeRelativePose( const Frame& refFrame, const Frame& curFrame )
 Eigen::Matrix3d hat( const Eigen::Vector3d& vec );
 
 double computeMedian( const Eigen::VectorXd& vec );
+
+float bilinearInterpolation( const MapXRow& image, const double x, const double y );
+
+float bilinearInterpolation( const MapXRowConst& image, const double x, const double y );
 
 // double computeMedianInplace( const Eigen::VectorXd& vec );
 

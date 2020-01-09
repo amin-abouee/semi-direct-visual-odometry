@@ -120,10 +120,13 @@ endif()
 # https://clang.llvm.org/docs/DiagnosticsReference.html
 # https://foonathan.net/2018/10/cmake-warnings/
 # http://www.brianlheim.com/2018/04/09/cmake-cheat-sheet.html
+
+# -Wall -Wextra -pedantic -Wconversion -Wsign-conversion
+
 target_compile_options(visual_odometry
   PRIVATE
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
-        -Wall -Wextra -pedantic -Wconversion -Wsign-conversion
+        -Wall -Wextra -pedantic -Wconversion
     >
     $<$<CXX_COMPILER_ID:MSVC>:
         W4
