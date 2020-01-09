@@ -47,6 +47,17 @@ res = P * point
 sym.pprint(res, use_unicode=True)
 print(sym.latex(res, mode='equation'))
 
+x, y, z, z2 = sym.symbols('x y z z2')
+first = sym.Matrix([[fx/z, 0.0, -fx * (x/z2)], 
+                     [0.0, fy/z, -fy * (y/z2)]])
+sym.pprint(first, use_unicode=True)
+
+second = sym.Matrix([[1, 0, 0, 0, z, -y], [0, 1, 0, -z, 0, x], [0, 0, 1, y, -x, 0]])
+sym.pprint(second, use_unicode=True)
+
+final = first * second
+sym.pprint(final, use_unicode=True)
+print(sym.latex(final, mode='equation'))
 
 # from sympy.mpmath import *
 
