@@ -85,7 +85,7 @@ int main( int argc, char* argv[] )
     if ( argc > 1 )
         configIOFile = argv[ 1 ];
     else
-        configIOFile = "/Users/amin/Workspace/cplusplus/semi-direct-visual-odometry/config/config.json";
+        configIOFile = "../config/config.json";
 
     const nlohmann::json& configJson = createConfigParser( configIOFile );
     // std::cout << configJson[ "file_paths" ][ "camera_calibration" ].get< std::string >() << std::endl;
@@ -105,8 +105,8 @@ int main( int argc, char* argv[] )
     const int32_t imgWidth  = cameraJson[ "img_width" ].get< int32_t >();
     const int32_t imgHeight = cameraJson[ "img_height" ].get< int32_t >();
 
-    const cv::Mat refImg = cv::imread( "/Users/amin/Workspace/cplusplus/semi-direct-visual-odometry/input/0000000000.png", cv::IMREAD_GRAYSCALE );
-    const cv::Mat curImg = cv::imread( "/Users/amin/Workspace/cplusplus/semi-direct-visual-odometry/input/0000000001.png", cv::IMREAD_GRAYSCALE );
+    const cv::Mat refImg = cv::imread( "../input/0000000000.png", cv::IMREAD_GRAYSCALE );
+    const cv::Mat curImg = cv::imread( "../input/0000000001.png", cv::IMREAD_GRAYSCALE );
 
     Eigen::Matrix3d K;
     K << 7.215377e+02, 0.000000e+00, 6.095593e+02, 0.000000e+00, 7.215377e+02, 1.728540e+02, 0.000000e+00, 0.000000e+00,
@@ -278,7 +278,7 @@ int main( int argc, char* argv[] )
     std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
     curFrame.setKeyframe();
 
-    const cv::Mat newImg = cv::imread( "/Users/amin/Workspace/cplusplus/semi-direct-visual-odometry/input/0000000002.png", cv::IMREAD_GRAYSCALE );
+    const cv::Mat newImg = cv::imread( "../input/0000000002.png", cv::IMREAD_GRAYSCALE );
     Frame newFrame( camera, newImg );
     ImageAlignment aligner(5, 0, 3);
     aligner.align(curFrame, newFrame);

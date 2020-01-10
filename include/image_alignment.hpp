@@ -30,10 +30,12 @@ private:
     int32_t m_maxLevel;
 
     Eigen::Matrix< double, Eigen::Dynamic, 6 > m_jacobian;
+    Eigen::VectorXd m_residual;
     cv::Mat m_refPatches;
-    std::vector<bool> m_featureVisibility;
+    std::vector< bool > m_featureVisibility;
 
-    void preCompute( Frame& frame, uint32_t level );
+    void computeJacobian( Frame& frame, uint32_t level );
+    void computeResiduals( Frame& refFrame, Frame& curFrame, uint32_t level, Sophus::SE3d& pose );
     void computeImageJac( Eigen::Matrix< double, 2, 6 >& imageJac,
                           const Eigen::Vector3d& point,
                           const double fx,

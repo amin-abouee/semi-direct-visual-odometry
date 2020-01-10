@@ -30,7 +30,7 @@ endif()
 find_package(OpenMP REQUIRED)
 
 # https://github.com/gabime/spdlog/blob/v1.x/example/CMakeLists.txt
-find_package(spdlog REQUIRED)
+find_package(spdlog)
 find_package(Threads)
 find_package(Doxygen)
 option(BUILD_DOC "Build documentation" OFF)
@@ -84,12 +84,14 @@ add_executable(visual_odometry ${LIBRARY_SOURCES})
 # -DNDEBUG is the macro to be defined to turn off asserts as mandated by the C standard.
 # set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG -march=native")
 if(COMPILE_WITH_OFAST)
-    set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG")
+    set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG ")
     # https://stackoverflow.com/a/23995391/1804533
     # target_compile_options(visual_odometry PRIVATE "$<$<CONFIG:RELEASE>:${CMAKE_CXX_FLAGS_RELEASE}>")
 endif()
 
 target_compile_options(visual_odometry PRIVATE "$<$<CONFIG:RELEASE>:-march=native>")
+# target_compile_options(visual_odometry PRIVATE "$<$<CONFIG:RELEASE>:-stdlib=libc++ -lc++abi>")
+# set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
 
 # https://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
 target_compile_definitions(visual_odometry PRIVATE -DEIGEN_MAX_CPP_VER=17 )
@@ -100,7 +102,8 @@ target_compile_definitions(visual_odometry PRIVATE -DEIGEN_MAX_CPP_VER=17 )
 target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE})
 
 # target_link_libraries (visual_odometry visualizer source)
-target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads spdlog::spdlog)
+# spdlog::spdlog
+target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads spdlog::spdlog stdc++fs)
 if(OpenMP_CXX_FOUND)
     target_link_libraries(visual_odometry PRIVATE OpenMP::OpenMP_CXX)
 endif()
@@ -132,11 +135,16 @@ target_compile_options(visual_odometry
         W4
     >
 )
-# set_target_properties(visual_odometry PROPERTIES CMAKE_CXX_STANDARD_REQUIRED ON)
-# set_target_properties(visual_odometry PROPERTIES CXX_STANDARD 20)
+set_target_properties(visual_odometry PROPERTIES CMAKE_CXX_STANDARD_REQUIRED ON)
+set_target_properties(visual_odometry PROPERTIES CMAKE_CXX_EXTENSIONS ON)
+set_target_properties(visual_odometry PROPERTIES CXX_STANDARD 17)
+
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+# set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
+
 
 # https://crascit.com/2015/03/28/enabling-cxx11-in-cmake/
-target_compile_features(visual_odometry PRIVATE cxx_std_17)
+# target_compile_features(visual_odometry PRIVATE cxx_std_17)
 
 
 if(CMAKE_BUILD_TYPE STREQUAL Debug)

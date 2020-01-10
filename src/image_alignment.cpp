@@ -4,6 +4,9 @@
 
 #include <sophus/se3.hpp>
 
+#include <opencv2/imgproc.hpp>
+#include <opencv2/highgui.hpp>
+
 ImageAlignment::ImageAlignment( uint32_t patchSize, int32_t minLevel, int32_t maxLevel )
     : m_patchSize( patchSize )
     , m_halfPatchSize( patchSize / 2 )
@@ -19,21 +22,25 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
         return 0;
 
     const std::size_t numObservations = refFrame.numberObservation();
-    m_refPatches = cv::Mat(numObservations, m_patchArea, CV_32F);
-    m_jacobian.resize(numObservations * m_patchArea, Eigen::NoChange);
-    m_featureVisibility.resize(numObservations, false);
+    m_refPatches                      = cv::Mat( numObservations, m_patchArea, CV_32F );
+    m_jacobian.resize( numObservations * m_patchArea, Eigen::NoChange );
+    m_residual.resize(numObservations);
+    m_featureVisibility.resize( numObservations, false );
+
+    std::cout << "Reference Patch size: " << m_refPatches.size << std::endl;
 
     Sophus::SE3d relativePose = algorithm::computeRelativePose( refFrame, curFrame );
     // when we wanna compare a uint32 with an int32, the c++ can not compare -1 with 0
     for ( int32_t level( m_maxLevel ); level >= m_minLevel; level-- )
     {
-        preCompute(refFrame, level);
+        computeJacobian( refFrame, level );
     }
+    return 1.0;
 }
 
-void ImageAlignment::preCompute( Frame& frame, uint32_t level )
+void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
 {
-    const int32_t border   = m_halfPatchSize + 2;
+    const int32_t border    = m_halfPatchSize + 2;
     const cv::Mat& refImage = frame.m_imagePyramid.getImageAtLevel( level );
     const algorithm::MapXRowConst refImageEigen( refImage.ptr< float >(), refImage.rows, refImage.cols );
     const uint32_t stride       = refImage.cols;
@@ -42,17 +49,17 @@ void ImageAlignment::preCompute( Frame& frame, uint32_t level )
     const Eigen::Vector3d C     = frame.cameraInWorld();
     const double fx             = frame.m_camera->fx() / levelDominator;
     const double fy             = frame.m_camera->fy() / levelDominator;
-    uint32_t cntFeature = 0;
+    uint32_t cntFeature         = 0;
     for ( const auto& feature : frame.m_frameFeatures )
     {
-        const double u      = feature->m_feature.x() * scale;
-        const double v      = feature->m_feature.y() * scale;
+        const double u     = feature->m_feature.x() * scale;
+        const double v     = feature->m_feature.y() * scale;
         const int32_t uInt = static_cast< int32_t >( std::floor( u ) );
         const int32_t vInt = static_cast< int32_t >( std::floor( v ) );
-        if ( feature->m_point == nullptr || (uInt - border) < 0 || (vInt - border) < 0 || (uInt + border) >= refImage.cols ||
-             (vInt + border) >= refImage.rows )
+        if ( feature->m_point == nullptr || ( uInt - border ) < 0 || ( vInt - border ) < 0 ||
+             ( uInt + border ) >= refImage.cols || ( vInt + border ) >= refImage.rows )
             continue;
-        m_featureVisibility[cntFeature] = true;
+        m_featureVisibility[ cntFeature ] = true;
 
         const double depthNorm = ( feature->m_point->m_position - C ).norm();
         const Eigen::Vector3d point( feature->m_bearingVec * depthNorm );
@@ -65,23 +72,72 @@ void ImageAlignment::preCompute( Frame& frame, uint32_t level )
         Eigen::Matrix< double, 2, 6 > imageJac;
         computeImageJac( imageJac, point, fx, fy );
 
-        float* pixelPtr = m_refPatches.ptr< float >() + cntFeature * m_patchArea;
+        float* pixelPtr   = m_refPatches.ptr< float >() + cntFeature * m_patchArea;
         uint32_t cntPixel = 0;
         // FIXME: Patch size should be set as odd
-        const int32_t beginIdx = - m_halfPatchSize;
-        const int32_t endIdx = m_halfPatchSize;
+        const int32_t beginIdx = -m_halfPatchSize;
+        const int32_t endIdx   = m_halfPatchSize;
         for ( int32_t y{beginIdx}; y <= endIdx; y++ )
         {
             for ( int32_t x{beginIdx}; x <= endIdx; x++, cntPixel++, pixelPtr++ )
             {
                 const double rowIdx = v + y;
                 const double colIdx = u + x;
-                * pixelPtr = algorithm::bilinearInterpolation( refImageEigen, colIdx, rowIdx );
+                *pixelPtr           = algorithm::bilinearInterpolation( refImageEigen, colIdx, rowIdx );
                 const double dx     = 0.5 * ( algorithm::bilinearInterpolation( refImageEigen, colIdx + 1, rowIdx ) -
                                           algorithm::bilinearInterpolation( refImageEigen, colIdx - 1, rowIdx ) );
                 const double dy     = 0.5 * ( algorithm::bilinearInterpolation( refImageEigen, colIdx, rowIdx + 1 ) -
                                           algorithm::bilinearInterpolation( refImageEigen, colIdx, rowIdx - 1 ) );
-                m_jacobian.row(cntFeature * m_patchArea + cntPixel) = dx * imageJac.row(0) + dy * imageJac.row(1);
+                m_jacobian.row( cntFeature * m_patchArea + cntPixel ) = dx * imageJac.row( 0 ) + dy * imageJac.row( 1 );
+            }
+        }
+        cntFeature++;
+    }
+    cv::Mat visPatches;
+    cv::normalize( m_refPatches, visPatches, 0, 255, cv::NORM_MINMAX, CV_32F );
+    cv::imshow("refPatches", visPatches);
+}
+
+void ImageAlignment::computeResiduals( Frame& refFrame, Frame& curFrame, uint32_t level, Sophus::SE3d& pose )
+{
+    const cv::Mat& curImage = curFrame.m_imagePyramid.getImageAtLevel( level );
+    const algorithm::MapXRowConst curImageEigen( curImage.ptr< float >(), curImage.rows, curImage.cols );
+    const int32_t border    = m_halfPatchSize + 2;
+    const uint32_t stride       = curImage.cols;
+    const double levelDominator = 1 << level;
+    const double scale          = 1.0 / levelDominator;
+    const Eigen::Vector3d C     = refFrame.cameraInWorld();
+    uint32_t cntFeature         = 0;
+    for ( const auto& feature : refFrame.m_frameFeatures )
+    {
+        if (m_featureVisibility[cntFeature] == false)
+            continue;
+
+        const double depthNorm = ( feature->m_point->m_position - C ).norm();
+        const Eigen::Vector3d refPoint( feature->m_bearingVec * depthNorm );
+        const Eigen::Vector3d curPoint( pose * refPoint );
+        const Eigen::Vector2d curFeature (curFrame.camera2image(curPoint));
+        const double u     = curFeature.x() * scale;
+        const double v     = curFeature.y() * scale;
+        const int32_t uInt = static_cast< int32_t >( std::floor( u ) );
+        const int32_t vInt = static_cast< int32_t >( std::floor( v ) );
+        if ( feature->m_point == nullptr || ( uInt - border ) < 0 || ( vInt - border ) < 0 ||
+             ( uInt + border ) >= curImage.cols || ( vInt + border ) >= curImage.rows )
+            continue;
+        
+        float* pixelPtr   = m_refPatches.ptr< float >() + cntFeature * m_patchArea;
+        uint32_t cntPixel = 0;
+        // FIXME: Patch size should be set as odd
+        const int32_t beginIdx = -m_halfPatchSize;
+        const int32_t endIdx   = m_halfPatchSize;
+        for ( int32_t y{beginIdx}; y <= endIdx; y++ )
+        {
+            for ( int32_t x{beginIdx}; x <= endIdx; x++, cntPixel++, pixelPtr++ )
+            {
+                const double rowIdx = v + y;
+                const double colIdx = u + x;
+                const float curPixelValue           = algorithm::bilinearInterpolation( curImageEigen, colIdx, rowIdx );
+                m_residual(cntFeature * m_patchArea + cntPixel) = static_cast<double>(curPixelValue - *pixelPtr);
             }
         }
         cntFeature++;
