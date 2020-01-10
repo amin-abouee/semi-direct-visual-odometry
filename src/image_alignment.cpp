@@ -4,7 +4,7 @@
 
 #include <sophus/se3.hpp>
 
-ImageAlignment::ImageAlignment( uint32_t patchSize, uint32_t minLevel, uint32_t maxLevel )
+ImageAlignment::ImageAlignment( uint32_t patchSize, int32_t minLevel, int32_t maxLevel )
     : m_patchSize( patchSize )
     , m_halfPatchSize( patchSize / 2 )
     , m_patchArea( patchSize * patchSize )
@@ -24,7 +24,8 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
     m_featureVisibility.resize(numObservations, false);
 
     Sophus::SE3d relativePose = algorithm::computeRelativePose( refFrame, curFrame );
-    for ( uint32_t level( m_maxLevel ); level >= m_minLevel; level-- )
+    // when we wanna compare a uint32 with an int32, the c++ can not compare -1 with 0
+    for ( int32_t level( m_maxLevel ); level >= m_minLevel; level-- )
     {
         preCompute(refFrame, level);
     }
@@ -32,7 +33,7 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
 
 void ImageAlignment::preCompute( Frame& frame, uint32_t level )
 {
-    const uint32_t border   = m_halfPatchSize + 1;
+    const int32_t border   = m_halfPatchSize + 2;
     const cv::Mat& refImage = frame.m_imagePyramid.getImageAtLevel( level );
     const algorithm::MapXRowConst refImageEigen( refImage.ptr< float >(), refImage.rows, refImage.cols );
     const uint32_t stride       = refImage.cols;
@@ -46,10 +47,10 @@ void ImageAlignment::preCompute( Frame& frame, uint32_t level )
     {
         const double u      = feature->m_feature.x() * scale;
         const double v      = feature->m_feature.y() * scale;
-        const uint32_t uInt = static_cast< uint32_t >( std::floor( u ) );
-        const uint32_t vInt = static_cast< uint32_t >( std::floor( v ) );
-        if ( feature->m_point == nullptr || uInt - border < 0 || vInt - border < 0 || uInt + border > refImage.cols ||
-             vInt + border > refImage.rows )
+        const int32_t uInt = static_cast< int32_t >( std::floor( u ) );
+        const int32_t vInt = static_cast< int32_t >( std::floor( v ) );
+        if ( feature->m_point == nullptr || (uInt - border) < 0 || (vInt - border) < 0 || (uInt + border) >= refImage.cols ||
+             (vInt + border) >= refImage.rows )
             continue;
         m_featureVisibility[cntFeature] = true;
 
@@ -67,9 +68,11 @@ void ImageAlignment::preCompute( Frame& frame, uint32_t level )
         float* pixelPtr = m_refPatches.ptr< float >() + cntFeature * m_patchArea;
         uint32_t cntPixel = 0;
         // FIXME: Patch size should be set as odd
-        for ( int y( -m_halfPatchSize ); y <= m_halfPatchSize; y++ )
+        const int32_t beginIdx = - m_halfPatchSize;
+        const int32_t endIdx = m_halfPatchSize;
+        for ( int32_t y{beginIdx}; y <= endIdx; y++ )
         {
-            for ( int x( -m_halfPatchSize ); x <= m_halfPatchSize; x++, cntPixel++, pixelPtr++ )
+            for ( int32_t x{beginIdx}; x <= endIdx; x++, cntPixel++, pixelPtr++ )
             {
                 const double rowIdx = v + y;
                 const double colIdx = u + x;
