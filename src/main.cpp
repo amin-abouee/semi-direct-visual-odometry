@@ -81,11 +81,14 @@ int main( int argc, char* argv[] )
     // mainLogger->warn( "Warn" );
     // mainLogger->error( "Error" );
 
+
     std::string configIOFile;
     if ( argc > 1 )
         configIOFile = argv[ 1 ];
     else
         configIOFile = "../config/config.json";
+    
+    std::string oma = utils::findAbsoluteFilePath(configIOFile);
 
     const nlohmann::json& configJson = createConfigParser( configIOFile );
     // std::cout << configJson[ "file_paths" ][ "camera_calibration" ].get< std::string >() << std::endl;
@@ -280,8 +283,8 @@ int main( int argc, char* argv[] )
 
     const cv::Mat newImg = cv::imread( "../input/0000000002.png", cv::IMREAD_GRAYSCALE );
     Frame newFrame( camera, newImg );
-    ImageAlignment aligner(5, 0, 3);
-    aligner.align(curFrame, newFrame);
+    ImageAlignment match(5, 0, 3);
+    match.align(curFrame, newFrame);
 
 
     // matcher.findTemplateMatch(refFrame, curFrame, 5, 99);

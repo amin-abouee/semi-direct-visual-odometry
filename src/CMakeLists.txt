@@ -64,6 +64,8 @@ set(LIBRARY_SOURCES
     feature.cpp
     point.cpp
     image_alignment.cpp
+    nlls.cpp
+    estimator.cpp
     matcher.cpp
     feature_selection.cpp
     algorithm.cpp

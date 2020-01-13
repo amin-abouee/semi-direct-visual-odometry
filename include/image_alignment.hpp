@@ -8,6 +8,7 @@
 #include <opencv2/core.hpp>
 
 #include "frame.hpp"
+#include "nlls.hpp"
 
 class ImageAlignment
 {
@@ -29,10 +30,11 @@ private:
     int32_t m_minLevel;
     int32_t m_maxLevel;
 
-    Eigen::Matrix< double, Eigen::Dynamic, 6 > m_jacobian;
-    Eigen::VectorXd m_residual;
+    // Eigen::Matrix< double, Eigen::Dynamic, 6 > m_jacobian;
+    // Eigen::VectorXd m_residual;
+    NLLS m_optimizer;
     cv::Mat m_refPatches;
-    std::vector< bool > m_featureVisibility;
+    std::vector< bool > m_refVisibility;
 
     void computeJacobian( Frame& frame, uint32_t level );
     void computeResiduals( Frame& refFrame, Frame& curFrame, uint32_t level, Sophus::SE3d& pose );
@@ -40,6 +42,8 @@ private:
                           const Eigen::Vector3d& point,
                           const double fx,
                           const double fy );
+
+    void update(Sophus::SE3d& pose, const Eigen::VectorXd& dx);
 };
 
 #endif /* __IMAGE_ALIGNMENT_HPP__ */

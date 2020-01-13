@@ -7,6 +7,9 @@ Eigen::IOFormat utils::eigenFormat()
 
 std::string utils::findAbsoluteFilePath(std::string& relativeFilePath)
 {
-    if (fs::exists(relativeFilePath))
-        return relativeFilePath;
+    // https://stackoverflow.com/a/56645283/1804533
+
+    std::cout << std::experimental::filesystem::current_path().string() << std::endl;
+    // if (fs::exists(relativeFilePath))
+    return relativeFilePath;
 }

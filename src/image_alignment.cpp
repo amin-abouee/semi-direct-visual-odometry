@@ -13,7 +13,9 @@ ImageAlignment::ImageAlignment( uint32_t patchSize, int32_t minLevel, int32_t ma
     , m_patchArea( patchSize * patchSize )
     , m_minLevel( minLevel )
     , m_maxLevel( maxLevel )
+    , m_optimizer(6)
 {
+    std::cout << "c'tor image alignment" << std::endl;
 }
 
 double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
@@ -23,17 +25,34 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
 
     const std::size_t numObservations = refFrame.numberObservation();
     m_refPatches                      = cv::Mat( numObservations, m_patchArea, CV_32F );
-    m_jacobian.resize( numObservations * m_patchArea, Eigen::NoChange );
-    m_residual.resize(numObservations);
-    m_featureVisibility.resize( numObservations, false );
+    m_optimizer.m_jacobian.resize( numObservations * m_patchArea, Eigen::NoChange );
+    m_optimizer.m_residuals.resize(numObservations);
+    m_refVisibility.resize( numObservations, false );
 
     std::cout << "Reference Patch size: " << m_refPatches.size << std::endl;
 
     Sophus::SE3d relativePose = algorithm::computeRelativePose( refFrame, curFrame );
+
+    // auto lambdaJacobianFunctor = [&refFrame, level](
+    //                                 Sophus::SE3d& pose ) -> void {
+    //     return computeJacobian( refFrame, level );
+    // };
+
+    auto lambdaUpdateFunctor = [this](
+                                    Sophus::SE3d& pose, const Eigen::VectorXd& dx ) -> void {
+        update( pose, dx );
+    };
+
+
     // when we wanna compare a uint32 with an int32, the c++ can not compare -1 with 0
     for ( int32_t level( m_maxLevel ); level >= m_minLevel; level-- )
     {
         computeJacobian( refFrame, level );
+        auto lambdaResidualFunctor = [this, &refFrame, &curFrame, &level](
+                                        Sophus::SE3d& pose ) -> void {
+                computeResiduals( refFrame, curFrame, level, pose );
+        };
+        double error = m_optimizer.optimizeGN(relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor, 100);
     }
     return 1.0;
 }
@@ -59,7 +78,7 @@ void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
         if ( feature->m_point == nullptr || ( uInt - border ) < 0 || ( vInt - border ) < 0 ||
              ( uInt + border ) >= refImage.cols || ( vInt + border ) >= refImage.rows )
             continue;
-        m_featureVisibility[ cntFeature ] = true;
+        m_refVisibility[ cntFeature ] = true;
 
         const double depthNorm = ( feature->m_point->m_position - C ).norm();
         const Eigen::Vector3d point( feature->m_bearingVec * depthNorm );
@@ -88,7 +107,7 @@ void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
                                           algorithm::bilinearInterpolation( refImageEigen, colIdx - 1, rowIdx ) );
                 const double dy     = 0.5 * ( algorithm::bilinearInterpolation( refImageEigen, colIdx, rowIdx + 1 ) -
                                           algorithm::bilinearInterpolation( refImageEigen, colIdx, rowIdx - 1 ) );
-                m_jacobian.row( cntFeature * m_patchArea + cntPixel ) = dx * imageJac.row( 0 ) + dy * imageJac.row( 1 );
+                m_optimizer.m_jacobian.row( cntFeature * m_patchArea + cntPixel ) = dx * imageJac.row( 0 ) + dy * imageJac.row( 1 );
             }
         }
         cntFeature++;
@@ -98,7 +117,7 @@ void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
     cv::imshow("refPatches", visPatches);
 }
 
-void ImageAlignment::computeResiduals( Frame& refFrame, Frame& curFrame, uint32_t level, Sophus::SE3d& pose )
+void ImageAlignment::computeResiduals( Frame& refFrame, Frame& curFrame, uint32_t level, Sophus::SE3d& pose)
 {
     const cv::Mat& curImage = curFrame.m_imagePyramid.getImageAtLevel( level );
     const algorithm::MapXRowConst curImageEigen( curImage.ptr< float >(), curImage.rows, curImage.cols );
@@ -110,8 +129,11 @@ void ImageAlignment::computeResiduals( Frame& refFrame, Frame& curFrame, uint32_
     uint32_t cntFeature         = 0;
     for ( const auto& feature : refFrame.m_frameFeatures )
     {
-        if (m_featureVisibility[cntFeature] == false)
+        if (m_refVisibility[cntFeature] == false)
+        {
+            m_optimizer.m_curVisibility[cntFeature] = false;
             continue;
+        }
 
         const double depthNorm = ( feature->m_point->m_position - C ).norm();
         const Eigen::Vector3d refPoint( feature->m_bearingVec * depthNorm );
@@ -123,7 +145,10 @@ void ImageAlignment::computeResiduals( Frame& refFrame, Frame& curFrame, uint32_
         const int32_t vInt = static_cast< int32_t >( std::floor( v ) );
         if ( feature->m_point == nullptr || ( uInt - border ) < 0 || ( vInt - border ) < 0 ||
              ( uInt + border ) >= curImage.cols || ( vInt + border ) >= curImage.rows )
+        {
+            m_optimizer.m_curVisibility[cntFeature] = false;
             continue;
+        }
         
         float* pixelPtr   = m_refPatches.ptr< float >() + cntFeature * m_patchArea;
         uint32_t cntPixel = 0;
@@ -137,7 +162,7 @@ void ImageAlignment::computeResiduals( Frame& refFrame, Frame& curFrame, uint32_
                 const double rowIdx = v + y;
                 const double colIdx = u + x;
                 const float curPixelValue           = algorithm::bilinearInterpolation( curImageEigen, colIdx, rowIdx );
-                m_residual(cntFeature * m_patchArea + cntPixel) = static_cast<double>(curPixelValue - *pixelPtr);
+                m_optimizer.m_residuals(cntFeature * m_patchArea + cntPixel) = static_cast<double>(curPixelValue - *pixelPtr);
             }
         }
         cntFeature++;
@@ -198,4 +223,9 @@ void ImageAlignment::computeImageJac( Eigen::Matrix< double, 2, 6 >& imageJac,
     imageJac( 1, 3 ) = -( fy * y2 ) / z2 - fy;
     imageJac( 1, 4 ) = ( fy * x * y ) / z2;
     imageJac( 1, 5 ) = ( fy * x ) / z;
+}
+
+void ImageAlignment::update(Sophus::SE3d& pose, const Eigen::VectorXd& dx)
+{
+    pose = Sophus::SE3d::exp( dx ) * pose;
 }
