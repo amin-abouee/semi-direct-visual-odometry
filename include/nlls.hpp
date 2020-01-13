@@ -20,11 +20,11 @@ public:
     };
 
     uint32_t m_numUnknowns;
-    Eigen::VectorXd m_residuals;
-    Eigen::VectorXd m_weights;
-    Eigen::MatrixXd m_jacobian;
     Eigen::MatrixXd m_hessian;
+    Eigen::MatrixXd m_jacobian ;
+    Eigen::VectorXd m_residuals;
     Eigen::VectorXd m_gradient;
+    Eigen::VectorXd m_weights;
     Eigen::VectorXd m_dx;
     std::vector< bool > m_curVisibility;
 
@@ -59,14 +59,14 @@ public:
     //             const std::size_t numObservations);
 
     double optimizeGN( Sophus::SE3d& pose,
-                const std::function< void ( Sophus::SE3d& pose) >& lambdaResidualFunctor,
-                const std::function< void ( Sophus::SE3d& pose) >& lambdaJacobianFunctor,
+                const std::function< uint32_t ( Sophus::SE3d& pose) >& lambdaResidualFunctor,
+                const std::function< uint32_t ( Sophus::SE3d& pose) >& lambdaJacobianFunctor,
                 const std::function< void ( Sophus::SE3d& pose, const Eigen::VectorXd& dx) >& lambdaUpdateFunctor,
                 const std::size_t numObservations );
 
     double optimizeLM( Sophus::SE3d& pose,
-                const std::function< void ( Sophus::SE3d&, Eigen::VectorXd& res ) >& lambdaResidualFunctor,
-                const std::function< void ( Sophus::SE3d&, Eigen::MatrixXd& jac ) >& lambdaJacobianFunctor,
+                const std::function< uint32_t ( Sophus::SE3d&, Eigen::VectorXd& res ) >& lambdaResidualFunctor,
+                const std::function< uint32_t ( Sophus::SE3d&, Eigen::MatrixXd& jac ) >& lambdaJacobianFunctor,
                 const std::function< void ( Sophus::SE3d& pose, const Eigen::VectorXd& dx) >& lambdaUpdateFunctor,
                 const std::size_t numObservations );
 

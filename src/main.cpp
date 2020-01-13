@@ -88,7 +88,7 @@ int main( int argc, char* argv[] )
     else
         configIOFile = "../config/config.json";
     
-    std::string oma = utils::findAbsoluteFilePath(configIOFile);
+    // std::string oma = utils::findAbsoluteFilePath(configIOFile);
 
     const nlohmann::json& configJson = createConfigParser( configIOFile );
     // std::cout << configJson[ "file_paths" ][ "camera_calibration" ].get< std::string >() << std::endl;

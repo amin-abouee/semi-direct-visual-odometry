@@ -8,6 +8,7 @@ NLLS::NLLS( const u_int32_t numUnknowns )
 {
     m_hessian.setZero();
     m_gradient.setZero();
+    m_dx.setZero();
     std::cout << "Size hessian: " << m_hessian.rows() << " , " << m_hessian.cols() << std::endl;
     std::cout << "Size gradient: " << m_gradient.size() << std::endl;
 }
@@ -27,12 +28,12 @@ NLLS::NLLS( const u_int32_t numUnknowns )
 //     return optimizeGN(pose, lambdaResidualFunctor, lambdaJacobianFunctor, numObservations, true);
 // }
 
-
-double NLLS::optimizeGN( Sophus::SE3d& pose,
-                         const std::function< void ( Sophus::SE3d& pose ) >& lambdaResidualFunctor,
-                         const std::function< void ( Sophus::SE3d& pose ) >& lambdaJacobianFunctor,
-                         const std::function< void ( Sophus::SE3d& pose, const Eigen::VectorXd& dx) >& lambdaUpdateFunctor,
-                         const std::size_t numObservations )
+double NLLS::optimizeGN(
+  Sophus::SE3d& pose,
+  const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaResidualFunctor,
+  const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaJacobianFunctor,
+  const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor,
+  const std::size_t numObservations )
 {
     const std::size_t numUnknowns = 6;
 
@@ -43,7 +44,7 @@ double NLLS::optimizeGN( Sophus::SE3d& pose,
     m_hessian.setZero();
     m_gradient.setZero();
 
-    bool computeJacobian = lambdaJacobianFunctor == nullptr ? false : true; 
+    bool computeJacobian = lambdaJacobianFunctor == nullptr ? false : true;
 
     if ( computeJacobian == true )
         m_jacobian.setZero();
@@ -56,55 +57,56 @@ double NLLS::optimizeGN( Sophus::SE3d& pose,
 
     double stepSize = 0.0;
     // double normInfDiffPose					= 0.0;
-    double normDiffPose                     = 0.0;
-    unsigned int goodProjectedEdgesResidual = 0;
-    unsigned int goodProjectedEdgesJacobian = 0;
+    double normDiffPose              = 0.0;
+    uint32_t cntTotalProjectedPixels = 0;
+    // unsigned int goodProjectedEdgesJacobian = 0;
 
     while ( curIteration < m_maxIteration && !stop )
     {
-        lambdaResidualFunctor( pose );
+        cntTotalProjectedPixels = lambdaResidualFunctor( pose );
+        std::cout << "projected points: " << cntTotalProjectedPixels << std::endl;
         if ( computeJacobian == true )
-            lambdaJacobianFunctor(pose);
+            lambdaJacobianFunctor( pose );
 
         for ( std::size_t i( 0 ); i < numObservations; i++ )
         {
-            if ( m_curVisibility[ i ] == true )
-            {
+            // if ( m_curVisibility[ i ] == true )
+            // {
                 const auto Jac = m_jacobian.row( i );
+                // std::cout << "Jac " << i << ": " << Jac << std::endl;
                 m_hessian.noalias() += Jac.transpose() * Jac;
                 m_gradient.noalias() += Jac.transpose() * m_residuals( i );
-            }
+            // }
         }
-        m_dx.noalias()      = m_hessian.ldlt().solve( -m_gradient );
+        m_dx.noalias() = m_hessian.ldlt().solve( -m_gradient );
 
         if ( m_dx.maxCoeff() > m_maxCoffDx || std::isnan( m_dx.cwiseAbs().minCoeff() ) )
             break;
 
-        stepSize = m_dx.transpose() * m_dx;
+        stepSize     = m_dx.transpose() * m_dx;
         normDiffPose = ( m_dx ).norm() / ( pose.log() ).norm();
         if ( stepSize < m_stepSize || normDiffPose < m_normInfDiff || chiSquaredError < m_minChiSquaredError )
         {
             stop = true;
             // pose = Sophus::SE3d::exp( m_dx ) * pose;
-            lambdaUpdateFunctor(pose, m_dx);
+            lambdaUpdateFunctor( pose, m_dx );
             break;
         }
         else
         {
             // pose = Sophus::SE3d::exp( m_dx ) * pose;
-            lambdaUpdateFunctor(pose, m_dx);
+            lambdaUpdateFunctor( pose, m_dx );
         }
         ++curIteration;
     }
     return std::sqrt( chiSquaredError / numObservations );
 }
 
-
 double optimizeLM( Sophus::SE3d& pose,
-            const std::function< void ( Sophus::SE3d&, Eigen::VectorXd& res ) >& lambdaResidualFunctor,
-            const std::function< void ( Sophus::SE3d&, Eigen::MatrixXd& jac ) >& lambdaJacobianFunctor,
-            const std::function< void ( Sophus::SE3d& pose, const Eigen::VectorXd& dx) >& lambdaUpdateFunctor,
-            const std::size_t numObservations )
+                   const std::function< uint32_t( Sophus::SE3d&, Eigen::VectorXd& res ) >& lambdaResidualFunctor,
+                   const std::function< uint32_t( Sophus::SE3d&, Eigen::MatrixXd& jac ) >& lambdaJacobianFunctor,
+                   const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor,
+                   const std::size_t numObservations )
 {
     return 0.0;
 }

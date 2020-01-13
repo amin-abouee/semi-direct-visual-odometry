@@ -37,7 +37,7 @@ private:
     std::vector< bool > m_refVisibility;
 
     void computeJacobian( Frame& frame, uint32_t level );
-    void computeResiduals( Frame& refFrame, Frame& curFrame, uint32_t level, Sophus::SE3d& pose );
+    uint32_t computeResiduals( Frame& refFrame, Frame& curFrame, uint32_t level, Sophus::SE3d& pose );
     void computeImageJac( Eigen::Matrix< double, 2, 6 >& imageJac,
                           const Eigen::Vector3d& point,
                           const double fx,
