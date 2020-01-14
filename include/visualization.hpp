@@ -144,6 +144,8 @@ cv::Scalar generateColor( const float min, const float max, const float value );
 
 cv::Mat getBGRImage( const cv::Mat& img );
 
+void drawHistogram(std::vector< float >& vec, cv::Mat& imgHistogram, int numBins, int imageWidth, int imageHeight );
+
 }  // namespace visualization
 
 #endif /* __VISUALIZATION_H__ */
