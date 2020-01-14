@@ -14,7 +14,7 @@ namespace utils
 
     Eigen::IOFormat eigenFormat();
 
-    std::string findAbsoluteFilePath(std::string& relativeFilePath);
+    std::string findAbsoluteFilePath(const std::string& relativeFilePath);
 }
 
 #endif /* _UTILS_HPP__ */

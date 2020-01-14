@@ -31,6 +31,7 @@
 
 nlohmann::json createConfigParser( const std::string& fileName )
 {
+    std::cout << "filename: " << fileName << std::endl;
     nlohmann::json configParser;
     try
     {
@@ -86,16 +87,16 @@ int main( int argc, char* argv[] )
     if ( argc > 1 )
         configIOFile = argv[ 1 ];
     else
-        configIOFile = "../config/config.json";
+        configIOFile = "config/config.json";
     
     // std::string oma = utils::findAbsoluteFilePath(configIOFile);
 
-    const nlohmann::json& configJson = createConfigParser( configIOFile );
+    const nlohmann::json& configJson = createConfigParser( utils::findAbsoluteFilePath(configIOFile) );
     // std::cout << configJson[ "file_paths" ][ "camera_calibration" ].get< std::string >() << std::endl;
     // std::ifstream jsonFile(configFile);
 
     const nlohmann::json& cameraJson  = configJson[ "camera" ];
-    const std::string calibrationFile = cameraJson[ "camera_calibration" ].get< std::string >();
+    const std::string calibrationFile = utils::findAbsoluteFilePath(cameraJson[ "camera_calibration" ].get< std::string >());
     cv::Mat cameraMatrix;
     cv::Mat distortionCoeffs;
     bool result = loadCameraIntrinsics( calibrationFile, cameraMatrix, distortionCoeffs );
@@ -108,8 +109,8 @@ int main( int argc, char* argv[] )
     const int32_t imgWidth  = cameraJson[ "img_width" ].get< int32_t >();
     const int32_t imgHeight = cameraJson[ "img_height" ].get< int32_t >();
 
-    const cv::Mat refImg = cv::imread( "../input/0000000000.png", cv::IMREAD_GRAYSCALE );
-    const cv::Mat curImg = cv::imread( "../input/0000000001.png", cv::IMREAD_GRAYSCALE );
+    const cv::Mat refImg = cv::imread( utils::findAbsoluteFilePath("input/0000000000.png"), cv::IMREAD_GRAYSCALE );
+    const cv::Mat curImg = cv::imread( utils::findAbsoluteFilePath("input/0000000001.png"), cv::IMREAD_GRAYSCALE );
 
     Eigen::Matrix3d K;
     K << 7.215377e+02, 0.000000e+00, 6.095593e+02, 0.000000e+00, 7.215377e+02, 1.728540e+02, 0.000000e+00, 0.000000e+00,
@@ -281,7 +282,7 @@ int main( int argc, char* argv[] )
     std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
     curFrame.setKeyframe();
 
-    const cv::Mat newImg = cv::imread( "../input/0000000002.png", cv::IMREAD_GRAYSCALE );
+    const cv::Mat newImg = cv::imread( utils::findAbsoluteFilePath("input/0000000002.png"), cv::IMREAD_GRAYSCALE );
     Frame newFrame( camera, newImg );
     ImageAlignment match(5, 0, 3);
     match.align(curFrame, newFrame);

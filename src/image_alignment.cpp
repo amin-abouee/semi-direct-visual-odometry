@@ -66,7 +66,10 @@ void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
 {
     const int32_t border    = m_halfPatchSize + 2;
     const cv::Mat& refImage = frame.m_imagePyramid.getImageAtLevel( level );
-    const algorithm::MapXRowConst refImageEigen( refImage.ptr< float >(), refImage.rows, refImage.cols );
+    // std::cout << "Type: " << refImage.type() << std::endl;
+    // std::cout << "Image data:\n" << refImage << std::endl;
+    const algorithm::MapXRowConst refImageEigen( refImage.ptr< uint8_t >(), refImage.rows, refImage.cols );
+    // std::cout << "Image data:\n" << refImageEigen.block(0, 0, 20, 20) << std::endl;
     const uint32_t stride       = refImage.cols;
     const double levelDominator = 1 << level;
     const double scale          = 1.0 / levelDominator;
@@ -116,10 +119,10 @@ void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
                 const double dy     = 0.5 * ( algorithm::bilinearInterpolation( refImageEigen, colIdx, rowIdx + 1 ) -
                                           algorithm::bilinearInterpolation( refImageEigen, colIdx, rowIdx - 1 ) );
                 m_optimizer.m_jacobian.row( cntFeature * m_patchArea + cntPixel ) = dx * imageJac.row( 0 ) + dy * imageJac.row( 1 );
-                std::cout << "index: " << cntFeature * m_patchArea + cntPixel << std::endl;
-                std::cout << "dx: " << dx << "   row 0: " << imageJac.row( 0 ) << std::endl;
-                std::cout << "dy: " << dy << "   row 1: " << imageJac.row( 1 ) << std::endl;
-                std::cout << "jac " << m_optimizer.m_jacobian.row( cntFeature * m_patchArea + cntPixel ) << std::endl;
+                // std::cout << "index: " << cntFeature * m_patchArea + cntPixel << std::endl;
+                // std::cout << "dx: " << dx << "   row 0: " << imageJac.row( 0 ) << std::endl;
+                // std::cout << "dy: " << dy << "   row 1: " << imageJac.row( 1 ) << std::endl;
+                // std::cout << "jac " << m_optimizer.m_jacobian.row( cntFeature * m_patchArea + cntPixel ) << std::endl;
             }
         }
         cntFeature++;
@@ -132,7 +135,7 @@ void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
 uint32_t ImageAlignment::computeResiduals( Frame& refFrame, Frame& curFrame, uint32_t level, Sophus::SE3d& pose)
 {
     const cv::Mat& curImage = curFrame.m_imagePyramid.getImageAtLevel( level );
-    const algorithm::MapXRowConst curImageEigen( curImage.ptr< float >(), curImage.rows, curImage.cols );
+    const algorithm::MapXRowConst curImageEigen( curImage.ptr< uint8_t >(), curImage.rows, curImage.cols );
     const int32_t border    = m_halfPatchSize + 2;
     const uint32_t stride       = curImage.cols;
     const double levelDominator = 1 << level;

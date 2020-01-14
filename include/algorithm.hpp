@@ -11,8 +11,8 @@ namespace algorithm
 {
 
 // https://forum.kde.org/viewtopic.php?f=74&t=96718
-using MapXRow = Eigen::Map< Eigen::Matrix< float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor > >;
-using MapXRowConst = Eigen::Map< const Eigen::Matrix< float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor > >;
+using MapXRow = Eigen::Map< Eigen::Matrix< uint8_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor > >;
+using MapXRowConst = Eigen::Map< const Eigen::Matrix< uint8_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor > >;
 // void pointsRefCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsRefCamera );
 
 // void pointsCurCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsCurCamera );

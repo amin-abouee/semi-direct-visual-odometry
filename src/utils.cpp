@@ -5,11 +5,21 @@ Eigen::IOFormat utils::eigenFormat()
     return Eigen::IOFormat( 6, Eigen::DontAlignCols, ", ", " , ", "[", "]", "[", "]" );
 }
 
-std::string utils::findAbsoluteFilePath(std::string& relativeFilePath)
+std::string utils::findAbsoluteFilePath(const std::string& relativeFilePath)
 {
     // https://stackoverflow.com/a/56645283/1804533
+    fs::path finalPath;
+    auto currentPath = fs::current_path();
 
-    std::cout << std::experimental::filesystem::current_path().string() << std::endl;
-    // if (fs::exists(relativeFilePath))
-    return relativeFilePath;
+    // https://stackoverflow.com/a/24735243/1804533
+    for (const auto & part : fs::path(currentPath))
+    {
+        if (part.string() == "build" || part.string() == "bin")
+            break;
+        else
+            finalPath /= part;
+    }
+
+    finalPath /= relativeFilePath;
+    return finalPath.string();
 }

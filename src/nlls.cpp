@@ -5,6 +5,7 @@ NLLS::NLLS( const u_int32_t numUnknowns )
     , m_hessian( numUnknowns, numUnknowns )
     , m_gradient( numUnknowns )
     , m_dx( numUnknowns )
+    , m_maxIteration (20)
 {
     m_hessian.setZero();
     m_gradient.setZero();
