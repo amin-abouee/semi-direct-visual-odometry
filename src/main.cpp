@@ -17,12 +17,12 @@
 #include "algorithm.hpp"
 #include "feature_selection.hpp"
 #include "frame.hpp"
+#include "image_alignment.hpp"
 #include "matcher.hpp"
 #include "pinhole_camera.hpp"
 #include "point.hpp"
 #include "utils.hpp"
 #include "visualization.hpp"
-#include "image_alignment.hpp"
 
 // #include "spdlog/sinks/stdout_color_sinks.h"
 #include <spdlog/spdlog.h>
@@ -82,21 +82,20 @@ int main( int argc, char* argv[] )
     // mainLogger->warn( "Warn" );
     // mainLogger->error( "Error" );
 
-
     std::string configIOFile;
     if ( argc > 1 )
         configIOFile = argv[ 1 ];
     else
         configIOFile = "config/config.json";
-    
+
     // std::string oma = utils::findAbsoluteFilePath(configIOFile);
 
-    const nlohmann::json& configJson = createConfigParser( utils::findAbsoluteFilePath(configIOFile) );
+    const nlohmann::json& configJson = createConfigParser( utils::findAbsoluteFilePath( configIOFile ) );
     // std::cout << configJson[ "file_paths" ][ "camera_calibration" ].get< std::string >() << std::endl;
     // std::ifstream jsonFile(configFile);
 
     const nlohmann::json& cameraJson  = configJson[ "camera" ];
-    const std::string calibrationFile = utils::findAbsoluteFilePath(cameraJson[ "camera_calibration" ].get< std::string >());
+    const std::string calibrationFile = utils::findAbsoluteFilePath( cameraJson[ "camera_calibration" ].get< std::string >() );
     cv::Mat cameraMatrix;
     cv::Mat distortionCoeffs;
     bool result = loadCameraIntrinsics( calibrationFile, cameraMatrix, distortionCoeffs );
@@ -109,22 +108,21 @@ int main( int argc, char* argv[] )
     const int32_t imgWidth  = cameraJson[ "img_width" ].get< int32_t >();
     const int32_t imgHeight = cameraJson[ "img_height" ].get< int32_t >();
 
-    const cv::Mat refImg = cv::imread( utils::findAbsoluteFilePath("input/0000000000.png"), cv::IMREAD_GRAYSCALE );
-    const cv::Mat curImg = cv::imread( utils::findAbsoluteFilePath("input/0000000001.png"), cv::IMREAD_GRAYSCALE );
+    const cv::Mat refImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000000.png" ), cv::IMREAD_GRAYSCALE );
+    const cv::Mat curImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000001.png" ), cv::IMREAD_GRAYSCALE );
 
     Eigen::Matrix3d K;
-    K << 7.215377e+02, 0.000000e+00, 6.095593e+02, 0.000000e+00, 7.215377e+02, 1.728540e+02, 0.000000e+00, 0.000000e+00,
-      1.000000e+00;
+    K << 7.215377e+02, 0.000000e+00, 6.095593e+02, 0.000000e+00, 7.215377e+02, 1.728540e+02, 0.000000e+00, 0.000000e+00, 1.000000e+00;
     // std::cout << "Camera Matrix: \n" << K << std::endl;
 
     Eigen::Matrix3d E;
-    E << .22644456e-03, -7.06943058e-01, -4.05822481e-03, 7.06984545e-01, 1.22048201e-03, 1.26855863e-02,
-      3.25653616e-03, -1.46073125e-02, -2.59077801e-05;
+    E << .22644456e-03, -7.06943058e-01, -4.05822481e-03, 7.06984545e-01, 1.22048201e-03, 1.26855863e-02, 3.25653616e-03, -1.46073125e-02,
+      -2.59077801e-05;
     // std::cout << "Old E: " << E.format( utils::eigenFormat() ) << std::endl;
 
     Eigen::Matrix3d F;
-    F << -5.33286713e-08, -1.49632194e-03, 2.67961447e-01, 1.49436356e-03, -2.27291565e-06, -9.03327631e-01,
-      -2.68937438e-01, 9.02739500e-01, 1.00000000e+00;
+    F << -5.33286713e-08, -1.49632194e-03, 2.67961447e-01, 1.49436356e-03, -2.27291565e-06, -9.03327631e-01, -2.68937438e-01,
+      9.02739500e-01, 1.00000000e+00;
     // std::cout << "Fundamental Matrix: \n" << F << std::endl;
 
     Eigen::Vector3d C( -0.01793327, -0.00577164, 1 );
@@ -218,9 +216,8 @@ int main( int argc, char* argv[] )
 
     // C_1 = C_0 + scale * (C_1 - C_0)
     // t = -R * C_1
-    curFrame.m_TransW2F.translation() =
-      -curFrame.m_TransW2F.rotationMatrix() *
-      ( refFrame.cameraInWorld() + scale * ( curFrame.cameraInWorld() - refFrame.cameraInWorld() ) );
+    curFrame.m_TransW2F.translation() = -curFrame.m_TransW2F.rotationMatrix() *
+                                        ( refFrame.cameraInWorld() + scale * ( curFrame.cameraInWorld() - refFrame.cameraInWorld() ) );
     std::cout << "translation with scale: " << curFrame.m_TransW2F.translation().transpose() << std::endl;
 
     // std::cout << "Before scaling depth 0: " << depthCurFrame(0) << std::endl;
@@ -234,8 +231,8 @@ int main( int argc, char* argv[] )
     {
         const Eigen::Vector2d refFeature = refFrame.m_frameFeatures[ i ]->m_feature;
         const Eigen::Vector2d curFeature = curFrame.m_frameFeatures[ i ]->m_feature;
-        if ( refFrame.m_camera->isInFrame( refFeature, 5.0 ) == true &&
-             curFrame.m_camera->isInFrame( curFeature, 5.0 ) == true && pointsCurCamera.col( i ).z() > 0 )
+        if ( refFrame.m_camera->isInFrame( refFeature, 5.0 ) == true && curFrame.m_camera->isInFrame( curFeature, 5.0 ) == true &&
+             pointsCurCamera.col( i ).z() > 0 )
         {
             std::shared_ptr< Point > point = std::make_shared< Point >( pointsWorld.col( i ) );
             //    std::cout << "3D points: " << point->m_position.format(utils::eigenFormat()) << std::endl;
@@ -271,22 +268,21 @@ int main( int argc, char* argv[] )
     // Matcher::findTemplateMatch(refFrame, curFrame, patchSizeOptFlow, 35);
 
     auto t2 = std::chrono::high_resolution_clock::now();
-    std::cout << "Elapsed time for matching: "
-              << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count() << " ms" << std::endl;
+    std::cout << "Elapsed time for matching: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count() << " ms"
+              << std::endl;
 
     numObserves = refFrame.numberObservation();
-    Eigen::VectorXd newCurDepths(numObserves);
-    algorithm::depthCamera(curFrame, newCurDepths);
-    medianDepth = algorithm::computeMedian( newCurDepths );
+    Eigen::VectorXd newCurDepths( numObserves );
+    algorithm::depthCamera( curFrame, newCurDepths );
+    medianDepth           = algorithm::computeMedian( newCurDepths );
     const double minDepth = newCurDepths.minCoeff();
     std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
     curFrame.setKeyframe();
 
-    const cv::Mat newImg = cv::imread( utils::findAbsoluteFilePath("input/0000000002.png"), cv::IMREAD_GRAYSCALE );
+    const cv::Mat newImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000002.png" ), cv::IMREAD_GRAYSCALE );
     Frame newFrame( camera, newImg );
-    ImageAlignment match(5, 0, 3);
-    match.align(curFrame, newFrame);
-
+    ImageAlignment match( 5, 0, 3 );
+    match.align( curFrame, newFrame );
 
     // matcher.findTemplateMatch(refFrame, curFrame, 5, 99);
     // visualization visualize;

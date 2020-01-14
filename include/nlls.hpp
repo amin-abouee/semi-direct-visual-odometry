@@ -1,8 +1,8 @@
 #ifndef __NLLS_HPP__
 #define __NLLS_HPP__
 
-#include <iostream>
 #include <cmath>
+#include <iostream>
 
 #include <Eigen/Core>
 #include <sophus/se3.hpp>
@@ -21,12 +21,14 @@ public:
 
     uint32_t m_numUnknowns;
     Eigen::MatrixXd m_hessian;
-    Eigen::MatrixXd m_jacobian ;
+    Eigen::MatrixXd m_jacobian;
     Eigen::VectorXd m_residuals;
     Eigen::VectorXd m_gradient;
     Eigen::VectorXd m_weights;
     Eigen::VectorXd m_dx;
-    std::vector< bool > m_curVisibility;
+    Eigen::Matrix<bool, Eigen::Dynamic, 1> m_visiblePoints;
+
+    // https://stackoverflow.com/a/26904458/1804533
 
     LevenbergMethod m_levenbergMethod;
     uint32_t m_maxIteration;
@@ -37,12 +39,11 @@ public:
     Estimator::EstimatorModel m_estimatorModel;
     bool m_enableErrorAnalysis;
 
-
     double m_qualityFit;
     Eigen::Matrix< double, 6, 6 > m_covarianceMatrixParameters;
     Eigen::Matrix< double, 6, 1 > m_asymptoticStandardUncertaintyParameter;
 
-    explicit NLLS(const uint32_t numUnknowns);
+    explicit NLLS( const uint32_t numUnknowns );
     NLLS( const NLLS& rhs );
     NLLS( NLLS&& rhs );
     NLLS& operator=( const NLLS& rhs );
@@ -59,18 +60,21 @@ public:
     //             const std::size_t numObservations);
 
     double optimizeGN( Sophus::SE3d& pose,
-                const std::function< uint32_t ( Sophus::SE3d& pose) >& lambdaResidualFunctor,
-                const std::function< uint32_t ( Sophus::SE3d& pose) >& lambdaJacobianFunctor,
-                const std::function< void ( Sophus::SE3d& pose, const Eigen::VectorXd& dx) >& lambdaUpdateFunctor,
-                const std::size_t numObservations );
+                       const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaResidualFunctor,
+                       const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaJacobianFunctor,
+                       const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor,
+                       const std::size_t numObservations);
 
     double optimizeLM( Sophus::SE3d& pose,
-                const std::function< uint32_t ( Sophus::SE3d&, Eigen::VectorXd& res ) >& lambdaResidualFunctor,
-                const std::function< uint32_t ( Sophus::SE3d&, Eigen::MatrixXd& jac ) >& lambdaJacobianFunctor,
-                const std::function< void ( Sophus::SE3d& pose, const Eigen::VectorXd& dx) >& lambdaUpdateFunctor,
-                const std::size_t numObservations );
+                       const std::function< uint32_t( Sophus::SE3d&, Eigen::VectorXd& res ) >& lambdaResidualFunctor,
+                       const std::function< uint32_t( Sophus::SE3d&, Eigen::MatrixXd& jac ) >& lambdaJacobianFunctor,
+                       const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor,
+                       const std::size_t numObservations );
+
+    void initParameters(const std::size_t numObservations);
 
 private:
+    void tukeyWeighting (const uint32_t numValidProjectedPoints);
 };
 
 #endif /* __NLLS_HPP__ */

@@ -9,9 +9,8 @@
 
 namespace algorithm
 {
-
 // https://forum.kde.org/viewtopic.php?f=74&t=96718
-using MapXRow = Eigen::Map< Eigen::Matrix< uint8_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor > >;
+using MapXRow      = Eigen::Map< Eigen::Matrix< uint8_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor > >;
 using MapXRowConst = Eigen::Map< const Eigen::Matrix< uint8_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor > >;
 // void pointsRefCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsRefCamera );
 
@@ -23,9 +22,7 @@ void transferPointsWorldToCam( const Frame& frame, const Eigen::MatrixXd& points
 
 void transferPointsCamToWorld( const Frame& frame, const Eigen::MatrixXd& pointsCamera, Eigen::MatrixXd& pointsWorld );
 
-void normalizedDepthCamera( const Frame& frame,
-                            const Eigen::MatrixXd& pointsWorld,
-                            Eigen::VectorXd& normalizedDepthCamera );
+void normalizedDepthCamera( const Frame& frame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& normalizedDepthCamera );
 
 void normalizedDepthCamera( const Frame& frame, Eigen::VectorXd& normalizedDepthCamera );
 
@@ -50,14 +47,19 @@ void triangulatePointDLT( const Frame& refFrame,
 // Multi view geometry, Result 9.19, page 259
 void decomposeEssentialMatrix( const Eigen::Matrix3d& E, Eigen::Matrix3d& R1, Eigen::Matrix3d& R2, Eigen::Vector3d& t );
 
-void recoverPose(
-  const Eigen::Matrix3d& E, const Frame& refFrame, Frame& curFrame, Eigen::Matrix3d& R, Eigen::Vector3d& t );
+void recoverPose( const Eigen::Matrix3d& E, const Frame& refFrame, Frame& curFrame, Eigen::Matrix3d& R, Eigen::Vector3d& t );
 
 Sophus::SE3d computeRelativePose( const Frame& refFrame, const Frame& curFrame );
 
 Eigen::Matrix3d hat( const Eigen::Vector3d& vec );
 
-double computeMedian( const Eigen::VectorXd& vec );
+double computeMedian( const Eigen::VectorXd& input );
+
+double computeMedian( const Eigen::VectorXd& input, const uint32_t numValidPoints );
+
+double computeMAD( const Eigen::VectorXd& input, const uint32_t numValidPoints );
+
+double computeSigma( const Eigen::VectorXd& input, const uint32_t numValidPoints, const double k = 1.482602218505602 );
 
 float bilinearInterpolation( const MapXRow& image, const double x, const double y );
 

@@ -39,7 +39,7 @@
 
 namespace visualization
 {
-  // Eigen::IOFormat CommaInitFmt( 6, Eigen::DontAlignCols, ", ", ", ", "[", "]", " [ ", "]" );
+// Eigen::IOFormat CommaInitFmt( 6, Eigen::DontAlignCols, ", ", ", ", "[", "]", " [ ", "]" );
 
 // https://cloford.com/resources/colours/500col.htm
 // https://www.w3schools.com/colors/colors_w3css.asp
@@ -62,7 +62,10 @@ void featurePoints( const Frame& frame, const std::string& windowsName );
 void featurePoints( const cv::Mat& img, const Frame& frame, const std::string& windowsName );
 
 /// visualize feature points in any input image (for instance on HSV image)
-void featurePointsInGrid( const cv::Mat& img, const Frame& frame, const int32_t gridSize, const std::string& windowsName );
+void featurePointsInGrid( const cv::Mat& img,
+                          const Frame& frame,
+                          const int32_t gridSize,
+                          const std::string& windowsName );
 
 /// visualize feature points in both frames. images stick to each other
 void featurePointsInBothImages( const Frame& refFrame, const Frame& curFrame, const std::string& windowsName );
@@ -104,10 +107,10 @@ void epipolarLinesWithDepth( const Frame& refFrame,
                              const std::string& windowsName );
 
 void epipolarLinesWithPoints( const Frame& refFrame,
-                             const Frame& curFrame,
-                             const Eigen::MatrixXd& points,
-                             const double sigma,
-                             const std::string& windowsName );
+                              const Frame& curFrame,
+                              const Eigen::MatrixXd& points,
+                              const double sigma,
+                              const std::string& windowsName );
 
 /// draw all epipolar lines with fundamental matrix
 void epipolarLinesWithFundamentalMatrix( const Frame& frame,
@@ -126,6 +129,13 @@ void epipolarLinesWithEssentialMatrix( const Frame& frame,
                                        const Eigen::Matrix3d& E,
                                        const std::string& windowsName );
 
+void imagePatches( const cv::Mat& patches,
+                   const uint32_t numberPatches,
+                   const uint32_t patchSize,
+                   const uint32_t horizontalMargin,
+                   const uint32_t verticalMargin,
+                   const uint32_t maxPatchInRow );
+
 void grayImage( const cv::Mat& img, const std::string& windowsName );
 
 void HSVColoredImage( const cv::Mat& img, const std::string& windowsName );
@@ -134,6 +144,6 @@ cv::Scalar generateColor( const float min, const float max, const float value );
 
 cv::Mat getBGRImage( const cv::Mat& img );
 
-}
+}  // namespace visualization
 
 #endif /* __VISUALIZATION_H__ */

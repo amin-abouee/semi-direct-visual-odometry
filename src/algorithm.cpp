@@ -67,9 +67,7 @@ void algorithm::points3DWorld( const Frame& refFrame, const Frame& curFrame, Eig
     }
 }
 
-void algorithm::transferPointsWorldToCam( const Frame& frame,
-                                          const Eigen::MatrixXd& pointsWorld,
-                                          Eigen::MatrixXd& pointsCamera )
+void algorithm::transferPointsWorldToCam( const Frame& frame, const Eigen::MatrixXd& pointsWorld, Eigen::MatrixXd& pointsCamera )
 {
     const auto featureSz = frame.numberObservation();
     for ( std::size_t i( 0 ); i < featureSz; i++ )
@@ -78,9 +76,7 @@ void algorithm::transferPointsWorldToCam( const Frame& frame,
     }
 }
 
-void algorithm::transferPointsCamToWorld( const Frame& frame,
-                                          const Eigen::MatrixXd& pointsCamera,
-                                          Eigen::MatrixXd& pointsWorld )
+void algorithm::transferPointsCamToWorld( const Frame& frame, const Eigen::MatrixXd& pointsCamera, Eigen::MatrixXd& pointsWorld )
 {
     const auto featureSz = frame.numberObservation();
     for ( std::size_t i( 0 ); i < featureSz; i++ )
@@ -89,14 +85,12 @@ void algorithm::transferPointsCamToWorld( const Frame& frame,
     }
 }
 
-void algorithm::normalizedDepthCamera( const Frame& frame,
-                                          const Eigen::MatrixXd& pointsWorld,
-                                          Eigen::VectorXd& normalizedDepthCamera )
+void algorithm::normalizedDepthCamera( const Frame& frame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& normalizedDepthCamera )
 {
     const auto featureSz = frame.numberObservation();
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
-        normalizedDepthCamera( i )     = frame.world2camera( pointsWorld.col( i ) ).norm();
+        normalizedDepthCamera( i ) = frame.world2camera( pointsWorld.col( i ) ).norm();
     }
 }
 
@@ -105,14 +99,11 @@ void algorithm::normalizedDepthCamera( const Frame& frame, Eigen::VectorXd& norm
     const auto featureSz = frame.numberObservation();
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
-        normalizedDepthCamera( i )     = frame.world2camera( frame.m_frameFeatures[i]->m_point->m_position ).norm();
+        normalizedDepthCamera( i ) = frame.world2camera( frame.m_frameFeatures[ i ]->m_point->m_position ).norm();
     }
 }
 
-
-void algorithm::depthCamera( const Frame& frame,
-                                const Eigen::MatrixXd& pointsWorld,
-                                Eigen::VectorXd& depthCamera )
+void algorithm::depthCamera( const Frame& frame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& depthCamera )
 {
     const auto featureSz = frame.numberObservation();
     for ( std::size_t i( 0 ); i < featureSz; i++ )
@@ -126,10 +117,9 @@ void algorithm::depthCamera( const Frame& frame, Eigen::VectorXd& depthCamera )
     const auto featureSz = frame.numberObservation();
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
-        depthCamera( i ) = frame.world2camera( frame.m_frameFeatures[i]->m_point->m_position ).z();
+        depthCamera( i ) = frame.world2camera( frame.m_frameFeatures[ i ]->m_point->m_position ).z();
     }
 }
-
 
 void algorithm::triangulatePointHomogenousDLT( const Frame& refFrame,
                                                const Frame& curFrame,
@@ -191,8 +181,8 @@ void algorithm::triangulatePointDLT( const Frame& refFrame,
       P2( 1, 2 ) - curFeature.y() * P2( 2, 2 );
 
     Eigen::VectorXd p( 4 );
-    p << refFeature.x() * P1( 2, 3 ) - P1( 0, 3 ), refFeature.y() * P1( 2, 3 ) - P1( 1, 3 ),
-      curFeature.x() * P2( 2, 3 ) - P2( 0, 3 ), curFeature.y() * P2( 2, 3 ) - P2( 1, 3 );
+    p << refFeature.x() * P1( 2, 3 ) - P1( 0, 3 ), refFeature.y() * P1( 2, 3 ) - P1( 1, 3 ), curFeature.x() * P2( 2, 3 ) - P2( 0, 3 ),
+      curFeature.y() * P2( 2, 3 ) - P2( 1, 3 );
     // point = A.colPivHouseholderQr().solve(p);
     point = ( A.transpose() * A ).ldlt().solve( A.transpose() * p );
 
@@ -220,10 +210,7 @@ void algorithm::triangulatePointDLT( const Frame& refFrame,
 
 // 9.6.2 Extraction of cameras from the essential matrix, multi view geometry
 // https://github.com/opencv/opencv/blob/a74fe2ec01d9218d06cb7675af633fc3f409a6a2/modules/calib3d/src/five-point.cpp
-void algorithm::decomposeEssentialMatrix( const Eigen::Matrix3d& E,
-                                          Eigen::Matrix3d& R1,
-                                          Eigen::Matrix3d& R2,
-                                          Eigen::Vector3d& t )
+void algorithm::decomposeEssentialMatrix( const Eigen::Matrix3d& E, Eigen::Matrix3d& R1, Eigen::Matrix3d& R2, Eigen::Vector3d& t )
 {
     Eigen::JacobiSVD< Eigen::Matrix3d > svd_E( E, Eigen::ComputeFullV | Eigen::ComputeFullU );
     Eigen::Matrix3d W;
@@ -252,8 +239,7 @@ void algorithm::decomposeEssentialMatrix( const Eigen::Matrix3d& E,
     // std::cout << "t: " << tc << std::endl;
 }
 
-void algorithm::recoverPose(
-  const Eigen::Matrix3d& E, const Frame& refFrame, Frame& curFrame, Eigen::Matrix3d& R, Eigen::Vector3d& t )
+void algorithm::recoverPose( const Eigen::Matrix3d& E, const Frame& refFrame, Frame& curFrame, Eigen::Matrix3d& R, Eigen::Vector3d& t )
 {
     Eigen::Matrix3d R1;
     Eigen::Matrix3d R2;
@@ -280,10 +266,10 @@ void algorithm::recoverPose(
         Eigen::Vector3d point1;
         Eigen::Vector3d point2;
         curFrame.m_TransW2F = refFrame.m_TransW2F * poses[ i ];
-        triangulatePointDLT( refFrame, curFrame, refFrame.m_frameFeatures[ 0 ]->m_feature,
-                             curFrame.m_frameFeatures[ 0 ]->m_feature, point1 );
-        triangulatePointDLT( refFrame, curFrame, refFrame.m_frameFeatures[ 1 ]->m_feature,
-                             curFrame.m_frameFeatures[ 1 ]->m_feature, point2 );
+        triangulatePointDLT( refFrame, curFrame, refFrame.m_frameFeatures[ 0 ]->m_feature, curFrame.m_frameFeatures[ 0 ]->m_feature,
+                             point1 );
+        triangulatePointDLT( refFrame, curFrame, refFrame.m_frameFeatures[ 1 ]->m_feature, curFrame.m_frameFeatures[ 1 ]->m_feature,
+                             point2 );
         Eigen::Vector3d refProject1 = refFrame.world2camera( point1 );
         Eigen::Vector3d curProject1 = curFrame.world2camera( point1 );
         Eigen::Vector3d refProject2 = refFrame.world2camera( point2 );
@@ -341,25 +327,65 @@ double algorithm::computeMedian( const Eigen::VectorXd& input )
     }
 }
 
+double algorithm::computeMedian( const Eigen::VectorXd& input, const uint32_t numValidPoints )
+{
+    std::vector< double > vec( input.data(), input.data() + input.rows() * input.cols() );
+
+    const auto middleSize = numValidPoints / 2;
+    std::nth_element( vec.begin(), vec.begin() + middleSize, vec.end() );
+
+    if ( vec.size() == 0 )
+    {
+        return std::numeric_limits< double >::quiet_NaN();
+    }
+    else if ( vec.size() % 2 != 0 )  // Odd
+    {
+        return vec[ middleSize ];
+    }
+    else  // Even
+    {
+        return ( vec[ middleSize - 1 ] + vec[ middleSize ] ) / 2.0;
+    }
+}
+
+double algorithm::computeMAD( const Eigen::VectorXd& input, const uint32_t numValidPoints )
+{
+    const std::size_t numObservations = input.rows();
+    const double median = computeMedian(input, numValidPoints);
+    Eigen::VectorXd diffWithMedian(numObservations);
+    for(std::size_t i(0); i<numObservations; i++)
+    {
+        diffWithMedian(i) = std::abs(input(i) - median);
+    }
+    return computeMedian(diffWithMedian, numValidPoints);
+}
+
+double algorithm::computeSigma( const Eigen::VectorXd& input, const uint32_t numValidPoints, const double k )
+{
+
+    const double mad = computeMAD(input, numValidPoints);
+    return k * mad;
+}
+
 float algorithm::bilinearInterpolation( const MapXRow& image, const double x, const double y )
 {
-    const int x1 = static_cast< int >( x );
-    const int y1 = static_cast< int >( y );
-    const int x2 = x1 + 1;
-    const int y2 = y1 + 1;
-    const float a     = ( x2 - x ) * image( y1, x1 ) + ( x - x1 ) * image( y1, x2 );
-    const float b     = ( x2 - x ) * image( y2, x1 ) + ( x - x1 ) * image( y2, x2 );
+    const int x1  = static_cast< int >( x );
+    const int y1  = static_cast< int >( y );
+    const int x2  = x1 + 1;
+    const int y2  = y1 + 1;
+    const float a = ( x2 - x ) * image( y1, x1 ) + ( x - x1 ) * image( y1, x2 );
+    const float b = ( x2 - x ) * image( y2, x1 ) + ( x - x1 ) * image( y2, x2 );
     return ( ( y2 - y ) * a + ( y - y1 ) * b );
 }
 
 float algorithm::bilinearInterpolation( const MapXRowConst& image, const double x, const double y )
 {
-    const int x1 = static_cast< int >( x );
-    const int y1 = static_cast< int >( y );
-    const int x2 = x1 + 1;
-    const int y2 = y1 + 1;
-    const float a     = ( x2 - x ) * image( y1, x1 ) + ( x - x1 ) * image( y1, x2 );
-    const float b     = ( x2 - x ) * image( y2, x1 ) + ( x - x1 ) * image( y2, x2 );
+    const int x1  = static_cast< int >( x );
+    const int y1  = static_cast< int >( y );
+    const int x2  = x1 + 1;
+    const int y2  = y1 + 1;
+    const float a = ( x2 - x ) * image( y1, x1 ) + ( x - x1 ) * image( y1, x2 );
+    const float b = ( x2 - x ) * image( y2, x1 ) + ( x - x1 ) * image( y2, x2 );
     return ( ( y2 - y ) * a + ( y - y1 ) * b );
 }
 
