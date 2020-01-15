@@ -186,6 +186,7 @@ void NLLS::visualize(const uint32_t numValidProjectedPoints)
     }
 
     double median = algorithm::computeMedian(m_residuals, numValidProjectedPoints);
+    double mad = algorithm::computeMAD(m_residuals, numValidProjectedPoints);
     double sigma = algorithm::computeSigma(m_residuals, numValidProjectedPoints);
     pack["residuals_data"] = residuals;
     pack["residuals_color"] = std::string("blue");
@@ -193,6 +194,8 @@ void NLLS::visualize(const uint32_t numValidProjectedPoints)
     pack["residuals_median_color"] = std::string("gray");
     pack["residuals_sigma"] = sigma;
     pack["residuals_sigma_color"] = std::string("orange");
+    pack["residuals_mad"] = mad;
+    pack["residuals_mad_color"] = std::string("red");
     pack["residuals_windows_name"] = std::string("residuals");
 
 

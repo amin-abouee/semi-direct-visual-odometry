@@ -659,6 +659,8 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
         // pack["residuals_median_color"] = "blue";
         // pack["residuals_sigma"] = sigma;
         // pack["residuals_sigma_color"] = "orange";
+        // pack["residuals_mad"] = mad;
+        // pack["residuals_mad_color"] = std::string("red");
         // pack["residuals_windows_name"] = std::string("residuals");
 
         auto residuals    = std::any_cast< std::vector< double > >( pack[ "residuals_data" ] );
@@ -667,15 +669,18 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
         auto medianColor = std::any_cast< std::string >( pack[ "residuals_median_color" ] );
         auto sigma = std::any_cast< double >( pack[ "residuals_sigma" ] );
         auto sigmaColor = std::any_cast< std::string >( pack[ "residuals_sigma_color" ] );
+        auto mad = std::any_cast< double >( pack[ "residuals_mad" ] );
+        auto madColor = std::any_cast< std::string >( pack[ "residuals_mad_color" ] );
         auto windowsName = std::any_cast< std::string >( pack[ "residuals_windows_name" ] );
 
         std::cout << "median: " << median << std::endl;
         std::cout << "sigma: " << sigma << std::endl;
 
         std::vector<double> y;
-        std::vector<double> med(400, median);
-        std::vector<double> sig1(400, sigma);
-        std::vector<double> sig2(400, -sigma);
+        std::vector<double> medVec(400, median);
+        std::vector<double> sig1Vec(400, sigma);
+        std::vector<double> sig2Vec(400, -sigma);
+        std::vector<double> madVec(400, mad);
 
         for(int i(0); i< 400; i++)
         {
@@ -689,10 +694,14 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
         // keywords["zorder"] = "100";
         plt::subplot2grid( 9, 11, 0, 0, 4, 6 );
         keywords["c"] = medianColor;
-        plt::scatter(med, y, 1.0, keywords);
+        plt::scatter(medVec, y, 1.0, keywords);
+
+        keywords["c"] = madColor;
+        plt::scatter(madVec, y, 1.0, keywords);
+
         keywords["c"] = sigmaColor;
-        plt::scatter(sig1, y, 1.0, keywords);
-        plt::scatter(sig2, y, 1.0, keywords);
+        plt::scatter(sig1Vec, y, 1.0, keywords);
+        plt::scatter(sig2Vec, y, 1.0, keywords);
         plt::hist( residuals, 50, residualsColor );
         plt::legend();
         plt::xlabel( windowsName );
