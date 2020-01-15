@@ -74,9 +74,12 @@ public:
     void initParameters(const std::size_t numObservations);
 
 private:
+
+    void resetParameters (bool clearJacobian=false);
+
     void tukeyWeighting (const uint32_t numValidProjectedPoints);
 
-    void visualize();
+    void visualize(const uint32_t numValidProjectedPoints);
 };
 
 #endif /* __NLLS_HPP__ */

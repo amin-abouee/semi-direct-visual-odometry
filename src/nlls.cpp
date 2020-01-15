@@ -2,6 +2,8 @@
 #include "algorithm.hpp"
 #include "visualization.hpp"
 
+#include <any>
+
 #include <opencv2/core/eigen.hpp>
 
 NLLS::NLLS( const u_int32_t numUnknowns )
@@ -45,18 +47,10 @@ double NLLS::optimizeGN( Sophus::SE3d& pose,
 {
     const uint32_t numUnknowns = 6;
     // const uint32_t patchSize = numObservations / curVisibility.size();
-
     assert( ( numObservations - numUnknowns ) > 0 );
 
-    m_residuals.setZero();
-    m_weights.setZero();
-    m_hessian.setZero();
-    m_gradient.setZero();
-
     bool computeJacobian = lambdaJacobianFunctor == nullptr ? false : true;
-
-    if ( computeJacobian == true )
-        m_jacobian.setZero();
+    resetParameters(computeJacobian);
 
     unsigned int curIteration = 0;
     bool stop                 = false;
@@ -109,7 +103,7 @@ double NLLS::optimizeGN( Sophus::SE3d& pose,
             // pose = Sophus::SE3d::exp( m_dx ) * pose;
             lambdaUpdateFunctor( pose, m_dx );
         }
-        visualize();
+        visualize(cntTotalProjectedPixels);
         ++curIteration;
     }
     return std::sqrt( chiSquaredError / numObservations );
@@ -130,9 +124,18 @@ void NLLS::initParameters( const std::size_t numObservations )
     m_residuals.resize( numObservations );
     m_weights.resize( numObservations );
     m_visiblePoints.resize( numObservations );
+
+}
+
+void NLLS::resetParameters (bool clearJacobian)
+{
+    m_hessian.setZero();
+    m_gradient.setZero();
     m_residuals.setConstant( std::numeric_limits< double >::max() );
     m_weights.setConstant( 0.0 );
     m_visiblePoints.setConstant( false );
+    if ( clearJacobian == true )
+        m_jacobian.setZero();
 }
 
 void NLLS::tukeyWeighting( const uint32_t numValidProjectedPoints )
@@ -166,8 +169,10 @@ void NLLS::tukeyWeighting( const uint32_t numValidProjectedPoints )
     // visualization::drawHistogram(residuals, "b", "residuals");
 }
 
-void NLLS::visualize()
+void NLLS::visualize(const uint32_t numValidProjectedPoints)
 {
+    std::map<std::string, std::any> pack;
+
     std::vector< double > weights;
     std::vector< double > residuals;
     const auto numObservations = m_visiblePoints.size();
@@ -180,19 +185,38 @@ void NLLS::visualize()
         }
     }
 
+    double median = algorithm::computeMedian(m_residuals, numValidProjectedPoints);
+    double sigma = algorithm::computeSigma(m_residuals, numValidProjectedPoints);
+    pack["residuals_data"] = residuals;
+    pack["residuals_color"] = std::string("blue");
+    pack["residuals_median"] = median;
+    pack["residuals_median_color"] = std::string("gray");
+    pack["residuals_sigma"] = sigma;
+    pack["residuals_sigma_color"] = std::string("orange");
+    pack["residuals_windows_name"] = std::string("residuals");
+
+
+    pack["weights_data"] = weights;
+    pack["weights_windows_name"] = std::string("weights");
+    pack["weights_color"] = std::string("green");
+
+
     // Mat (int rows, int cols, int type, void *data, size_t step=AUTO_STEP)
     cv::Mat cvHessianGray(m_hessian.rows(), m_hessian.cols(), CV_64F, m_hessian.data());
-    std::cout << "cvHessianGray: "
-              << "type: " << cvHessianGray.type() << ", rows: " << cvHessianGray.rows << ", cols: " << cvHessianGray.cols << std::endl;
+    // std::cout << "cvHessianGray: "
+            //   << "type: " << cvHessianGray.type() << ", rows: " << cvHessianGray.rows << ", cols: " << cvHessianGray.cols << std::endl;
     
-    std::cout << "Eigen Hessian: " << m_hessian << std::endl;
-    std::cout << "Opencv Hessian: " << cvHessianGray << std::endl;
+    // std::cout << "Eigen Hessian: " << m_hessian << std::endl;
+    // std::cout << "Opencv Hessian: " << cvHessianGray << std::endl;
     // cvHessianGray.convertTo(cvHessianGray, CV_32F);
     cv::normalize( cvHessianGray, cvHessianGray, -1, 1, cv::NORM_MINMAX, CV_32F );
 
-    std::cout << "cvHessianGray: "
-              << "type: " << cvHessianGray.type() << ", rows: " << cvHessianGray.rows << ", cols: " << cvHessianGray.cols << std::endl;
-    std::cout << "Opencv Hessian: " << cvHessianGray << std::endl;
+    // std::cout << "cvHessianGray: "
+            //   << "type: " << cvHessianGray.type() << ", rows: " << cvHessianGray.rows << ", cols: " << cvHessianGray.cols << std::endl;
+    // std::cout << "Opencv Hessian: " << cvHessianGray << std::endl;
+    pack["hessian_cv"] = cvHessianGray;
+    pack["hessian_windows_name"] = std::string("hessian");
+
 
     // cv::normalize( cvHessianGray, cvHessianGray, 0, 255, cv::NORM_MINMAX, CV_8U );
     // std::cout << "Opencv Hessian: " << cvHessianGray << std::endl;
@@ -203,14 +227,17 @@ void NLLS::visualize()
     // std::cout << "cvHessianColor: "
             //   << "type: " << cvHessianColor.type() << ", rows: " << cvHessianColor.rows << ", cols: " << cvHessianColor.cols << std::endl;
 
-    cv::Mat resPatches = visualization::residualsPatches( m_residuals, 123, 5, 10, 10, 12 );
+    cv::Mat resPatches = visualization::residualsPatches( m_residuals, 123, 5, 5, 5, 12 );
+    pack["patches_cv"] = resPatches;
+    pack["patche_windows_name"] = std::string("patche");
+
     // std::cout << "cvHessianColor: "
             //   << "type: " << resPatches.type() << ", rows: " << resPatches.rows << ", cols: " << resPatches.cols << std::endl;
     // cv::cvtColor(resPatches, resPatches, cv::COLOR_BGR2RGB);
 
 
-    std::vector< std::vector< double > > data{residuals, weights};
-    std::vector< std::string > colors{"b", "g"};
-    std::vector< std::string > windowNames{"residuals", "weights", "patches", "jacobian"};
-    visualization::drawHistogram( data, cvHessianGray, resPatches, colors, 1, windowNames );
+    // std::vector< std::vector< double > > data{residuals, weights};
+    // std::vector< std::string > colors{"b", "g"};
+    // std::vector< std::string > windowNames{"residuals", "weights", "patches", "jacobian"};
+    visualization::drawHistogram( pack );
 }

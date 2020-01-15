@@ -1,5 +1,7 @@
 #include "visualization.hpp"
 
+#include <unordered_map>
+
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
@@ -461,11 +463,11 @@ void visualization::epipolarLinesWithEssentialMatrix( const Frame& frame,
 }
 
 void visualization::templatePatches( const cv::Mat& patches,
-                                  const uint32_t numberPatches,
-                                  const uint32_t patchSize,
-                                  const uint32_t horizontalMargin,
-                                  const uint32_t verticalMargin,
-                                  const uint32_t maxPatchInRow )
+                                     const uint32_t numberPatches,
+                                     const uint32_t patchSize,
+                                     const uint32_t horizontalMargin,
+                                     const uint32_t verticalMargin,
+                                     const uint32_t maxPatchInRow )
 {
     const uint32_t numberNecessaryCols = numberPatches > maxPatchInRow ? maxPatchInRow : numberPatches;
     const uint32_t numberNecessaryRows = static_cast< uint32_t >( std::ceil( numberPatches / static_cast< float >( maxPatchInRow ) ) );
@@ -499,11 +501,11 @@ void visualization::templatePatches( const cv::Mat& patches,
 }
 
 cv::Mat visualization::residualsPatches( const Eigen::VectorXd& residuals,
-                   const uint32_t numberPatches,
-                   const uint32_t patchSize,
-                   const uint32_t horizontalMargin,
-                   const uint32_t verticalMargin,
-                   const uint32_t maxPatchInRow )
+                                         const uint32_t numberPatches,
+                                         const uint32_t patchSize,
+                                         const uint32_t horizontalMargin,
+                                         const uint32_t verticalMargin,
+                                         const uint32_t maxPatchInRow )
 {
     const uint32_t numberNecessaryCols = numberPatches > maxPatchInRow ? maxPatchInRow : numberPatches;
     const uint32_t numberNecessaryRows = static_cast< uint32_t >( std::ceil( numberPatches / static_cast< float >( maxPatchInRow ) ) );
@@ -524,8 +526,8 @@ cv::Mat visualization::residualsPatches( const Eigen::VectorXd& residuals,
             const uint32_t leftUpCornerX = j * ( horizontalMargin + patchSize ) + horizontalMargin;
             const uint32_t leftUpCornerY = i * ( verticalMargin + patchSize ) + verticalMargin;
             // Mat (int rows, int cols, int type, void *data, size_t step=AUTO_STEP)
-            double* data = const_cast<double *>(&residuals(cntPatches * patchArea));
-            const cv::Mat patchContent(patchSize, patchSize, outputImg.type(), data);
+            double* data = const_cast< double* >( &residuals( cntPatches * patchArea ) );
+            const cv::Mat patchContent( patchSize, patchSize, outputImg.type(), data );
             // const cv::Mat patchContent   = patches.row( cntPatches ).reshape( 1, patchSize );
             // std::cout << "patchContent: " << patchContent << std::endl;
             auto ROI = outputImg( cv::Rect( leftUpCornerX, leftUpCornerY, patchSize, patchSize ) );
@@ -576,10 +578,11 @@ void visualization::drawHistogram( std::vector< double >& data, const std::strin
 
 void visualization::drawHistogram( const std::vector< std::vector< double > >& data,
                                    const cv::Mat& hessian,
-                                    const cv::Mat& resPatches,
+                                   const cv::Mat& resPatches,
                                    const std::vector< std::string >& colors,
                                    const uint32_t maxFiguresInRow,
-                                   const std::vector< std::string >& windowsName )
+                                   const std::vector< std::string >& windowsName,
+                                   std::map< std::string, std::any >& pack )
 {
     // const auto numFigures = data.size();
     // const uint32_t numberNecessaryCols = maxFiguresInRow;
@@ -609,146 +612,167 @@ void visualization::drawHistogram( const std::vector< std::vector< double > >& d
     plt::title( windowsName[ 1 ] );
 
     plt::subplot2grid( 9, 11, 0, 7, 4, 4 );
-    std::map<std::string, std::string> keywords;
-    keywords["cmap"] = "gray"; 
-    plt::imshow(resPatches.ptr(), resPatches.rows, resPatches.cols, 1, keywords);
-    plt::title(windowsName[ 2 ]);
-
+    std::map< std::string, std::string > keywords;
+    keywords[ "cmap" ] = "gray";
+    plt::imshow( resPatches.ptr(), resPatches.rows, resPatches.cols, 1, keywords );
+    plt::title( windowsName[ 2 ] );
 
     // https://answers.opencv.org/question/27248/max-and-min-values-in-a-mat/
     double min, max;
-    cv::minMaxLoc(hessian, &min, &max);
-    const float maxAbsolute = std::max(std::abs(min), std::abs(max));
+    cv::minMaxLoc( hessian, &min, &max );
+    const float maxAbsolute = std::max( std::abs( min ), std::abs( max ) );
     std::cout << "Min: " << min << ", Abs Max: " << max << std::endl;
     // std::cout << "Abs Min: " << -maxAbsolute << ", Abs Max: " << maxAbsolute << std::endl;
     // https://matplotlib.org/tutorials/colors/colormaps.html#diverging
     plt::subplot2grid( 9, 11, 5, 7, 4, 4 );
-    keywords["cmap"] = "coolwarm";
-    keywords["vmin"] = std::to_string(-1.0); 
-    keywords["vmax"] = std::to_string(1.0); 
+    keywords[ "cmap" ] = "coolwarm";
+    // keywords["vmin"] = std::to_string(-1.0);
+    // keywords["vmax"] = std::to_string(1.0);
     // std::cout << "vmin: " << keywords["vmin"] << ", vmax: " << keywords["vmax"] << std::endl;
-    plt::imshow(hessian.ptr(), hessian.rows, hessian.cols, 1, keywords);
-    plt::title(windowsName[ 3 ]);
+    plt::imshow( hessian.ptr(), hessian.rows, hessian.cols, 1, keywords );
+    plt::title( windowsName[ 3 ] );
+
+    // plt::show();
+
+    try
+    {
+        auto data     = pack[ "data_res" ];
+        auto residual = std::any_cast< std::vector< double > >( data );
+        std::cout << "size: " << residual.size() << std::endl;
+        std::cout << "type: " << data.type().name() << std::endl;
+    }
+    catch ( const std::bad_any_cast& e )
+    {
+        std::cerr << e.what() << '\n';
+    }
+}
+
+void visualization::drawHistogram( std::map< std::string, std::any >& pack )
+{
+    plt::figure_size( 3000, 1125 );
+
+    try
+    {
+        // pack["residuals_data"] = residuals;
+        // pack["residuals_color"] = std::string("gray");
+        // pack["residuals_median"] = median;
+        // pack["residuals_median_color"] = "blue";
+        // pack["residuals_sigma"] = sigma;
+        // pack["residuals_sigma_color"] = "orange";
+        // pack["residuals_windows_name"] = std::string("residuals");
+
+        auto residuals    = std::any_cast< std::vector< double > >( pack[ "residuals_data" ] );
+        auto residualsColor       = std::any_cast< std::string >( pack[ "residuals_color" ] );
+        auto median = std::any_cast< double >( pack[ "residuals_median" ] );
+        auto medianColor = std::any_cast< std::string >( pack[ "residuals_median_color" ] );
+        auto sigma = std::any_cast< double >( pack[ "residuals_sigma" ] );
+        auto sigmaColor = std::any_cast< std::string >( pack[ "residuals_sigma_color" ] );
+        auto windowsName = std::any_cast< std::string >( pack[ "residuals_windows_name" ] );
+
+        std::cout << "median: " << median << std::endl;
+        std::cout << "sigma: " << sigma << std::endl;
+
+        std::vector<double> y;
+        std::vector<double> med(400, median);
+        std::vector<double> sig1(400, sigma);
+        std::vector<double> sig2(400, -sigma);
+
+        for(int i(0); i< 400; i++)
+        {
+            y.push_back(i);
+            // med.push_back(median);
+            // sig.push_back(sigma);
+        }
+
+        std::unordered_map< std::string, std::string > keywords;
+        keywords["zorder"] = "100";
+        // keywords["zorder"] = "100";
+        plt::subplot2grid( 9, 11, 0, 0, 4, 6 );
+        keywords["c"] = medianColor;
+        plt::scatter(med, y, 1.0, keywords);
+        keywords["c"] = sigmaColor;
+        plt::scatter(sig1, y, 1.0, keywords);
+        plt::scatter(sig2, y, 1.0, keywords);
+        plt::hist( residuals, 50, residualsColor );
+        plt::legend();
+        plt::xlabel( windowsName );
+        plt::ylabel( "numbers" );
+        plt::title( windowsName );
+    }
+    catch ( const std::bad_any_cast& e )
+    {
+        std::cerr << e.what() << '\n';
+    }
+
+    try
+    {
+        // pack["weights_data"] = weights;
+        // pack["weights_windows_name"] = "weights";
+        // pack["weights_color"] = "green";
+
+        auto weights     = std::any_cast< std::vector< double > >( pack[ "weights_data" ] );
+        auto color       = std::any_cast< std::string >( pack[ "weights_color" ] );
+        auto windowsName = std::any_cast< std::string >( pack[ "weights_windows_name" ] );
+
+        plt::subplot2grid( 9, 11, 5, 0, 4, 6 );
+        plt::hist( weights, 50, color );
+        plt::xlabel( windowsName );
+        plt::ylabel( "numbers" );
+        plt::title( windowsName );
+    }
+    catch ( const std::bad_any_cast& e )
+    {
+        std::cerr << e.what() << '\n';
+    }
+
+    try
+    {
+        // pack["patches_cv"] = resPatches;
+        // pack["patche_windows_name"] = "patche";
+
+        auto patches     = std::any_cast< cv::Mat >( pack[ "patches_cv" ] );
+        auto windowsName = std::any_cast< std::string >( pack[ "patche_windows_name" ] );
+
+        std::map< std::string, std::string > keywords;
+        plt::subplot2grid( 9, 11, 0, 7, 4, 4 );
+        keywords[ "cmap" ] = "gray";
+        plt::imshow( patches.ptr(), patches.rows, patches.cols, 1, keywords );
+        plt::title( windowsName );
+    }
+    catch ( const std::bad_any_cast& e )
+    {
+        std::cerr << e.what() << '\n';
+    }
+
+    try
+    {
+        // pack["hessian_cv"] = cvHessianGray;
+        // pack["hessian_windows_name"] = "hessian";
+
+        auto hessian     = std::any_cast< cv::Mat >( pack[ "hessian_cv" ] );
+        auto windowsName = std::any_cast< std::string >( pack[ "hessian_windows_name" ] );
+
+        std::map< std::string, std::string > keywords;
+
+        // https://answers.opencv.org/question/27248/max-and-min-values-in-a-mat/
+        // double min, max;
+        // cv::minMaxLoc( hessian, &min, &max );
+        // const float maxAbsolute = std::max( std::abs( min ), std::abs( max ) );
+        // std::cout << "Min: " << min << ", Abs Max: " << max << std::endl;
+        // std::cout << "Abs Min: " << -maxAbsolute << ", Abs Max: " << maxAbsolute << std::endl;
+        // https://matplotlib.org/tutorials/colors/colormaps.html#diverging
+        plt::subplot2grid( 9, 11, 5, 7, 4, 4 );
+        keywords[ "cmap" ] = "coolwarm";
+        // keywords["vmin"] = std::to_string(-1.0);
+        // keywords["vmax"] = std::to_string(1.0);
+        // std::cout << "vmin: " << keywords["vmin"] << ", vmax: " << keywords["vmax"] << std::endl;
+        plt::imshow( hessian.ptr(), hessian.rows, hessian.cols, 1, keywords );
+        plt::title( windowsName );
+    }
+    catch ( const std::bad_any_cast& e )
+    {
+        std::cerr << e.what() << '\n';
+    }
 
     plt::show();
 }
-
-// void visualization::drawHistogram(
-//   std::vector< float >& vec, cv::Mat& imgHistogram, int numBins, int imageWidth, int imageHeight, const std::string& windowsName )
-// {
-//     // Compute and plot histogram of 1D data
-//     // int numBins = 50;
-//     auto extrema   = std::minmax_element( vec.begin(), vec.end() );
-//     float minValue = *extrema.first;
-//     float maxValue = *extrema.second;
-
-//     // OpenCV's calcHist() looks like overkill, but it is pretty fast...
-//     int nbins             = numBins;
-//     int nimages           = 1;
-//     int channels[]        = {0};
-//     int dims              = 1;
-//     int histSize[]        = {nbins};               // Number of bins
-//     float range[]         = {minValue, maxValue};  // [lower bound, upper bound[
-//     const float* ranges[] = {range};               // Vector of bin boundaries or single entry for uniform range
-//     bool uniform          = true;                  // See ranges above
-//     bool accumulate       = false;                 // Retain accumulator array (for iterative updates)
-//     const cv::Mat dataMat( vec );                  // No copy
-//     cv::Mat hist;                                  // 32FC1 1xN (rows x cols) for uniform range
-//     cv::calcHist( &dataMat, nimages, channels, cv::Mat(), hist, dims, histSize, ranges, uniform, accumulate );
-
-//     double maxCount = 0;
-//     cv::minMaxLoc( hist, NULL, &maxCount, NULL, NULL );
-//     // float binWidth = (maxValue - minValue) / nbins;
-
-//     // Draw histogram using cv::fillPoly()
-//     // int imageWidth = 500;
-//     // int imageHeight = static_cast<int>(0.61803398875 * imageWidth);
-//     int marginTop    = static_cast< int >( 0.1 * imageHeight );
-//     int marginBottom = static_cast< int >( 0.1 * imageHeight );
-//     float stepSize   = imageWidth / static_cast< float >( numBins - 1 );
-//     float scale      = ( imageHeight - marginTop - marginBottom ) / maxCount;
-//     cv::Scalar color( 204, 104, 0 );
-//     int lineType = cv::LINE_8;
-//     imgHistogram.create( imageHeight, imageWidth, CV_8UC3 );
-//     imgHistogram.setTo( cv::Scalar( 64, 64, 64 ) );
-
-//     std::vector< std::vector< cv::Point > > pts( 1 );
-//     std::vector< cv::Point >& polyline = pts.back();
-//     polyline.push_back( cv::Point( 0, imageHeight - marginBottom ) );
-//     for ( int i = 0; i < numBins; i++ )
-//     {
-//         int x = cvRound( stepSize * ( i ) );
-//         int y = imageHeight - marginBottom - static_cast< int >( scale * cvRound( hist.at< float >( i ) ) );
-//         polyline.push_back( cv::Point( x, y ) );
-//     }
-//     polyline.push_back( cv::Point( stepSize * ( numBins ), imageHeight - marginBottom ) );
-//     cv::fillPoly( imgHistogram, pts, color, lineType );
-
-//     // Draw labels
-//     {
-//         cv::Point pt1( 0, imageHeight - marginBottom );            // top left
-//         cv::Point pt2( pt1.x + imageWidth, pt1.y + imageHeight );  // Bottom right
-//         cv::Scalar color( 32, 32, 32 );
-//         int thickness = cv::FILLED;
-//         int lineType  = cv::LINE_8;
-//         cv::rectangle( imgHistogram, pt1, pt2, color, thickness, lineType );
-//     }
-
-//     {
-//         // std::string text = PKutils::string_printf( "%5.2f", minValue );
-//         std::string text;
-//         cv::Point origin = cv::Point( 0, imageHeight );
-//         int fontFace     = cv::FONT_HERSHEY_SIMPLEX;
-//         double fontScale = 0.75;
-//         cv::Scalar color( 255, 255, 255 );
-//         int thickness         = 1;
-//         int lineType          = cv::LINE_8;
-//         bool bottomLeftOrigin = false;
-
-//         // Calculate final width, height and baseline of text box
-//         int baseline;
-//         cv::getTextSize( text, fontFace, fontScale, thickness, &baseline );
-//         origin.y -= baseline;
-//         cv::putText( imgHistogram, text, origin, fontFace, fontScale, color, thickness, lineType, bottomLeftOrigin );
-//     }
-
-//     {
-//         // std::string text = PKutils::string_printf( "%5.2f", maxValue );
-//         std::string text;
-//         cv::Point origin = cv::Point( imageWidth, imageHeight );
-//         int fontFace     = cv::FONT_HERSHEY_SIMPLEX;
-//         double fontScale = 0.75;
-//         cv::Scalar color( 255, 255, 255 );
-//         int thickness         = 1;
-//         int lineType          = cv::LINE_8;
-//         bool bottomLeftOrigin = false;
-
-//         // Calculate final width, height and baseline of text box
-//         int baseline;
-//         cv::Size textSize = cv::getTextSize( text, fontFace, fontScale, thickness, &baseline );
-//         origin.x -= textSize.width;
-//         origin.y -= baseline;
-//         cv::putText( imgHistogram, text, origin, fontFace, fontScale, color, thickness, lineType, bottomLeftOrigin );
-//     }
-
-//     // // Draw vertical lines in histogram
-//     // {
-//     //     // Lower and upper bounds
-//     //     float threshLow  = medianCom - threshSigma * madCom;
-//     //     float threshHigh = medianCom + threshSigma * madCom;
-//     //     auto extrema     = std::minmax_element( histOri.begin(), histOri.end() );
-//     //     float minValue   = *extrema.first;
-//     //     float maxValue   = *extrema.second;
-//     //     float threshLowImage =
-//     //         PKutils::mapLinearInterval( threshLow, minValue, maxValue, 0.0f, static_cast< float >( imageWidth ) );
-//     //     float threshHighImage =
-//     //         PKutils::mapLinearInterval( threshHigh, minValue, maxValue, 0.0f, static_cast< float >( imageWidth ) );
-//     //     cv::Point threshLowTop( cvRound( threshLowImage ), 0 );
-//     //     cv::Point threshLowBottom( cvRound( threshLowImage ), imageHeight );
-//     //     cv::line( oriHistogram, threshLowTop, threshLowBottom, cv::Scalar( 255, 255, 255 ), 1, cv::LINE_8 );
-//     //     cv::Point threshHighTop( cvRound( threshHighImage ), 0 );
-//     //     cv::Point threshHighBottom( cvRound( threshHighImage ), imageHeight );
-//     //     cv::line( oriHistogram, threshHighTop, threshHighBottom, cv::Scalar( 255, 255, 255 ), 1, cv::LINE_8 );
-//     // }
-//     cv::imshow( windowsName, imgHistogram );
-// }

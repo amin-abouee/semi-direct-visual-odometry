@@ -15,6 +15,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <any>
 
 #include <Eigen/Core>
 #include <opencv2/core.hpp>
@@ -144,7 +145,10 @@ void drawHistogram( const std::vector< std::vector< double > >& data,
                     const cv::Mat& resPatches,
                     const std::vector< std::string >& colors,
                     const uint32_t maxFiguresInRow,
-                    const std::vector< std::string >& windowsName );
+                    const std::vector< std::string >& windowsName,
+                    std::map<std::string, std::any>& pack );
+
+void drawHistogram( std::map<std::string, std::any>& pack );
 
 // void drawHistogram(std::vector< float >& vec, cv::Mat& imgHistogram, int numBins, int imageWidth, int imageHeight, const std::string&
 // windowsName );
