@@ -55,6 +55,7 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
         };
         // break;
         double error = m_optimizer.optimizeGN( relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor, numObservations);
+        break;
     }
     return 1.0;
 }
@@ -127,7 +128,7 @@ void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
         }
         cntFeature++;
     }
-    visualization::imagePatches( m_refPatches, cntFeature, m_patchSize, 10, 10, 12 );
+    visualization::templatePatches( m_refPatches, cntFeature, m_patchSize, 10, 10, 12 );
 }
 
 uint32_t ImageAlignment::computeResiduals( Frame& refFrame, Frame& curFrame, uint32_t level, Sophus::SE3d& pose )

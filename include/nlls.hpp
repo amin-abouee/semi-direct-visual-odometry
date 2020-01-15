@@ -75,6 +75,8 @@ public:
 
 private:
     void tukeyWeighting (const uint32_t numValidProjectedPoints);
+
+    void visualize();
 };
 
 #endif /* __NLLS_HPP__ */

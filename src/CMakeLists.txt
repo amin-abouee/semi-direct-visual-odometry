@@ -32,6 +32,10 @@ find_package(OpenMP REQUIRED)
 # https://github.com/gabime/spdlog/blob/v1.x/example/CMakeLists.txt
 find_package(spdlog)
 find_package(Threads)
+
+# https://github.com/lava/matplotlib-cpp
+find_package(Python2 COMPONENTS Development NumPy)
+
 find_package(Doxygen)
 option(BUILD_DOC "Build documentation" OFF)
 
@@ -103,9 +107,14 @@ target_compile_definitions(visual_odometry PRIVATE -DEIGEN_MAX_CPP_VER=17 )
 # https://stackoverflow.com/a/31969632/1804533
 target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE})
 
+# add matplotlibcpp
+target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE} ${Python2_INCLUDE_DIRS} ${Python2_NumPy_INCLUDE_DIRS})
+
 # target_link_libraries (visual_odometry visualizer source)
 # spdlog::spdlog
 target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads spdlog::spdlog stdc++fs)
+target_link_libraries (visual_odometry PRIVATE Python2::Python Python2::NumPy)
+
 if(OpenMP_CXX_FOUND)
     target_link_libraries(visual_odometry PRIVATE OpenMP::OpenMP_CXX)
 endif()

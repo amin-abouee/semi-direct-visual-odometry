@@ -1,5 +1,6 @@
 #include "visualization.hpp"
 
+#include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 
@@ -459,7 +460,7 @@ void visualization::epipolarLinesWithEssentialMatrix( const Frame& frame,
     visualization::epipolarLinesWithFundamentalMatrix( frame, currentImg, F, windowsName );
 }
 
-void visualization::imagePatches( const cv::Mat& patches,
+void visualization::templatePatches( const cv::Mat& patches,
                                   const uint32_t numberPatches,
                                   const uint32_t patchSize,
                                   const uint32_t horizontalMargin,
@@ -497,6 +498,48 @@ void visualization::imagePatches( const cv::Mat& patches,
     cv::imshow( "refPatches", visPatches );
 }
 
+cv::Mat visualization::residualsPatches( const Eigen::VectorXd& residuals,
+                   const uint32_t numberPatches,
+                   const uint32_t patchSize,
+                   const uint32_t horizontalMargin,
+                   const uint32_t verticalMargin,
+                   const uint32_t maxPatchInRow )
+{
+    const uint32_t numberNecessaryCols = numberPatches > maxPatchInRow ? maxPatchInRow : numberPatches;
+    const uint32_t numberNecessaryRows = static_cast< uint32_t >( std::ceil( numberPatches / static_cast< float >( maxPatchInRow ) ) );
+    const uint32_t patchArea           = patchSize * patchSize;
+    const uint32_t rows                = numberNecessaryRows * ( horizontalMargin + patchSize + 1 );
+    const uint32_t cols                = numberNecessaryCols * ( verticalMargin + patchSize + 1 );
+    // int rowsSz = patchSize;
+
+    cv::Mat outputImg( rows, cols, CV_64F, cv::Scalar( 0 ) );
+    uint32_t cntPatches = 0;
+    for ( std::size_t i( 0 ); i < numberNecessaryRows; i++ )
+    {
+        for ( std::size_t j( 0 ); j < numberNecessaryCols; j++, cntPatches++ )
+        {
+            if ( cntPatches == numberPatches )
+                break;
+
+            const uint32_t leftUpCornerX = j * ( horizontalMargin + patchSize ) + horizontalMargin;
+            const uint32_t leftUpCornerY = i * ( verticalMargin + patchSize ) + verticalMargin;
+            // Mat (int rows, int cols, int type, void *data, size_t step=AUTO_STEP)
+            double* data = const_cast<double *>(&residuals(cntPatches * patchArea));
+            const cv::Mat patchContent(patchSize, patchSize, outputImg.type(), data);
+            // const cv::Mat patchContent   = patches.row( cntPatches ).reshape( 1, patchSize );
+            // std::cout << "patchContent: " << patchContent << std::endl;
+            auto ROI = outputImg( cv::Rect( leftUpCornerX, leftUpCornerY, patchSize, patchSize ) );
+            patchContent.copyTo( ROI );
+        }
+    }
+    // std::cout << "output: " << outputImg(cv::Rect(0, 0, 35, 35)) << std::endl;
+    cv::Mat visPatches;
+    // if the output image type is CV_32F, the image should be normalized between 0 and 1
+    // and if the output image type is CV_8U, the image should be normalized between 0 and 255
+    cv::normalize( outputImg, visPatches, 0, 255, cv::NORM_MINMAX, CV_8U );
+    return visPatches;
+}
+
 cv::Scalar visualization::generateColor( const float min, const float max, const float value )
 {
     uint8_t hue = static_cast< uint8_t >( ( 120.f / ( max - min ) ) * value );
@@ -513,121 +556,199 @@ cv::Mat visualization::getBGRImage( const cv::Mat& img )
     return imgBGR;
 }
 
-void visualization::drawHistogram(
-  std::vector< float >& vec, cv::Mat& imgHistogram, int numBins, int imageWidth, int imageHeight )
+void visualization::drawHistogram( std::vector< double >& data, const std::string& color, const std::string& windowName )
 {
-    // Compute and plot histogram of 1D data
-    // int numBins = 50;
-    auto extrema   = std::minmax_element( vec.begin(), vec.end() );
-    float minValue = *extrema.first;
-    float maxValue = *extrema.second;
+    auto maxIter       = std::max_element( data.begin(), data.end() );
+    const int maxValue = std::ceil( *maxIter );
+    // Set the size of output image to 1200x780 pixels
+    plt::figure_size( 1200, 780 );
 
-    // OpenCV's calcHist() looks like overkill, but it is pretty fast...
-    int nbins             = numBins;
-    int nimages           = 1;
-    int channels[]        = {0};
-    int dims              = 1;
-    int histSize[]        = {nbins};               // Number of bins
-    float range[]         = {minValue, maxValue};  // [lower bound, upper bound[
-    const float* ranges[] = {range};               // Vector of bin boundaries or single entry for uniform range
-    bool uniform          = true;                  // See ranges above
-    bool accumulate       = false;                 // Retain accumulator array (for iterative updates)
-    const cv::Mat dataMat( vec );                  // No copy
-    cv::Mat hist;                                  // 32FC1 1xN (rows x cols) for uniform range
-    cv::calcHist( &dataMat, nimages, channels, cv::Mat(), hist, dims, histSize, ranges, uniform, accumulate );
+    plt::hist( data, 50, color );
 
-    double maxCount = 0;
-    cv::minMaxLoc( hist, NULL, &maxCount, NULL, NULL );
-    // float binWidth = (maxValue - minValue) / nbins;
+    // plt::xlim(0, 100);
+    plt::xlabel( windowName );
+    // plt::ylim(0, maxValue);
+    plt::ylabel( "numbers" );
 
-    // Draw histogram using cv::fillPoly()
-    // int imageWidth = 500;
-    // int imageHeight = static_cast<int>(0.61803398875 * imageWidth);
-    int marginTop    = static_cast< int >( 0.1 * imageHeight );
-    int marginBottom = static_cast< int >( 0.1 * imageHeight );
-    float stepSize   = imageWidth / static_cast< float >( numBins - 1 );
-    float scale      = ( imageHeight - marginTop - marginBottom ) / maxCount;
-    cv::Scalar color( 204, 104, 0 );
-    int lineType = cv::LINE_8;
-    imgHistogram.create( imageHeight, imageWidth, CV_8UC3 );
-    imgHistogram.setTo( cv::Scalar( 64, 64, 64 ) );
-
-    std::vector< std::vector< cv::Point > > pts( 1 );
-    std::vector< cv::Point >& polyline = pts.back();
-    polyline.push_back( cv::Point( 0, imageHeight - marginBottom ) );
-    for ( int i = 0; i < numBins; i++ )
-    {
-        int x = cvRound( stepSize * ( i ) );
-        int y = imageHeight - marginBottom - static_cast< int >( scale * cvRound( hist.at< float >( i ) ) );
-        polyline.push_back( cv::Point( x, y ) );
-    }
-    polyline.push_back( cv::Point( stepSize * ( numBins ), imageHeight - marginBottom ) );
-    cv::fillPoly( imgHistogram, pts, color, lineType );
-
-    // Draw labels
-    {
-        cv::Point pt1( 0, imageHeight - marginBottom );            // top left
-        cv::Point pt2( pt1.x + imageWidth, pt1.y + imageHeight );  // Bottom right
-        cv::Scalar color( 32, 32, 32 );
-        int thickness = cv::FILLED;
-        int lineType  = cv::LINE_8;
-        cv::rectangle( imgHistogram, pt1, pt2, color, thickness, lineType );
-    }
-
-    {
-        // std::string text = PKutils::string_printf( "%5.2f", minValue );
-        std::string text;
-        cv::Point origin = cv::Point( 0, imageHeight );
-        int fontFace     = cv::FONT_HERSHEY_SIMPLEX;
-        double fontScale = 0.75;
-        cv::Scalar color( 255, 255, 255 );
-        int thickness         = 1;
-        int lineType          = cv::LINE_8;
-        bool bottomLeftOrigin = false;
-
-        // Calculate final width, height and baseline of text box
-        int baseline;
-        cv::getTextSize( text, fontFace, fontScale, thickness, &baseline );
-        origin.y -= baseline;
-        cv::putText( imgHistogram, text, origin, fontFace, fontScale, color, thickness, lineType, bottomLeftOrigin );
-    }
-
-    {
-        // std::string text = PKutils::string_printf( "%5.2f", maxValue );
-        std::string text;
-        cv::Point origin = cv::Point( imageWidth, imageHeight );
-        int fontFace     = cv::FONT_HERSHEY_SIMPLEX;
-        double fontScale = 0.75;
-        cv::Scalar color( 255, 255, 255 );
-        int thickness         = 1;
-        int lineType          = cv::LINE_8;
-        bool bottomLeftOrigin = false;
-
-        // Calculate final width, height and baseline of text box
-        int baseline;
-        cv::Size textSize = cv::getTextSize( text, fontFace, fontScale, thickness, &baseline );
-        origin.x -= textSize.width;
-        origin.y -= baseline;
-        cv::putText( imgHistogram, text, origin, fontFace, fontScale, color, thickness, lineType, bottomLeftOrigin );
-    }
-
-    // // Draw vertical lines in histogram
-    // {
-    //     // Lower and upper bounds
-    //     float threshLow  = medianCom - threshSigma * madCom;
-    //     float threshHigh = medianCom + threshSigma * madCom;
-    //     auto extrema     = std::minmax_element( histOri.begin(), histOri.end() );
-    //     float minValue   = *extrema.first;
-    //     float maxValue   = *extrema.second;
-    //     float threshLowImage =
-    //         PKutils::mapLinearInterval( threshLow, minValue, maxValue, 0.0f, static_cast< float >( imageWidth ) );
-    //     float threshHighImage =
-    //         PKutils::mapLinearInterval( threshHigh, minValue, maxValue, 0.0f, static_cast< float >( imageWidth ) );
-    //     cv::Point threshLowTop( cvRound( threshLowImage ), 0 );
-    //     cv::Point threshLowBottom( cvRound( threshLowImage ), imageHeight );
-    //     cv::line( oriHistogram, threshLowTop, threshLowBottom, cv::Scalar( 255, 255, 255 ), 1, cv::LINE_8 );
-    //     cv::Point threshHighTop( cvRound( threshHighImage ), 0 );
-    //     cv::Point threshHighBottom( cvRound( threshHighImage ), imageHeight );
-    //     cv::line( oriHistogram, threshHighTop, threshHighBottom, cv::Scalar( 255, 255, 255 ), 1, cv::LINE_8 );
-    // }
+    plt::title( windowName );
+    plt::show();
 }
+
+void visualization::drawHistogram( const std::vector< std::vector< double > >& data,
+                                   const cv::Mat& hessian,
+                                    const cv::Mat& resPatches,
+                                   const std::vector< std::string >& colors,
+                                   const uint32_t maxFiguresInRow,
+                                   const std::vector< std::string >& windowsName )
+{
+    // const auto numFigures = data.size();
+    // const uint32_t numberNecessaryCols = maxFiguresInRow;
+    // const uint32_t numberNecessaryRows = static_cast< uint32_t >( std::ceil( numFigures / static_cast< float >( maxFiguresInRow ) ) );
+
+    plt::figure_size( 3000, 1125 );
+    // for(std::size_t i(0); i < data.size(); i++)
+    // {
+    //     plt::subplot(numberNecessaryRows, numberNecessaryCols, i+1);
+    //     plt::hist( data[i], 50, colors[i] );
+    //     plt::xlabel( windowsName[i] );
+    //     plt::ylabel( "numbers" );
+    //     plt::title( windowsName[i] );
+    // }
+    // plt::show();
+
+    plt::subplot2grid( 9, 11, 0, 0, 4, 6 );
+    plt::hist( data[ 0 ], 50, colors[ 0 ] );
+    plt::xlabel( windowsName[ 0 ] );
+    plt::ylabel( "numbers" );
+    plt::title( windowsName[ 0 ] );
+
+    plt::subplot2grid( 9, 11, 5, 0, 4, 6 );
+    plt::hist( data[ 1 ], 50, colors[ 1 ] );
+    plt::xlabel( windowsName[ 1 ] );
+    plt::ylabel( "numbers" );
+    plt::title( windowsName[ 1 ] );
+
+    plt::subplot2grid( 9, 11, 0, 7, 4, 4 );
+    std::map<std::string, std::string> keywords;
+    keywords["cmap"] = "gray"; 
+    plt::imshow(resPatches.ptr(), resPatches.rows, resPatches.cols, 1, keywords);
+    plt::title(windowsName[ 2 ]);
+
+
+    // https://answers.opencv.org/question/27248/max-and-min-values-in-a-mat/
+    double min, max;
+    cv::minMaxLoc(hessian, &min, &max);
+    const float maxAbsolute = std::max(std::abs(min), std::abs(max));
+    std::cout << "Min: " << min << ", Abs Max: " << max << std::endl;
+    // std::cout << "Abs Min: " << -maxAbsolute << ", Abs Max: " << maxAbsolute << std::endl;
+    // https://matplotlib.org/tutorials/colors/colormaps.html#diverging
+    plt::subplot2grid( 9, 11, 5, 7, 4, 4 );
+    keywords["cmap"] = "coolwarm";
+    keywords["vmin"] = std::to_string(-1.0); 
+    keywords["vmax"] = std::to_string(1.0); 
+    // std::cout << "vmin: " << keywords["vmin"] << ", vmax: " << keywords["vmax"] << std::endl;
+    plt::imshow(hessian.ptr(), hessian.rows, hessian.cols, 1, keywords);
+    plt::title(windowsName[ 3 ]);
+
+    plt::show();
+}
+
+// void visualization::drawHistogram(
+//   std::vector< float >& vec, cv::Mat& imgHistogram, int numBins, int imageWidth, int imageHeight, const std::string& windowsName )
+// {
+//     // Compute and plot histogram of 1D data
+//     // int numBins = 50;
+//     auto extrema   = std::minmax_element( vec.begin(), vec.end() );
+//     float minValue = *extrema.first;
+//     float maxValue = *extrema.second;
+
+//     // OpenCV's calcHist() looks like overkill, but it is pretty fast...
+//     int nbins             = numBins;
+//     int nimages           = 1;
+//     int channels[]        = {0};
+//     int dims              = 1;
+//     int histSize[]        = {nbins};               // Number of bins
+//     float range[]         = {minValue, maxValue};  // [lower bound, upper bound[
+//     const float* ranges[] = {range};               // Vector of bin boundaries or single entry for uniform range
+//     bool uniform          = true;                  // See ranges above
+//     bool accumulate       = false;                 // Retain accumulator array (for iterative updates)
+//     const cv::Mat dataMat( vec );                  // No copy
+//     cv::Mat hist;                                  // 32FC1 1xN (rows x cols) for uniform range
+//     cv::calcHist( &dataMat, nimages, channels, cv::Mat(), hist, dims, histSize, ranges, uniform, accumulate );
+
+//     double maxCount = 0;
+//     cv::minMaxLoc( hist, NULL, &maxCount, NULL, NULL );
+//     // float binWidth = (maxValue - minValue) / nbins;
+
+//     // Draw histogram using cv::fillPoly()
+//     // int imageWidth = 500;
+//     // int imageHeight = static_cast<int>(0.61803398875 * imageWidth);
+//     int marginTop    = static_cast< int >( 0.1 * imageHeight );
+//     int marginBottom = static_cast< int >( 0.1 * imageHeight );
+//     float stepSize   = imageWidth / static_cast< float >( numBins - 1 );
+//     float scale      = ( imageHeight - marginTop - marginBottom ) / maxCount;
+//     cv::Scalar color( 204, 104, 0 );
+//     int lineType = cv::LINE_8;
+//     imgHistogram.create( imageHeight, imageWidth, CV_8UC3 );
+//     imgHistogram.setTo( cv::Scalar( 64, 64, 64 ) );
+
+//     std::vector< std::vector< cv::Point > > pts( 1 );
+//     std::vector< cv::Point >& polyline = pts.back();
+//     polyline.push_back( cv::Point( 0, imageHeight - marginBottom ) );
+//     for ( int i = 0; i < numBins; i++ )
+//     {
+//         int x = cvRound( stepSize * ( i ) );
+//         int y = imageHeight - marginBottom - static_cast< int >( scale * cvRound( hist.at< float >( i ) ) );
+//         polyline.push_back( cv::Point( x, y ) );
+//     }
+//     polyline.push_back( cv::Point( stepSize * ( numBins ), imageHeight - marginBottom ) );
+//     cv::fillPoly( imgHistogram, pts, color, lineType );
+
+//     // Draw labels
+//     {
+//         cv::Point pt1( 0, imageHeight - marginBottom );            // top left
+//         cv::Point pt2( pt1.x + imageWidth, pt1.y + imageHeight );  // Bottom right
+//         cv::Scalar color( 32, 32, 32 );
+//         int thickness = cv::FILLED;
+//         int lineType  = cv::LINE_8;
+//         cv::rectangle( imgHistogram, pt1, pt2, color, thickness, lineType );
+//     }
+
+//     {
+//         // std::string text = PKutils::string_printf( "%5.2f", minValue );
+//         std::string text;
+//         cv::Point origin = cv::Point( 0, imageHeight );
+//         int fontFace     = cv::FONT_HERSHEY_SIMPLEX;
+//         double fontScale = 0.75;
+//         cv::Scalar color( 255, 255, 255 );
+//         int thickness         = 1;
+//         int lineType          = cv::LINE_8;
+//         bool bottomLeftOrigin = false;
+
+//         // Calculate final width, height and baseline of text box
+//         int baseline;
+//         cv::getTextSize( text, fontFace, fontScale, thickness, &baseline );
+//         origin.y -= baseline;
+//         cv::putText( imgHistogram, text, origin, fontFace, fontScale, color, thickness, lineType, bottomLeftOrigin );
+//     }
+
+//     {
+//         // std::string text = PKutils::string_printf( "%5.2f", maxValue );
+//         std::string text;
+//         cv::Point origin = cv::Point( imageWidth, imageHeight );
+//         int fontFace     = cv::FONT_HERSHEY_SIMPLEX;
+//         double fontScale = 0.75;
+//         cv::Scalar color( 255, 255, 255 );
+//         int thickness         = 1;
+//         int lineType          = cv::LINE_8;
+//         bool bottomLeftOrigin = false;
+
+//         // Calculate final width, height and baseline of text box
+//         int baseline;
+//         cv::Size textSize = cv::getTextSize( text, fontFace, fontScale, thickness, &baseline );
+//         origin.x -= textSize.width;
+//         origin.y -= baseline;
+//         cv::putText( imgHistogram, text, origin, fontFace, fontScale, color, thickness, lineType, bottomLeftOrigin );
+//     }
+
+//     // // Draw vertical lines in histogram
+//     // {
+//     //     // Lower and upper bounds
+//     //     float threshLow  = medianCom - threshSigma * madCom;
+//     //     float threshHigh = medianCom + threshSigma * madCom;
+//     //     auto extrema     = std::minmax_element( histOri.begin(), histOri.end() );
+//     //     float minValue   = *extrema.first;
+//     //     float maxValue   = *extrema.second;
+//     //     float threshLowImage =
+//     //         PKutils::mapLinearInterval( threshLow, minValue, maxValue, 0.0f, static_cast< float >( imageWidth ) );
+//     //     float threshHighImage =
+//     //         PKutils::mapLinearInterval( threshHigh, minValue, maxValue, 0.0f, static_cast< float >( imageWidth ) );
+//     //     cv::Point threshLowTop( cvRound( threshLowImage ), 0 );
+//     //     cv::Point threshLowBottom( cvRound( threshLowImage ), imageHeight );
+//     //     cv::line( oriHistogram, threshLowTop, threshLowBottom, cv::Scalar( 255, 255, 255 ), 1, cv::LINE_8 );
+//     //     cv::Point threshHighTop( cvRound( threshHighImage ), 0 );
+//     //     cv::Point threshHighBottom( cvRound( threshHighImage ), imageHeight );
+//     //     cv::line( oriHistogram, threshHighTop, threshHighBottom, cv::Scalar( 255, 255, 255 ), 1, cv::LINE_8 );
+//     // }
+//     cv::imshow( windowsName, imgHistogram );
+// }

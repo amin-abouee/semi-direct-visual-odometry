@@ -1,5 +1,8 @@
 #include "nlls.hpp"
 #include "algorithm.hpp"
+#include "visualization.hpp"
+
+#include <opencv2/core/eigen.hpp>
 
 NLLS::NLLS( const u_int32_t numUnknowns )
     : m_numUnknowns( numUnknowns )
@@ -15,8 +18,8 @@ NLLS::NLLS( const u_int32_t numUnknowns )
     m_hessian.setZero();
     m_gradient.setZero();
     m_dx.setZero();
-    std::cout << "Size hessian: " << m_hessian.rows() << " , " << m_hessian.cols() << std::endl;
-    std::cout << "Size gradient: " << m_gradient.size() << std::endl;
+    // std::cout << "Size hessian: " << m_hessian.rows() << " , " << m_hessian.cols() << std::endl;
+    // std::cout << "Size gradient: " << m_gradient.size() << std::endl;
 }
 
 // double NLLS::optimizeGN( Sophus::SE3d& pose,
@@ -106,6 +109,7 @@ double NLLS::optimizeGN( Sophus::SE3d& pose,
             // pose = Sophus::SE3d::exp( m_dx ) * pose;
             lambdaUpdateFunctor( pose, m_dx );
         }
+        visualize();
         ++curIteration;
     }
     return std::sqrt( chiSquaredError / numObservations );
@@ -145,9 +149,68 @@ void NLLS::tukeyWeighting( const uint32_t numValidProjectedPoints )
         {
             double abs = std::abs( m_residuals( i ) );
             if ( abs <= c )
+            {
                 m_weights( i ) = std::pow( 1.0 - ( ( m_residuals( i ) * m_residuals( i ) ) / c2 ), 2 );
+            }
             else
+            {
                 m_weights( i ) = 0;
+            }
         }
     }
+    // cv::Mat histogramWeights;
+    // visualization::drawHistogram(weights, histogramWeights, 100, 1200, 800, "histo_weights");
+    // cv::Mat histogramResiduals;
+    // visualization::drawHistogram(residuals, histogramResiduals, 100, 1200, 800, "histo_residuals");
+    // visualization::drawHistogram(weights, "g", "weights");
+    // visualization::drawHistogram(residuals, "b", "residuals");
+}
+
+void NLLS::visualize()
+{
+    std::vector< double > weights;
+    std::vector< double > residuals;
+    const auto numObservations = m_visiblePoints.size();
+    for ( std::size_t i( 0 ); i < numObservations; i++ )
+    {
+        if ( m_visiblePoints( i ) == true )
+        {
+            residuals.push_back( m_residuals( i ) );
+            weights.push_back( m_weights( i ) );
+        }
+    }
+
+    // Mat (int rows, int cols, int type, void *data, size_t step=AUTO_STEP)
+    cv::Mat cvHessianGray(m_hessian.rows(), m_hessian.cols(), CV_64F, m_hessian.data());
+    std::cout << "cvHessianGray: "
+              << "type: " << cvHessianGray.type() << ", rows: " << cvHessianGray.rows << ", cols: " << cvHessianGray.cols << std::endl;
+    
+    std::cout << "Eigen Hessian: " << m_hessian << std::endl;
+    std::cout << "Opencv Hessian: " << cvHessianGray << std::endl;
+    // cvHessianGray.convertTo(cvHessianGray, CV_32F);
+    cv::normalize( cvHessianGray, cvHessianGray, -1, 1, cv::NORM_MINMAX, CV_32F );
+
+    std::cout << "cvHessianGray: "
+              << "type: " << cvHessianGray.type() << ", rows: " << cvHessianGray.rows << ", cols: " << cvHessianGray.cols << std::endl;
+    std::cout << "Opencv Hessian: " << cvHessianGray << std::endl;
+
+    // cv::normalize( cvHessianGray, cvHessianGray, 0, 255, cv::NORM_MINMAX, CV_8U );
+    // std::cout << "Opencv Hessian: " << cvHessianGray << std::endl;
+
+    // cv::Mat cvHessianColor;
+    // cv::applyColorMap( cvHessianGray, cvHessianColor, cv::COLORMAP_VIRIDIS );
+    // cv::cvtColor(cvHessianColor, cvHessianColor, cv::COLOR_BGR2RGB);
+    // std::cout << "cvHessianColor: "
+            //   << "type: " << cvHessianColor.type() << ", rows: " << cvHessianColor.rows << ", cols: " << cvHessianColor.cols << std::endl;
+
+    cv::Mat resPatches = visualization::residualsPatches( m_residuals, 123, 5, 10, 10, 12 );
+    // std::cout << "cvHessianColor: "
+            //   << "type: " << resPatches.type() << ", rows: " << resPatches.rows << ", cols: " << resPatches.cols << std::endl;
+    // cv::cvtColor(resPatches, resPatches, cv::COLOR_BGR2RGB);
+
+
+    std::vector< std::vector< double > > data{residuals, weights};
+    std::vector< std::string > colors{"b", "g"};
+    std::vector< std::string > windowNames{"residuals", "weights", "patches", "jacobian"};
+    visualization::drawHistogram( data, cvHessianGray, resPatches, colors, 1, windowNames );
 }
