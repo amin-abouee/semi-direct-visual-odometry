@@ -299,8 +299,8 @@ int main( int argc, char* argv[] )
     // algorithm::triangulatePointDLT( refFrame, curFrame, p1, p2, point );
     // std::cout << "point in world: " << point.transpose() << std::endl;
     // std::cout << "point: " << point.norm() << std::endl;
-    C = curFrame.cameraInWorld();
-    std::cout << "C: " << C.format( utils::eigenFormat() ) << std::endl;
+    // C = curFrame.cameraInWorld();
+    // std::cout << "C: " << C.format( utils::eigenFormat() ) << std::endl;
 
     // visualization::featurePoints( featureSelection.m_gradientMagnitude, refFrame,
     //   "Feature Selected By SSC on Gradient Magnitude Image" );
@@ -317,7 +317,7 @@ int main( int argc, char* argv[] )
         //                                 mu + sigma, "Epipolar-Line-Feature-3" );
     }
 
-    visualization::epipolarLinesWithPoints( refFrame, curFrame, pointsWorld, 150.0, "Epipolar-Lines-Depths" );
+    // visualization::epipolarLinesWithPoints( refFrame, curFrame, pointsWorld, 150.0, "Epipolar-Lines-Depths" );
     // visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize,
     // "Feature-Point-In-Grid");
 

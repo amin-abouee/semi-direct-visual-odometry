@@ -112,7 +112,8 @@ target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE} ${Python2_
 
 # target_link_libraries (visual_odometry visualizer source)
 # spdlog::spdlog
-target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads spdlog::spdlog stdc++fs)
+target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads spdlog::spdlog)
+# target_link_libraries (visual_odometry PRIVATE stdc++fs)
 target_link_libraries (visual_odometry PRIVATE Python2::Python Python2::NumPy)
 
 if(OpenMP_CXX_FOUND)

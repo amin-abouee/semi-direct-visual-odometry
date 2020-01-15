@@ -649,7 +649,7 @@ void visualization::drawHistogram( const std::vector< std::vector< double > >& d
 
 void visualization::drawHistogram( std::map< std::string, std::any >& pack )
 {
-    plt::figure_size( 3000, 1125 );
+    plt::figure_size( 1600, 900 );
 
     try
     {
@@ -676,17 +676,18 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
         std::cout << "median: " << median << std::endl;
         std::cout << "sigma: " << sigma << std::endl;
 
+        const uint32_t numberSample = 40;
         std::vector<double> y;
-        std::vector<double> medVec(400, median);
-        std::vector<double> sig1Vec(400, median+sigma);
-        std::vector<double> sig2Vec(400, median-sigma);
-        std::vector<double> mad1Vec(400, median-mad);
-        std::vector<double> mad2Vec(400, median+mad);
-        // std::vector<double> madVec(400, medianmad);
+        std::vector<double> medVec(numberSample, median);
+        std::vector<double> minusSigmaVec(numberSample, median+sigma);
+        std::vector<double> plusSigmaVec(numberSample, median-sigma);
+        std::vector<double> minusMADVec(numberSample, median-mad);
+        std::vector<double> plusMADVec(numberSample, median+mad);
+        // std::vector<double> madVec(numberSample, medianmad);
 
-        for(int i(0); i< 400; i++)
+        for(int i(0); i< numberSample; i++)
         {
-            y.push_back(i);
+            y.push_back(i*10);
         }
 
         std::unordered_map< std::string, std::string > keywords;
@@ -697,14 +698,14 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
         plt::scatter(medVec, y, 1.0, keywords);
 
         keywords["c"] = madColor;
-        plt::scatter(mad1Vec, y, 1.0, keywords);
-        plt::scatter(mad2Vec, y, 1.0, keywords);
+        plt::scatter(minusMADVec, y, 1.0, keywords);
+        plt::scatter(plusMADVec, y, 1.0, keywords);
 
         keywords["c"] = sigmaColor;
-        plt::scatter(sig1Vec, y, 1.0, keywords);
-        plt::scatter(sig2Vec, y, 1.0, keywords);
+        plt::scatter(minusSigmaVec, y, 1.0, keywords);
+        plt::scatter(plusSigmaVec, y, 1.0, keywords);
         plt::hist( residuals, 50, residualsColor );
-        plt::legend();
+        // plt::legend();
         plt::xlabel( windowsName );
         plt::ylabel( "numbers" );
         plt::title( windowsName );

@@ -50,7 +50,7 @@ double NLLS::optimizeGN( Sophus::SE3d& pose,
     assert( ( numObservations - numUnknowns ) > 0 );
 
     bool computeJacobian = lambdaJacobianFunctor == nullptr ? false : true;
-    resetParameters(computeJacobian);
+    // resetParameters(computeJacobian);
 
     unsigned int curIteration = 0;
     bool stop                 = false;
@@ -66,10 +66,11 @@ double NLLS::optimizeGN( Sophus::SE3d& pose,
 
     while ( curIteration < m_maxIteration && !stop )
     {
+        resetParameters(computeJacobian);
         cntTotalProjectedPixels = lambdaResidualFunctor( pose );
         tukeyWeighting( cntTotalProjectedPixels );
         // const uint32_t validpatches = std::count( curVisibility.begin(), curVisibility.end(), true );
-        std::cout << "projected points: " << cntTotalProjectedPixels << std::endl;
+        // std::cout << "projected points: " << cntTotalProjectedPixels << std::endl;
         if ( computeJacobian == true )
             lambdaJacobianFunctor( pose );
 
@@ -189,19 +190,19 @@ void NLLS::visualize(const uint32_t numValidProjectedPoints)
     double mad = algorithm::computeMAD(m_residuals, numValidProjectedPoints);
     double sigma = algorithm::computeSigma(m_residuals, numValidProjectedPoints);
     pack["residuals_data"] = residuals;
-    pack["residuals_color"] = std::string("blue");
+    pack["residuals_color"] = std::string("slategray");
     pack["residuals_median"] = median;
-    pack["residuals_median_color"] = std::string("gray");
+    pack["residuals_median_color"] = std::string("royalblue");
+    pack["residuals_mad"] = mad;
+    pack["residuals_mad_color"] = std::string("gold");
     pack["residuals_sigma"] = sigma;
     pack["residuals_sigma_color"] = std::string("orange");
-    pack["residuals_mad"] = mad;
-    pack["residuals_mad_color"] = std::string("red");
     pack["residuals_windows_name"] = std::string("residuals");
 
 
     pack["weights_data"] = weights;
     pack["weights_windows_name"] = std::string("weights");
-    pack["weights_color"] = std::string("green");
+    pack["weights_color"] = std::string("seagreen");
 
 
     // Mat (int rows, int cols, int type, void *data, size_t step=AUTO_STEP)
@@ -230,7 +231,7 @@ void NLLS::visualize(const uint32_t numValidProjectedPoints)
     // std::cout << "cvHessianColor: "
             //   << "type: " << cvHessianColor.type() << ", rows: " << cvHessianColor.rows << ", cols: " << cvHessianColor.cols << std::endl;
 
-    cv::Mat resPatches = visualization::residualsPatches( m_residuals, 123, 5, 5, 5, 12 );
+    cv::Mat resPatches = visualization::residualsPatches( m_residuals, 119, 5, 5, 5, 12 );
     pack["patches_cv"] = resPatches;
     pack["patche_windows_name"] = std::string("patche");
 
