@@ -510,11 +510,11 @@ cv::Mat visualization::residualsPatches( const Eigen::VectorXd& residuals,
     const uint32_t numberNecessaryCols = numberPatches > maxPatchInRow ? maxPatchInRow : numberPatches;
     const uint32_t numberNecessaryRows = static_cast< uint32_t >( std::ceil( numberPatches / static_cast< float >( maxPatchInRow ) ) );
     const uint32_t patchArea           = patchSize * patchSize;
-    const uint32_t rows                = numberNecessaryRows * ( horizontalMargin + patchSize + 1 );
-    const uint32_t cols                = numberNecessaryCols * ( verticalMargin + patchSize + 1 );
+    const uint32_t rows                = numberNecessaryRows * ( horizontalMargin + patchSize ) + horizontalMargin;
+    const uint32_t cols                = numberNecessaryCols * ( verticalMargin + patchSize ) + verticalMargin;
     // int rowsSz = patchSize;
 
-    cv::Mat outputImg( rows, cols, CV_64F, cv::Scalar( 0 ) );
+    cv::Mat outputImg( rows, cols, CV_8U, cv::Scalar( 0 ) );
     uint32_t cntPatches = 0;
     for ( std::size_t i( 0 ); i < numberNecessaryRows; i++ )
     {
@@ -527,19 +527,26 @@ cv::Mat visualization::residualsPatches( const Eigen::VectorXd& residuals,
             const uint32_t leftUpCornerY = i * ( verticalMargin + patchSize ) + verticalMargin;
             // Mat (int rows, int cols, int type, void *data, size_t step=AUTO_STEP)
             double* data = const_cast< double* >( &residuals( cntPatches * patchArea ) );
-            const cv::Mat patchContent( patchSize, patchSize, outputImg.type(), data );
+            cv::Mat patchContent( patchSize, patchSize, CV_64F, data );
+            // patchContent.convertTo(patchContent, CV_32F);
+            // std::cout << "type: " << patchContent.type() << std::endl;
+            // std::cout << patchContent << std::endl;
+            cv::Mat tmpPatch;
+            cv::normalize( patchContent, tmpPatch, 0, 255, cv::NORM_MINMAX, CV_8U );
+            // std::cout << "patch content type: " << tmpPatch.type() << std::endl;
             // const cv::Mat patchContent   = patches.row( cntPatches ).reshape( 1, patchSize );
             // std::cout << "patchContent: " << patchContent << std::endl;
             auto ROI = outputImg( cv::Rect( leftUpCornerX, leftUpCornerY, patchSize, patchSize ) );
-            patchContent.copyTo( ROI );
+            tmpPatch.copyTo( ROI );
         }
     }
     // std::cout << "output: " << outputImg(cv::Rect(0, 0, 35, 35)) << std::endl;
-    cv::Mat visPatches;
+    // cv::Mat visPatches;
     // if the output image type is CV_32F, the image should be normalized between 0 and 1
     // and if the output image type is CV_8U, the image should be normalized between 0 and 255
-    cv::normalize( outputImg, visPatches, 0, 255, cv::NORM_MINMAX, CV_8U );
-    return visPatches;
+    // cv::normalize( outputImg, visPatches, 0, 255, cv::NORM_MINMAX, CV_8U );
+    // return visPatches;
+    return outputImg;
 }
 
 cv::Scalar visualization::generateColor( const float min, const float max, const float value )
@@ -663,47 +670,47 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
         // pack["residuals_mad_color"] = std::string("red");
         // pack["residuals_windows_name"] = std::string("residuals");
 
-        auto residuals    = std::any_cast< std::vector< double > >( pack[ "residuals_data" ] );
-        auto residualsColor       = std::any_cast< std::string >( pack[ "residuals_color" ] );
-        auto median = std::any_cast< double >( pack[ "residuals_median" ] );
-        auto medianColor = std::any_cast< std::string >( pack[ "residuals_median_color" ] );
-        auto sigma = std::any_cast< double >( pack[ "residuals_sigma" ] );
-        auto sigmaColor = std::any_cast< std::string >( pack[ "residuals_sigma_color" ] );
-        auto mad = std::any_cast< double >( pack[ "residuals_mad" ] );
-        auto madColor = std::any_cast< std::string >( pack[ "residuals_mad_color" ] );
-        auto windowsName = std::any_cast< std::string >( pack[ "residuals_windows_name" ] );
+        auto residuals      = std::any_cast< std::vector< double > >( pack[ "residuals_data" ] );
+        auto residualsColor = std::any_cast< std::string >( pack[ "residuals_color" ] );
+        auto median         = std::any_cast< double >( pack[ "residuals_median" ] );
+        auto medianColor    = std::any_cast< std::string >( pack[ "residuals_median_color" ] );
+        auto sigma          = std::any_cast< double >( pack[ "residuals_sigma" ] );
+        auto sigmaColor     = std::any_cast< std::string >( pack[ "residuals_sigma_color" ] );
+        auto mad            = std::any_cast< double >( pack[ "residuals_mad" ] );
+        auto madColor       = std::any_cast< std::string >( pack[ "residuals_mad_color" ] );
+        auto windowsName    = std::any_cast< std::string >( pack[ "residuals_windows_name" ] );
 
-        std::cout << "median: " << median << std::endl;
-        std::cout << "sigma: " << sigma << std::endl;
+        // std::cout << "median: " << median << std::endl;
+        // std::cout << "sigma: " << sigma << std::endl;
 
         const uint32_t numberSample = 40;
-        std::vector<double> y;
-        std::vector<double> medVec(numberSample, median);
-        std::vector<double> minusSigmaVec(numberSample, median+sigma);
-        std::vector<double> plusSigmaVec(numberSample, median-sigma);
-        std::vector<double> minusMADVec(numberSample, median-mad);
-        std::vector<double> plusMADVec(numberSample, median+mad);
+        std::vector< double > y;
+        std::vector< double > medVec( numberSample, median );
+        std::vector< double > minusSigmaVec( numberSample, median + sigma );
+        std::vector< double > plusSigmaVec( numberSample, median - sigma );
+        std::vector< double > minusMADVec( numberSample, median - mad );
+        std::vector< double > plusMADVec( numberSample, median + mad );
         // std::vector<double> madVec(numberSample, medianmad);
 
-        for(int i(0); i< numberSample; i++)
+        for ( int i( 0 ); i < numberSample; i++ )
         {
-            y.push_back(i*10);
+            y.push_back( i * 10 );
         }
 
         std::unordered_map< std::string, std::string > keywords;
-        keywords["zorder"] = "100";
+        keywords[ "zorder" ] = "100";
         // keywords["zorder"] = "100";
         plt::subplot2grid( 9, 11, 0, 0, 4, 6 );
-        keywords["c"] = medianColor;
-        plt::scatter(medVec, y, 1.0, keywords);
+        keywords[ "c" ] = medianColor;
+        plt::scatter( medVec, y, 1.0, keywords );
 
-        keywords["c"] = madColor;
-        plt::scatter(minusMADVec, y, 1.0, keywords);
-        plt::scatter(plusMADVec, y, 1.0, keywords);
+        keywords[ "c" ] = madColor;
+        plt::scatter( minusMADVec, y, 1.0, keywords );
+        plt::scatter( plusMADVec, y, 1.0, keywords );
 
-        keywords["c"] = sigmaColor;
-        plt::scatter(minusSigmaVec, y, 1.0, keywords);
-        plt::scatter(plusSigmaVec, y, 1.0, keywords);
+        keywords[ "c" ] = sigmaColor;
+        plt::scatter( minusSigmaVec, y, 1.0, keywords );
+        plt::scatter( plusSigmaVec, y, 1.0, keywords );
         plt::hist( residuals, 50, residualsColor );
         // plt::legend();
         plt::xlabel( windowsName );

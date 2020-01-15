@@ -2,6 +2,7 @@
 #include "algorithm.hpp"
 #include "feature.hpp"
 #include "visualization.hpp"
+#include "utils.hpp"
 
 #include <sophus/se3.hpp>
 
@@ -36,7 +37,9 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
     std::cout << "reference Patch size: " << m_refPatches.size << std::endl;
     std::cout << "number Observation: " << numObservations << std::endl;
 
-    Sophus::SE3d relativePose = algorithm::computeRelativePose( refFrame, curFrame );
+    // Sophus::SE3d relativePose = algorithm::computeRelativePose( refFrame, curFrame );
+    Sophus::SE3d relativePose;
+    std::cout << "relative pose: " << relativePose.params().format(utils::eigenFormat()) << std::endl;
 
     // auto lambdaJacobianFunctor = [&refFrame, level](
     //                                 Sophus::SE3d& pose ) -> void {
@@ -112,8 +115,6 @@ void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
                 const double rowIdx = v + y;
                 const double colIdx = u + x;
                 *pixelPtr           = algorithm::bilinearInterpolation( refImageEigen, colIdx, rowIdx );
-                // std::cout << "pixel value idx " << cntPixel << ": "
-                //   << algorithm::bilinearInterpolation( refImageEigen, colIdx, rowIdx ) << std::endl;
                 const double dx = 0.5 * ( algorithm::bilinearInterpolation( refImageEigen, colIdx + 1, rowIdx ) -
                                           algorithm::bilinearInterpolation( refImageEigen, colIdx - 1, rowIdx ) );
                 const double dy = 0.5 * ( algorithm::bilinearInterpolation( refImageEigen, colIdx, rowIdx + 1 ) -
@@ -243,5 +244,6 @@ void ImageAlignment::computeImageJac( Eigen::Matrix< double, 2, 6 >& imageJac,
 
 void ImageAlignment::update( Sophus::SE3d& pose, const Eigen::VectorXd& dx )
 {
-    pose = Sophus::SE3d::exp( dx ) * pose;
+    // pose = Sophus::SE3d::exp( dx ) * pose;
+    pose = pose * Sophus::SE3d::exp( dx ).inverse();
 }

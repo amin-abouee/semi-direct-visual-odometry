@@ -310,12 +310,12 @@ int main( int argc, char* argv[] )
     //  "Epipolar-Line-Feature-0" );
     // const double mu    = point.norm();
     // std::cout << "position feature: " << refFrame.m_frameFeatures[ 3 ]->m_feature.transpose() << std::endl;
-    {
+    // {
         // const double mu    = 20.0;
         // const double sigma = 1.0;
         // visualization::epipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, mu - sigma,
         //                                 mu + sigma, "Epipolar-Line-Feature-3" );
-    }
+    // }
 
     // visualization::epipolarLinesWithPoints( refFrame, curFrame, pointsWorld, 150.0, "Epipolar-Lines-Depths" );
     // visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize,

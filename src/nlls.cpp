@@ -1,9 +1,9 @@
 #include "nlls.hpp"
 #include "algorithm.hpp"
 #include "visualization.hpp"
+#include "utils.hpp"
 
 #include <any>
-
 #include <opencv2/core/eigen.hpp>
 
 NLLS::NLLS( const u_int32_t numUnknowns )
@@ -66,6 +66,7 @@ double NLLS::optimizeGN( Sophus::SE3d& pose,
 
     while ( curIteration < m_maxIteration && !stop )
     {
+        std::cout << "pose: " << pose.params().format(utils::eigenFormat()) << std::endl;
         resetParameters(computeJacobian);
         cntTotalProjectedPixels = lambdaResidualFunctor( pose );
         tukeyWeighting( cntTotalProjectedPixels );
@@ -85,7 +86,7 @@ double NLLS::optimizeGN( Sophus::SE3d& pose,
                 chiSquaredError = m_residuals( i ) * m_residuals( i ) * m_weights( i );
             }
         }
-        m_dx.noalias() = m_hessian.ldlt().solve( -m_gradient );
+        m_dx.noalias() = m_hessian.ldlt().solve( m_gradient );
 
         if ( m_dx.maxCoeff() > m_maxCoffDx || std::isnan( m_dx.cwiseAbs().minCoeff() ) )
             break;
@@ -95,16 +96,15 @@ double NLLS::optimizeGN( Sophus::SE3d& pose,
         if ( stepSize < m_stepSize || normDiffPose < m_normInfDiff || chiSquaredError < m_minChiSquaredError )
         {
             stop = true;
-            // pose = Sophus::SE3d::exp( m_dx ) * pose;
             lambdaUpdateFunctor( pose, m_dx );
             break;
         }
         else
         {
-            // pose = Sophus::SE3d::exp( m_dx ) * pose;
             lambdaUpdateFunctor( pose, m_dx );
         }
         visualize(cntTotalProjectedPixels);
+        std::cout << "chi error: " << chiSquaredError << std::endl;
         ++curIteration;
     }
     return std::sqrt( chiSquaredError / numObservations );
@@ -176,6 +176,7 @@ void NLLS::visualize(const uint32_t numValidProjectedPoints)
 
     std::vector< double > weights;
     std::vector< double > residuals;
+    double sum = 0.0;
     const auto numObservations = m_visiblePoints.size();
     for ( std::size_t i( 0 ); i < numObservations; i++ )
     {
@@ -183,8 +184,11 @@ void NLLS::visualize(const uint32_t numValidProjectedPoints)
         {
             residuals.push_back( m_residuals( i ) );
             weights.push_back( m_weights( i ) );
+            sum += m_residuals( i );
         }
     }
+
+    std::cout << "sum: " << sum << std::endl;
 
     double median = algorithm::computeMedian(m_residuals, numValidProjectedPoints);
     double mad = algorithm::computeMAD(m_residuals, numValidProjectedPoints);
