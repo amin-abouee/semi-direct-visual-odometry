@@ -678,15 +678,15 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
 
         std::vector<double> y;
         std::vector<double> medVec(400, median);
-        std::vector<double> sig1Vec(400, sigma);
-        std::vector<double> sig2Vec(400, -sigma);
-        std::vector<double> madVec(400, mad);
+        std::vector<double> sig1Vec(400, median+sigma);
+        std::vector<double> sig2Vec(400, median-sigma);
+        std::vector<double> mad1Vec(400, median-mad);
+        std::vector<double> mad2Vec(400, median+mad);
+        // std::vector<double> madVec(400, medianmad);
 
         for(int i(0); i< 400; i++)
         {
             y.push_back(i);
-            // med.push_back(median);
-            // sig.push_back(sigma);
         }
 
         std::unordered_map< std::string, std::string > keywords;
@@ -697,7 +697,8 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
         plt::scatter(medVec, y, 1.0, keywords);
 
         keywords["c"] = madColor;
-        plt::scatter(madVec, y, 1.0, keywords);
+        plt::scatter(mad1Vec, y, 1.0, keywords);
+        plt::scatter(mad2Vec, y, 1.0, keywords);
 
         keywords["c"] = sigmaColor;
         plt::scatter(sig1Vec, y, 1.0, keywords);
