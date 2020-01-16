@@ -32,7 +32,7 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
     m_refPatches                     = cv::Mat( numFeatures, m_patchArea, CV_32F );
     m_optimizer.initParameters(numObservations);
     m_refVisibility.resize( numFeatures, false );
-    m_curVisibility.resize( numFeatures, false );
+    // m_curVisibility.resize( numFeatures, false );
 
     std::cout << "jacobian size: " << m_optimizer.m_jacobian.rows() << " , " << m_optimizer.m_jacobian.cols() << std::endl;
     std::cout << "residuals size: " << m_optimizer.m_residuals.rows() << " , " << m_optimizer.m_residuals.cols() << std::endl;
@@ -55,7 +55,7 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
     {
         // level = 0;
         computeJacobian( refFrame, level );
-        std::cout << "visible for jacobian: " << std::count( m_refVisibility.begin(), m_refVisibility.end(), true ) << std::endl;
+        // std::cout << "visible for jacobian: " << std::count( m_refVisibility.begin(), m_refVisibility.end(), true ) * m_patchArea << std::endl;
         auto lambdaResidualFunctor = [this, &refFrame, &curFrame, &level]( Sophus::SE3d& pose ) -> uint32_t {
             return computeResiduals( refFrame, curFrame, level, pose );
         };
@@ -71,6 +71,7 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
 
 void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
 {
+    resetParameters();
     const int32_t border    = m_halfPatchSize + 2;
     const cv::Mat& refImage = frame.m_imagePyramid.getImageAtLevel( level );
     // std::cout << "Type: " << refImage.type() << std::endl;
@@ -90,7 +91,7 @@ void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
         const double v     = feature->m_feature.y() * scale;
         const int32_t uInt = static_cast< int32_t >( std::floor( u ) );
         const int32_t vInt = static_cast< int32_t >( std::floor( v ) );
-        std::cout << "index feature: " << cntFeature << ", loc [" << uInt << " , " << vInt << "]" << std::endl;
+        // std::cout << "index feature: " << cntFeature << ", loc [" << uInt << " , " << vInt << "]" << std::endl;
         if ( feature->m_point == nullptr || ( uInt - border ) < 0 || ( vInt - border ) < 0 || ( uInt + border ) >= refImage.cols ||
              ( vInt + border ) >= refImage.rows )
         {
@@ -156,6 +157,7 @@ uint32_t ImageAlignment::computeResiduals( Frame& refFrame, Frame& curFrame, uin
     {
         if ( m_refVisibility[ cntFeature ] == false )
         {
+            cntFeature++;
             continue;
         }
 
@@ -167,12 +169,14 @@ uint32_t ImageAlignment::computeResiduals( Frame& refFrame, Frame& curFrame, uin
         const double v     = curFeature.y() * scale;
         const int32_t uInt = static_cast< int32_t >( std::floor( u ) );
         const int32_t vInt = static_cast< int32_t >( std::floor( v ) );
+        // std::cout << "index feature: " << cntFeature << ", loc [" << uInt << " , " << vInt << "]" << std::endl;
         if ( feature->m_point == nullptr || ( uInt - border ) < 0 || ( vInt - border ) < 0 || ( uInt + border ) >= curImage.cols ||
              ( vInt + border ) >= curImage.rows )
         {
+            cntFeature++;
             continue;
         }
-        m_curVisibility[ cntFeature ] = true;
+        // m_curVisibility[ cntFeature ] = true;
 
         float* pixelPtr   = m_refPatches.row( cntFeature ).ptr< float >();
         uint32_t cntPixel = 0;
@@ -266,4 +270,10 @@ void ImageAlignment::update( Sophus::SE3d& pose, const Eigen::VectorXd& dx )
     // inverse a SE3d pose is equivalent with getting the pose from minus of lie algebra parameters.
     // Sophus::SE3d::exp( dx ).inverse() == Sophus::SE3d::exp( -dx )
     pose = pose * Sophus::SE3d::exp( -dx );
+}
+
+void ImageAlignment::resetParameters()
+{
+    std::fill(m_refVisibility.begin(), m_refVisibility.end(), false);
+    m_refPatches = cv::Scalar(0.0);
 }

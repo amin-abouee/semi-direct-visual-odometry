@@ -64,7 +64,7 @@ double NLLS::optimizeGN( Sophus::SE3d& pose,
     uint32_t cntTotalProjectedPixels = 0;
     
 
-    double preChiSquaredError = 0.0;
+    double preChiSquaredError = std::numeric_limits<double>::max();
     Sophus::SE3d prePose = pose;
 
     while ( curIteration < m_maxIteration && !stop )
@@ -74,7 +74,7 @@ double NLLS::optimizeGN( Sophus::SE3d& pose,
         cntTotalProjectedPixels = lambdaResidualFunctor( pose );
         tukeyWeighting( cntTotalProjectedPixels );
         // const uint32_t validpatches = std::count( curVisibility.begin(), curVisibility.end(), true );
-        std::cout << "projected points: " << cntTotalProjectedPixels << std::endl;
+        // std::cout << "projected points: " << cntTotalProjectedPixels << std::endl;
         if ( computeJacobian == true )
             lambdaJacobianFunctor( pose );
 
@@ -98,7 +98,7 @@ double NLLS::optimizeGN( Sophus::SE3d& pose,
         if ( m_dx.maxCoeff() > m_maxCoffDx || std::isnan( m_dx.cwiseAbs().minCoeff() ) )
             break;
 
-        if (chiSquaredError < preChiSquaredError)
+        if (chiSquaredError > preChiSquaredError)
         {
             pose = prePose; // rollback to previous pose
             break;
@@ -204,7 +204,7 @@ void NLLS::visualize(const uint32_t numValidProjectedPoints)
         }
     }
 
-    std::cout << "sum: " << sum << std::endl;
+    // std::cout << "sum: " << sum << std::endl;
 
     double median = algorithm::computeMedian(m_residuals, numValidProjectedPoints);
     double mad = algorithm::computeMAD(m_residuals, numValidProjectedPoints);

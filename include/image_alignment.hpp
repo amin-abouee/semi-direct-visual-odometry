@@ -35,13 +35,13 @@ private:
     NLLS m_optimizer;
     cv::Mat m_refPatches;
     std::vector< bool > m_refVisibility;
-    std::vector< bool > m_curVisibility;
+    // std::vector< bool > m_curVisibility;
 
     void computeJacobian( Frame& frame, uint32_t level );
     uint32_t computeResiduals( Frame& refFrame, Frame& curFrame, uint32_t level, Sophus::SE3d& pose );
     void computeImageJac( Eigen::Matrix< double, 2, 6 >& imageJac, const Eigen::Vector3d& point, const double fx, const double fy );
-
     void update( Sophus::SE3d& pose, const Eigen::VectorXd& dx );
+    void resetParameters();
 };
 
 #endif /* __IMAGE_ALIGNMENT_HPP__ */
