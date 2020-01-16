@@ -256,8 +256,9 @@ void NLLS::visualize(const uint32_t numValidProjectedPoints)
 
     cv::Mat resPatches = visualization::residualsPatches( m_residuals, 119, 5, 5, 5, 12 );
     pack["patches_cv"] = resPatches;
-    pack["patches_windows_name"] = std::string("patches");
+    pack["patches_windows_name"] = std::string("absolute residuals patches");
     pack["patches_colormap"] = std::string("cividis");
+    // pack["patches_colormap"] = std::string("gray");
 
     // std::cout << "cvHessianColor: "
             //   << "type: " << resPatches.type() << ", rows: " << resPatches.rows << ", cols: " << resPatches.cols << std::endl;
