@@ -56,22 +56,25 @@ double NLLS::optimizeGN( Sophus::SE3d& pose,
     bool stop                 = false;
 
     double chiSquaredError = 0.0;
-    double squaredError    = 0.0;
+    // double squaredError    = 0.0;
 
     double stepSize = 0.0;
     // double normInfDiffPose					= 0.0;
     double normDiffPose              = 0.0;
     uint32_t cntTotalProjectedPixels = 0;
-    // unsigned int goodProjectedEdgesJacobian = 0;
+    
+
+    double preChiSquaredError = 0.0;
+    Sophus::SE3d prePose = pose;
 
     while ( curIteration < m_maxIteration && !stop )
     {
-        std::cout << "pose: " << pose.params().format(utils::eigenFormat()) << std::endl;
+        // std::cout << "pose: " << pose.params().format(utils::eigenFormat()) << std::endl;
         resetParameters(computeJacobian);
         cntTotalProjectedPixels = lambdaResidualFunctor( pose );
         tukeyWeighting( cntTotalProjectedPixels );
         // const uint32_t validpatches = std::count( curVisibility.begin(), curVisibility.end(), true );
-        // std::cout << "projected points: " << cntTotalProjectedPixels << std::endl;
+        std::cout << "projected points: " << cntTotalProjectedPixels << std::endl;
         if ( computeJacobian == true )
             lambdaJacobianFunctor( pose );
 
@@ -83,13 +86,26 @@ double NLLS::optimizeGN( Sophus::SE3d& pose,
                 // std::cout << "Jac " << i << ": " << Jac << std::endl;
                 m_hessian.noalias() += Jac.transpose() * Jac * m_weights( i );
                 m_gradient.noalias() += Jac.transpose() * m_residuals( i ) * m_weights( i );
-                chiSquaredError = m_residuals( i ) * m_residuals( i ) * m_weights( i );
+                chiSquaredError += m_residuals( i ) * m_residuals( i ) * m_weights( i );
+                // squaredError += m_residuals( i ) * m_residuals( i );
             }
         }
-        m_dx.noalias() = m_hessian.ldlt().solve( m_gradient );
+        m_dx.noalias() = m_hessian.ldlt().solve( - m_gradient );
+        // m_dx.noalias() = m_hessian.ldlt().solve( m_gradient );
+        // std::cout << "With -gradient: " << (m_hessian.ldlt().solve( -m_gradient )).transpose() << std::endl;
+        // std::cout << "With -dx: " << -m_dx.transpose() << std::endl;
 
         if ( m_dx.maxCoeff() > m_maxCoffDx || std::isnan( m_dx.cwiseAbs().minCoeff() ) )
             break;
+
+        if (chiSquaredError < preChiSquaredError)
+        {
+            pose = prePose; // rollback to previous pose
+            break;
+        }
+
+        prePose = pose;
+        preChiSquaredError = chiSquaredError;
 
         stepSize     = m_dx.transpose() * m_dx;
         normDiffPose = ( m_dx ).norm() / ( pose.log() ).norm();
@@ -195,6 +211,7 @@ void NLLS::visualize(const uint32_t numValidProjectedPoints)
     double sigma = algorithm::computeSigma(m_residuals, numValidProjectedPoints);
     pack["residuals_data"] = residuals;
     pack["residuals_color"] = std::string("slategray");
+    pack["residuals_number_bins"] = uint32_t(50);
     pack["residuals_median"] = median;
     pack["residuals_median_color"] = std::string("royalblue");
     pack["residuals_mad"] = mad;
@@ -205,6 +222,7 @@ void NLLS::visualize(const uint32_t numValidProjectedPoints)
 
 
     pack["weights_data"] = weights;
+    pack["weights_number_bins"] = uint32_t(50);
     pack["weights_windows_name"] = std::string("weights");
     pack["weights_color"] = std::string("seagreen");
 
@@ -224,6 +242,7 @@ void NLLS::visualize(const uint32_t numValidProjectedPoints)
     // std::cout << "Opencv Hessian: " << cvHessianGray << std::endl;
     pack["hessian_cv"] = cvHessianGray;
     pack["hessian_windows_name"] = std::string("hessian");
+    pack["hessian_colormap"] = std::string("coolwarm");
 
 
     // cv::normalize( cvHessianGray, cvHessianGray, 0, 255, cv::NORM_MINMAX, CV_8U );
@@ -237,7 +256,8 @@ void NLLS::visualize(const uint32_t numValidProjectedPoints)
 
     cv::Mat resPatches = visualization::residualsPatches( m_residuals, 119, 5, 5, 5, 12 );
     pack["patches_cv"] = resPatches;
-    pack["patche_windows_name"] = std::string("patche");
+    pack["patches_windows_name"] = std::string("patches");
+    pack["patches_colormap"] = std::string("cividis");
 
     // std::cout << "cvHessianColor: "
             //   << "type: " << resPatches.type() << ", rows: " << resPatches.rows << ", cols: " << resPatches.cols << std::endl;

@@ -528,11 +528,14 @@ cv::Mat visualization::residualsPatches( const Eigen::VectorXd& residuals,
             // Mat (int rows, int cols, int type, void *data, size_t step=AUTO_STEP)
             double* data = const_cast< double* >( &residuals( cntPatches * patchArea ) );
             cv::Mat patchContent( patchSize, patchSize, CV_64F, data );
+            patchContent = cv::abs( patchContent );
+            double min, max;
+            cv::minMaxLoc( patchContent, &min, &max );
             // patchContent.convertTo(patchContent, CV_32F);
             // std::cout << "type: " << patchContent.type() << std::endl;
             // std::cout << patchContent << std::endl;
             cv::Mat tmpPatch;
-            cv::normalize( patchContent, tmpPatch, 0, 255, cv::NORM_MINMAX, CV_8U );
+            cv::normalize( patchContent, tmpPatch, 0, max, cv::NORM_MINMAX, CV_8U );
             // std::cout << "patch content type: " << tmpPatch.type() << std::endl;
             // const cv::Mat patchContent   = patches.row( cntPatches ).reshape( 1, patchSize );
             // std::cout << "patchContent: " << patchContent << std::endl;
@@ -640,18 +643,6 @@ void visualization::drawHistogram( const std::vector< std::vector< double > >& d
     plt::title( windowsName[ 3 ] );
 
     // plt::show();
-
-    try
-    {
-        auto data     = pack[ "data_res" ];
-        auto residual = std::any_cast< std::vector< double > >( data );
-        std::cout << "size: " << residual.size() << std::endl;
-        std::cout << "type: " << data.type().name() << std::endl;
-    }
-    catch ( const std::bad_any_cast& e )
-    {
-        std::cerr << e.what() << '\n';
-    }
 }
 
 void visualization::drawHistogram( std::map< std::string, std::any >& pack )
@@ -672,6 +663,7 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
 
         auto residuals      = std::any_cast< std::vector< double > >( pack[ "residuals_data" ] );
         auto residualsColor = std::any_cast< std::string >( pack[ "residuals_color" ] );
+        auto numberBins     = std::any_cast< uint32_t >( pack[ "residuals_number_bins" ] );
         auto median         = std::any_cast< double >( pack[ "residuals_median" ] );
         auto medianColor    = std::any_cast< std::string >( pack[ "residuals_median_color" ] );
         auto sigma          = std::any_cast< double >( pack[ "residuals_sigma" ] );
@@ -680,26 +672,39 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
         auto madColor       = std::any_cast< std::string >( pack[ "residuals_mad_color" ] );
         auto windowsName    = std::any_cast< std::string >( pack[ "residuals_windows_name" ] );
 
-        // std::cout << "median: " << median << std::endl;
-        // std::cout << "sigma: " << sigma << std::endl;
+        const auto max = *std::max_element( residuals.begin(), residuals.end() );
+        const auto min = *std::min_element( residuals.begin(), residuals.end() );
+        std::vector<uint32_t> binsValue(numberBins, 0);
+        const double rangeBins = (std::ceil(max) - std::floor(min)) / numberBins;
+        // std::cout << "max val: " << max << ", min: " << min << ", range bin: " << rangeBins << std::endl;
 
-        const uint32_t numberSample = 40;
+        for(std::size_t i(0); i<residuals.size(); i++)
+        {
+            const uint32_t idx = (residuals[i] - min) / rangeBins;
+            binsValue[idx]++;
+        }
+        // for(std::size_t i(0); i<binsValue.size(); i++)
+        // {
+        //     std::cout << "id: " << i << " size: " << binsValue[i] << std::endl;
+        // }
+
+        const double maxBins = *std::max_element( binsValue.begin(), binsValue.end() );
+        const uint32_t numberSample = 30;
+        // std::cout << "max bins: " << maxBins << std::endl;
         std::vector< double > y;
         std::vector< double > medVec( numberSample, median );
         std::vector< double > minusSigmaVec( numberSample, median + sigma );
         std::vector< double > plusSigmaVec( numberSample, median - sigma );
         std::vector< double > minusMADVec( numberSample, median - mad );
         std::vector< double > plusMADVec( numberSample, median + mad );
-        // std::vector<double> madVec(numberSample, medianmad);
 
         for ( int i( 0 ); i < numberSample; i++ )
         {
-            y.push_back( i * 10 );
+            y.push_back( (maxBins / numberSample) * i );
         }
 
         std::unordered_map< std::string, std::string > keywords;
         keywords[ "zorder" ] = "100";
-        // keywords["zorder"] = "100";
         plt::subplot2grid( 9, 11, 0, 0, 4, 6 );
         keywords[ "c" ] = medianColor;
         plt::scatter( medVec, y, 1.0, keywords );
@@ -711,7 +716,7 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
         keywords[ "c" ] = sigmaColor;
         plt::scatter( minusSigmaVec, y, 1.0, keywords );
         plt::scatter( plusSigmaVec, y, 1.0, keywords );
-        plt::hist( residuals, 50, residualsColor );
+        plt::hist( residuals, numberBins, residualsColor );
         // plt::legend();
         plt::xlabel( windowsName );
         plt::ylabel( "numbers" );
@@ -729,11 +734,12 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
         // pack["weights_color"] = "green";
 
         auto weights     = std::any_cast< std::vector< double > >( pack[ "weights_data" ] );
+        auto numberBins     = std::any_cast< uint32_t >( pack[ "weights_number_bins" ] );
         auto color       = std::any_cast< std::string >( pack[ "weights_color" ] );
         auto windowsName = std::any_cast< std::string >( pack[ "weights_windows_name" ] );
 
         plt::subplot2grid( 9, 11, 5, 0, 4, 6 );
-        plt::hist( weights, 50, color );
+        plt::hist( weights, numberBins, color );
         plt::xlabel( windowsName );
         plt::ylabel( "numbers" );
         plt::title( windowsName );
@@ -747,13 +753,15 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
     {
         // pack["patches_cv"] = resPatches;
         // pack["patche_windows_name"] = "patche";
+        // pack["patches_colormap"] = std::string("viridis_r");
 
         auto patches     = std::any_cast< cv::Mat >( pack[ "patches_cv" ] );
-        auto windowsName = std::any_cast< std::string >( pack[ "patche_windows_name" ] );
+        auto colormap    = std::any_cast< std::string >( pack[ "patches_colormap" ] );
+        auto windowsName = std::any_cast< std::string >( pack[ "patches_windows_name" ] );
 
         std::map< std::string, std::string > keywords;
         plt::subplot2grid( 9, 11, 0, 7, 4, 4 );
-        keywords[ "cmap" ] = "gray";
+        keywords[ "cmap" ] = colormap;
         plt::imshow( patches.ptr(), patches.rows, patches.cols, 1, keywords );
         plt::title( windowsName );
     }
@@ -768,6 +776,7 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
         // pack["hessian_windows_name"] = "hessian";
 
         auto hessian     = std::any_cast< cv::Mat >( pack[ "hessian_cv" ] );
+        auto colormap    = std::any_cast< std::string >( pack[ "hessian_colormap" ] );
         auto windowsName = std::any_cast< std::string >( pack[ "hessian_windows_name" ] );
 
         std::map< std::string, std::string > keywords;
@@ -780,7 +789,7 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
         // std::cout << "Abs Min: " << -maxAbsolute << ", Abs Max: " << maxAbsolute << std::endl;
         // https://matplotlib.org/tutorials/colors/colormaps.html#diverging
         plt::subplot2grid( 9, 11, 5, 7, 4, 4 );
-        keywords[ "cmap" ] = "coolwarm";
+        keywords[ "cmap" ] = colormap;
         // keywords["vmin"] = std::to_string(-1.0);
         // keywords["vmax"] = std::to_string(1.0);
         // std::cout << "vmin: " << keywords["vmin"] << ", vmax: " << keywords["vmax"] << std::endl;

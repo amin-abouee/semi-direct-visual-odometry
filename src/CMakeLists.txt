@@ -1,3 +1,7 @@
+# http://www.brianlheim.com/2018/04/09/cmake-cheat-sheet.html
+# http://manpages.ubuntu.com/manpages/xenial/man7/cmake-generator-expressions.7.html
+# https://www.systutorials.com/docs/linux/man/1-cmakecommands/
+
 # relase binary folder
 set(CMAKE_RELEASE_DIR "${CMAKE_SOURCE_DIR}/bin/release")
 # debug binary folder
@@ -101,8 +105,6 @@ target_compile_options(visual_odometry PRIVATE "$<$<CONFIG:RELEASE>:-march=nativ
 
 # https://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
 target_compile_definitions(visual_odometry PRIVATE -DEIGEN_MAX_CPP_VER=17 )
-# target_compile_definitions(visual_odometry PRIVATE -DEIGEN_DEFAULT_IO_FORMAT="Eigen::IOFormat(10)")
-# target_compile_definitions(visual_odometry PRIVATE -DEIGEN_DEFAULT_DENSE_INDEX_TYPE="int64_t" )
 
 # https://stackoverflow.com/a/31969632/1804533
 target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE})
@@ -113,6 +115,13 @@ target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE} ${Python2_
 # target_link_libraries (visual_odometry visualizer source)
 # spdlog::spdlog
 target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads spdlog::spdlog)
+
+# http://www.brianlheim.com/2018/04/09/cmake-cheat-sheet.html
+# http://manpages.ubuntu.com/manpages/xenial/man7/cmake-generator-expressions.7.html
+# $<$<VERSION_LESS:$<CXX_COMPILER_VERSION>,4.2.0>:OLD_COMPILER>
+target_link_libraries(visual_odometry PRIVATE $<$<CXX_COMPILER_ID:GNU>:stdc++fs>)
+# target_link_libraries(visual_odometry PRIVATE stdc++fs)
+
 # target_link_libraries (visual_odometry PRIVATE stdc++fs)
 target_link_libraries (visual_odometry PRIVATE Python2::Python Python2::NumPy)
 
@@ -147,16 +156,21 @@ target_compile_options(visual_odometry
         W4
     >
 )
-set_target_properties(visual_odometry PROPERTIES CMAKE_CXX_STANDARD_REQUIRED ON)
-set_target_properties(visual_odometry PROPERTIES CMAKE_CXX_EXTENSIONS ON)
-set_target_properties(visual_odometry PROPERTIES CXX_STANDARD 17)
+# set_target_properties(visual_odometry PROPERTIES CMAKE_CXX_STANDARD_REQUIRED ON)
+# set_target_properties(visual_odometry PROPERTIES CMAKE_CXX_EXTENSIONS ON)
+# set_target_properties(visual_odometry PROPERTIES CXX_STANDARD 17)
 
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
 # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
 
 
+#*******
+# https://cmake.org/cmake/help/latest/manual/cmake-compile-features.7.html
+# https://cmake.org/cmake/help/latest/prop_gbl/CMAKE_CXX_KNOWN_FEATURES.html#prop_gbl:CMAKE_CXX_KNOWN_FEATURES
+#*******
+
 # https://crascit.com/2015/03/28/enabling-cxx11-in-cmake/
-# target_compile_features(visual_odometry PRIVATE cxx_std_17)
+target_compile_features(visual_odometry PUBLIC cxx_std_17)
 
 
 if(CMAKE_BUILD_TYPE STREQUAL Debug)

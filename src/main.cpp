@@ -240,10 +240,6 @@ int main( int argc, char* argv[] )
             curFrame.m_frameFeatures[ i ]->setPoint( point );
             cnt++;
         }
-        //    std::cout << "ref points: " <<
-        //    refFrame.m_frameFeatures[i]->m_point->m_position.format(utils::eigenFormat()) << std::endl; std::cout <<
-        //    "cur points: " << refFrame.m_frameFeatures[i]->m_point->m_position.format(utils::eigenFormat()) <<
-        //    std::endl;
     }
     refFrame.m_frameFeatures.erase( std::remove_if( refFrame.m_frameFeatures.begin(), refFrame.m_frameFeatures.end(),
                                                     []( const auto& feature ) { return feature->m_point == nullptr; } ),

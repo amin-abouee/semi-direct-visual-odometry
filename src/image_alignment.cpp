@@ -4,6 +4,8 @@
 #include "visualization.hpp"
 #include "utils.hpp"
 
+#include <algorithm>
+
 #include <sophus/se3.hpp>
 
 #include <opencv2/highgui.hpp>
@@ -39,7 +41,7 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
 
     // Sophus::SE3d relativePose = algorithm::computeRelativePose( refFrame, curFrame );
     Sophus::SE3d relativePose;
-    std::cout << "relative pose: " << relativePose.params().format(utils::eigenFormat()) << std::endl;
+    // std::cout << "relative pose: " << relativePose.params().format(utils::eigenFormat()) << std::endl;
 
     // auto lambdaJacobianFunctor = [&refFrame, level](
     //                                 Sophus::SE3d& pose ) -> void {
@@ -47,20 +49,24 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
     // };
 
     auto lambdaUpdateFunctor = [this]( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) -> void { update( pose, dx ); };
-
+    double error = 0.0;
     // when we wanna compare a uint32 with an int32, the c++ can not compare -1 with 0
     for ( int32_t level( m_maxLevel ); level >= m_minLevel; level-- )
     {
-        level = 0;
+        // level = 0;
         computeJacobian( refFrame, level );
+        std::cout << "visible for jacobian: " << std::count( m_refVisibility.begin(), m_refVisibility.end(), true ) << std::endl;
         auto lambdaResidualFunctor = [this, &refFrame, &curFrame, &level]( Sophus::SE3d& pose ) -> uint32_t {
             return computeResiduals( refFrame, curFrame, level, pose );
         };
         // break;
-        double error = m_optimizer.optimizeGN( relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor, numObservations);
-        break;
+        error = m_optimizer.optimizeGN( relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor, numObservations);
+        std::cout << "error at level " << level << " is: "<< error << std::endl;
+        // break;
     }
-    return 1.0;
+
+    curFrame.m_TransW2F = refFrame.m_TransW2F * relativePose;
+    return error;
 }
 
 void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
@@ -84,6 +90,7 @@ void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
         const double v     = feature->m_feature.y() * scale;
         const int32_t uInt = static_cast< int32_t >( std::floor( u ) );
         const int32_t vInt = static_cast< int32_t >( std::floor( v ) );
+        std::cout << "index feature: " << cntFeature << ", loc [" << uInt << " , " << vInt << "]" << std::endl;
         if ( feature->m_point == nullptr || ( uInt - border ) < 0 || ( vInt - border ) < 0 || ( uInt + border ) >= refImage.cols ||
              ( vInt + border ) >= refImage.rows )
         {
@@ -129,9 +136,11 @@ void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
         }
         cntFeature++;
     }
-    visualization::templatePatches( m_refPatches, cntFeature, m_patchSize, 10, 10, 12 );
+    // visualization::templatePatches( m_refPatches, cntFeature, m_patchSize, 10, 10, 12 );
 }
 
+
+// if we define the residual error as current image - reference image, we do not need to apply the negative for gradient
 uint32_t ImageAlignment::computeResiduals( Frame& refFrame, Frame& curFrame, uint32_t level, Sophus::SE3d& pose )
 {
     const cv::Mat& curImage = curFrame.m_imagePyramid.getImageAtLevel( level );
@@ -177,7 +186,14 @@ uint32_t ImageAlignment::computeResiduals( Frame& refFrame, Frame& curFrame, uin
                 const double rowIdx       = v + y;
                 const double colIdx       = u + x;
                 const float curPixelValue = algorithm::bilinearInterpolation( curImageEigen, colIdx, rowIdx );
-                m_optimizer.m_residuals( cntFeature * m_patchArea + cntPixel ) = static_cast< double >( curPixelValue - *pixelPtr );
+
+                // ****
+                // IF we compute the error of inverse compositional as r = T(x) - I(W), then we should solve (delta p) = -(JtWT).inverse() * JtWr
+                // BUt if we take r = I(W) - T(x) a residual error, then (delta p) = (JtWT).inverse() * JtWr
+                // ***
+
+                // m_optimizer.m_residuals( cntFeature * m_patchArea + cntPixel ) = static_cast< double >( curPixelValue - *pixelPtr );
+                m_optimizer.m_residuals( cntFeature * m_patchArea + cntPixel ) = static_cast< double >( *pixelPtr - curPixelValue);
                 m_optimizer.m_visiblePoints( cntFeature * m_patchArea + cntPixel ) = true;
             }
         }
@@ -245,5 +261,9 @@ void ImageAlignment::computeImageJac( Eigen::Matrix< double, 2, 6 >& imageJac,
 void ImageAlignment::update( Sophus::SE3d& pose, const Eigen::VectorXd& dx )
 {
     // pose = Sophus::SE3d::exp( dx ) * pose;
-    pose = pose * Sophus::SE3d::exp( dx ).inverse();
+    // std::cout << "Update with inverse: " << Sophus::SE3d::exp( dx ).inverse().params().transpose() << std::endl;
+    // std::cout << "Update with minus: " << Sophus::SE3d::exp( -dx ).params().transpose() << std::endl;
+    // inverse a SE3d pose is equivalent with getting the pose from minus of lie algebra parameters.
+    // Sophus::SE3d::exp( dx ).inverse() == Sophus::SE3d::exp( -dx )
+    pose = pose * Sophus::SE3d::exp( -dx );
 }
