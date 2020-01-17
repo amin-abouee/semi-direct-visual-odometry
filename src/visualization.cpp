@@ -698,11 +698,14 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
         std::vector< double > minusMADVec( numberSample, median - mad );
         std::vector< double > plusMADVec( numberSample, median + mad );
 
+        std::vector< double > yRugPlot(residuals.size(), -1.0);
+
         for ( int i( 0 ); i < numberSample; i++ )
         {
             y.push_back( (maxBins / numberSample) * i );
         }
 
+        // std::cout << "res: " << residuals.size() << ", rug: " << yRugPlot.size() << std::endl;
         std::unordered_map< std::string, std::string > keywords;
         keywords[ "zorder" ] = "100";
         plt::subplot2grid( 9, 11, 0, 0, 4, 6 );
@@ -716,6 +719,15 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
         keywords[ "c" ] = sigmaColor;
         plt::scatter( minusSigmaVec, y, 1.0, keywords );
         plt::scatter( plusSigmaVec, y, 1.0, keywords );
+
+        std::map< std::string, std::string > keywords_map;
+        keywords_map[ "marker" ] = "|";
+        keywords_map[ "ls" ] = "";
+        // keywords_map[ "markersize" ] = "10";
+        keywords_map[ "color" ] = "mediumseagreen";
+        // keywords_map[ "zorder" ] = "100";
+        plt::plot(residuals, yRugPlot, keywords_map);
+
         plt::hist( residuals, numberBins, residualsColor );
         // plt::legend();
         plt::xlabel( windowsName );

@@ -39,9 +39,7 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
     std::cout << "reference Patch size: " << m_refPatches.size << std::endl;
     std::cout << "number Observation: " << numObservations << std::endl;
 
-    // Sophus::SE3d relativePose = algorithm::computeRelativePose( refFrame, curFrame );
     Sophus::SE3d relativePose;
-    // std::cout << "relative pose: " << relativePose.params().format(utils::eigenFormat()) << std::endl;
 
     // auto lambdaJacobianFunctor = [&refFrame, level](
     //                                 Sophus::SE3d& pose ) -> void {
@@ -50,6 +48,7 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
 
     auto lambdaUpdateFunctor = [this]( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) -> void { update( pose, dx ); };
     double error = 0.0;
+    NLLS::Status optimizationStatus;
     // when we wanna compare a uint32 with an int32, the c++ can not compare -1 with 0
     for ( int32_t level( m_maxLevel ); level >= m_minLevel; level-- )
     {
@@ -60,8 +59,8 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
             return computeResiduals( refFrame, curFrame, level, pose );
         };
         // break;
-        error = m_optimizer.optimizeGN( relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor, numObservations);
-        std::cout << "error at level " << level << " is: "<< error << std::endl;
+        std::tie(optimizationStatus, error) = m_optimizer.optimizeLM( relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor);
+        std::cout << "error at level " << level << " is: "<< error << " with status: " << 0 << std::endl;
         // break;
     }
 
@@ -196,8 +195,8 @@ uint32_t ImageAlignment::computeResiduals( Frame& refFrame, Frame& curFrame, uin
                 // BUt if we take r = I(W) - T(x) a residual error, then (delta p) = (JtWT).inverse() * JtWr
                 // ***
 
-                // m_optimizer.m_residuals( cntFeature * m_patchArea + cntPixel ) = static_cast< double >( curPixelValue - *pixelPtr );
-                m_optimizer.m_residuals( cntFeature * m_patchArea + cntPixel ) = static_cast< double >( *pixelPtr - curPixelValue);
+                m_optimizer.m_residuals( cntFeature * m_patchArea + cntPixel ) = static_cast< double >( curPixelValue - *pixelPtr );
+                // m_optimizer.m_residuals( cntFeature * m_patchArea + cntPixel ) = static_cast< double >( *pixelPtr - curPixelValue);
                 m_optimizer.m_visiblePoints( cntFeature * m_patchArea + cntPixel ) = true;
             }
         }
