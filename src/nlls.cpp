@@ -45,12 +45,12 @@ NLLS::NLLSResult NLLS::optimizeGN( Sophus::SE3d& pose,
                                    const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaJacobianFunctor,
                                    const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor )
 {
-    const uint32_t numUnknowns     = 6;
+    // const uint32_t numUnknowns     = 6;
     const uint32_t numObservations = m_residuals.size();
 
     Status optimizeStatus = Status::Failed;
 
-    if ( numObservations < numUnknowns )
+    if ( numObservations < m_numUnknowns )
         return std::make_pair( Status::Non_Suff_Points, -1 );
     // assert( ( numObservations - numUnknowns ) > 0 );
 
@@ -149,11 +149,11 @@ NLLS::NLLSResult NLLS::optimizeLM( Sophus::SE3d& pose,
                                    const std::function< uint32_t( Sophus::SE3d& ) >& lambdaJacobianFunctor,
                                    const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor )
 {
-    const uint32_t numUnknowns     = 6;
+    // const uint32_t numUnknowns     = 6;
     const uint32_t numObservations = m_residuals.size();
 
     Status optimizeStatus = Status::Failed;
-    if ( numObservations < numUnknowns )
+    if ( numObservations < m_numUnknowns )
         return std::make_pair( Status::Non_Suff_Points, -1 );
 
     bool computeJacobian = lambdaJacobianFunctor == nullptr ? false : true;
@@ -200,6 +200,7 @@ NLLS::NLLSResult NLLS::optimizeLM( Sophus::SE3d& pose,
             preWeights              = m_weights;
             preVisiblePoints        = m_visiblePoints;
             preTotalProjectedPixels = cntTotalProjectedPixels;
+            optimizeStatus = Status::Success;
         }
 
         if ( computeJacobian == true )
@@ -219,7 +220,7 @@ NLLS::NLLSResult NLLS::optimizeLM( Sophus::SE3d& pose,
 
         if ( m_levenbergMethod == LevenbergMethod::Marquardt )
         {
-            for ( std::size_t i( 0 ); i < numUnknowns; i++ )
+            for ( std::size_t i( 0 ); i < m_numUnknowns; i++ )
                 m_hessian( i, i ) += lambda * jwj( i );
         }
 
@@ -229,7 +230,7 @@ NLLS::NLLSResult NLLS::optimizeLM( Sophus::SE3d& pose,
             {
                 lambda *= jwj.maxCoeff();
             }
-            for ( std::size_t i( 0 ); i < numUnknowns; i++ )
+            for ( std::size_t i( 0 ); i < m_numUnknowns; i++ )
                 m_hessian( i, i ) += lambda;
         }
 

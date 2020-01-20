@@ -275,6 +275,18 @@ int main( int argc, char* argv[] )
     std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
     curFrame.setKeyframe();
 
+    {
+        cv::Mat refBGR = visualization::getBGRImage(refFrame.m_imagePyramid.getBaseImage());
+        cv::Mat curBGR = visualization::getBGRImage(curFrame.m_imagePyramid.getBaseImage());
+        // visualization::featurePoints(refBGR, refFrame);
+        visualization::featurePoints(curBGR, curFrame);
+        visualization::project3DPoints(curBGR, curFrame);
+        // cv::Mat stickImg;
+        // visualization::stickTwoImageHorizontally(refBGR, curBGR, stickImg);
+        // cv::imshow("both image", stickImg);
+        cv::imshow("feature_cur_img", curBGR);
+    }
+
     const cv::Mat newImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000002.png" ), cv::IMREAD_GRAYSCALE );
     Frame newFrame( camera, newImg );
     ImageAlignment match( 5, 0, 3 );

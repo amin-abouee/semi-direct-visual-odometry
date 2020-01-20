@@ -60,7 +60,8 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
         };
         // break;
         std::tie(optimizationStatus, error) = m_optimizer.optimizeLM( relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor);
-        std::cout << "error at level " << level << " is: "<< error << " with status: " << 0 << std::endl;
+        // std::cout << "error at level " << level << " is: "<< error << " with status: " << static_cast<std::underlying_type<NLLS::Status>::type>(optimizationStatus) << std::endl;
+        std::cout << "error at level " << level << " is: "<< error << " with status: " << static_cast<uint32_t>(optimizationStatus) << std::endl;
         // break;
     }
 

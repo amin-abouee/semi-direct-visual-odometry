@@ -54,67 +54,64 @@ const std::map< std::string, cv::Scalar > colors{
 
 namespace plt = matplotlibcpp;
 
-/// visualize feature points in frame image
-void featurePoints( const Frame& frame, const std::string& windowsName );
+// /// visualize feature points in frame image
+// void featurePoints( const Frame& frame, const std::string& windowsName );
 
-/// visualize feature points in any input image (for instance on HSV image)
-void featurePoints( const cv::Mat& img, const Frame& frame, const std::string& windowsName );
+// /// visualize feature points in any input image (for instance on HSV image)
+// void featurePoints( const cv::Mat& img, const Frame& frame, const std::string& windowsName );
 
-/// visualize feature points in any input image (for instance on HSV image)
-void featurePointsInGrid( const cv::Mat& img, const Frame& frame, const int32_t gridSize, const std::string& windowsName );
+// /// visualize feature points in both frames. images stick to each other
+// void featurePointsInBothImages( const Frame& refFrame, const Frame& curFrame, const std::string& windowsName );
 
-/// visualize feature points in both frames. images stick to each other
-void featurePointsInBothImages( const Frame& refFrame, const Frame& curFrame, const std::string& windowsName );
+// /// visualize feature points with a search area around that in current frame and corresponding points in reference image
+// void featurePointsInBothImagesWithSearchRegion( const Frame& refFrame,
+//                                                 const Frame& curFrame,
+//                                                 const uint16_t& patchSize,
+//                                                 const std::string& windowsName );
 
-/// visualize feature points with a search area around that in current frame and corresponding points in reference image
-void featurePointsInBothImagesWithSearchRegion( const Frame& refFrame,
-                                                const Frame& curFrame,
-                                                const uint16_t& patchSize,
-                                                const std::string& windowsName );
+// /// draw epipole point in input image
+// void epipole( const Frame& frame, const Eigen::Vector3d& vec, const std::string& windowsName );
 
-/// draw epipole point in input image
-void epipole( const Frame& frame, const Eigen::Vector3d& vec, const std::string& windowsName );
+// /// draw epipolar line for a specific bearing vec in the range of image
+// void epipolarLine( const Frame& frame, const Eigen::Vector3d& vec, const Eigen::Matrix3d& F, const std::string& windowsName );
 
-/// draw epipolar line for a specific bearing vec in the range of image
-void epipolarLine( const Frame& frame, const Eigen::Vector3d& vec, const Eigen::Matrix3d& F, const std::string& windowsName );
+// /// draw epipolar line for a specific bearing vector in a specific range of depth
+// void epipolarLine( const Frame& curFrame,
+//                    const Eigen::Vector3d& normalizedVec,
+//                    const double minDepth,
+//                    const double maxDepth,
+//                    const std::string& windowsName );
 
-/// draw epipolar line for a specific bearing vector in a specific range of depth
-void epipolarLine( const Frame& curFrame,
-                   const Eigen::Vector3d& normalizedVec,
-                   const double minDepth,
-                   const double maxDepth,
-                   const std::string& windowsName );
+// /// draw epipolar line for a specific feature point in a specific range of depth
+// void epipolarLineBothImages( const Frame& refFrame,
+//                              const Frame& curFrame,
+//                              const Eigen::Vector2d& feature,
+//                              const double minDepth,
+//                              const double maxDepth,
+//                              const std::string& windowsName );
 
-/// draw epipolar line for a specific feature point in a specific range of depth
-void epipolarLineBothImages( const Frame& refFrame,
-                             const Frame& curFrame,
-                             const Eigen::Vector2d& feature,
-                             const double minDepth,
-                             const double maxDepth,
-                             const std::string& windowsName );
+// void epipolarLinesWithDepth(
+//   const Frame& refFrame, const Frame& curFrame, const Eigen::VectorXd& depths, const double sigma, const std::string& windowsName );
 
-void epipolarLinesWithDepth(
-  const Frame& refFrame, const Frame& curFrame, const Eigen::VectorXd& depths, const double sigma, const std::string& windowsName );
+// void epipolarLinesWithPoints(
+//   const Frame& refFrame, const Frame& curFrame, const Eigen::MatrixXd& points, const double sigma, const std::string& windowsName );
 
-void epipolarLinesWithPoints(
-  const Frame& refFrame, const Frame& curFrame, const Eigen::MatrixXd& points, const double sigma, const std::string& windowsName );
+// /// draw all epipolar lines with fundamental matrix
+// void epipolarLinesWithFundamentalMatrix( const Frame& frame,
+//                                          const cv::Mat& currentImg,
+//                                          const Eigen::Matrix3d& F,
+//                                          const std::string& windowsName );
 
-/// draw all epipolar lines with fundamental matrix
-void epipolarLinesWithFundamentalMatrix( const Frame& frame,
-                                         const cv::Mat& currentImg,
-                                         const Eigen::Matrix3d& F,
-                                         const std::string& windowsName );
+// void epipolarLinesWithPointsWithFundamentalMatrix( const Frame& refFrame,
+//                                                    const Frame& curframe,
+//                                                    const Eigen::Matrix3d& F,
+//                                                    const std::string& windowsName );
 
-void epipolarLinesWithPointsWithFundamentalMatrix( const Frame& refFrame,
-                                                   const Frame& curframe,
-                                                   const Eigen::Matrix3d& F,
-                                                   const std::string& windowsName );
-
-/// draw all epipolar lines with essential matrix
-void epipolarLinesWithEssentialMatrix( const Frame& frame,
-                                       const cv::Mat& currentImg,
-                                       const Eigen::Matrix3d& E,
-                                       const std::string& windowsName );
+// /// draw all epipolar lines with essential matrix
+// void epipolarLinesWithEssentialMatrix( const Frame& frame,
+//                                        const cv::Mat& currentImg,
+//                                        const Eigen::Matrix3d& E,
+//                                        const std::string& windowsName );
 
 void templatePatches( const cv::Mat& patches,
                    const uint32_t numberPatches,
@@ -150,8 +147,26 @@ void drawHistogram( const std::vector< std::vector< double > >& data,
 
 void drawHistogram( std::map<std::string, std::any>& pack );
 
-// void drawHistogram(std::vector< float >& vec, cv::Mat& imgHistogram, int numBins, int imageWidth, int imageHeight, const std::string&
-// windowsName );
+void featurePoints(cv::Mat& img, const Frame& frame);
+
+/// visualize feature points in any input image (for instance on HSV image)
+void featurePointsInGrid( cv::Mat& img, const Frame& frame, const int32_t gridSize);
+
+void project3DPoints (cv::Mat& img, const Frame& frame);
+
+void projectPointsWithRelativePose (cv::Mat& img, const Frame& refFrame, const Frame& curFrame);
+
+void projectPointsWithF (cv::Mat& img, const Frame& refFrame, const Eigen::Matrix3d& F);
+
+void projectLinesWithRelativePose (cv::Mat& img, const Frame& refFrame, const Frame& curFrame, const uint32_t rangeInPixels);
+
+void projectLinesWithF (cv::Mat& img, const Frame& refFrame, const Eigen::Matrix3d& F, const uint32_t rangeInPixels);
+
+void epipole(cv::Mat& img, const Frame& frame);
+
+void stickTwoImageVertically(const cv::Mat& refImg, const cv::Mat& curImg, cv::Mat& img);
+
+void stickTwoImageHorizontally(const cv::Mat& refImg, const cv::Mat& curImg, cv::Mat& img);
 
 }  // namespace visualization
 
