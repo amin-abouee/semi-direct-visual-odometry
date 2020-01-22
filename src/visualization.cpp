@@ -827,7 +827,7 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
 void visualization::featurePoints(cv::Mat& img, const Frame& frame)
 {
     const auto szPoints = frame.numberObservation();
-    std::cout << "# observation visualization: " << szPoints << std::endl;
+    // std::cout << "# observation visualization: " << szPoints << std::endl;
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
         const auto& feature = frame.m_frameFeatures[ i ]->m_feature;
@@ -837,17 +837,6 @@ void visualization::featurePoints(cv::Mat& img, const Frame& frame)
 
 void visualization::featurePointsInGrid( cv::Mat& img, const Frame& frame, const int32_t gridSize)
 {
-    // cv::Mat normMag, imgBGR;
-    // cv::normalize( img, normMag, 0, 255, cv::NORM_MINMAX, CV_8UC1 );
-    // cv::cvtColor( normMag, imgBGR, cv::COLOR_GRAY2BGR );
-
-    // const auto szPoints = frame.m_frameFeatures.size();
-    // for ( std::size_t i( 0 ); i < szPoints; i++ )
-    // {
-    //     const auto& feature = frame.m_frameFeatures[ i ]->m_feature;
-    //     cv::circle( img, cv::Point2d( feature.x(), feature.y() ), 5.0, colors.at( "pink" ) );
-    // }
-
     featurePoints(img, frame);
 
     const int width  = img.cols;

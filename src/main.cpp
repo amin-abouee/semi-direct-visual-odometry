@@ -189,15 +189,15 @@ int main( int argc, char* argv[] )
     auto t1 = std::chrono::high_resolution_clock::now();
     // featureSelection.detectFeaturesSSC( refFrame, numFeature );
     featureSelection.detectFeaturesInGrid( refFrame, patchSize );
-    std::cout << "# observation: " << refFrame.numberObservation() << std::endl;
+    // std::cout << "# observation: " << refFrame.numberObservation() << std::endl;
     // visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize,
     // "Feature-Point-In-Grid");
 
-    {
-        cv::Mat refBGR = visualization::getBGRImage( refFrame.m_imagePyramid.getBaseImage() );
-        visualization::featurePointsInGrid(refBGR, refFrame, patchSize );
-        cv::imshow("grid_frame_0", refBGR);
-    }
+    // {
+    //     cv::Mat refBGR = visualization::getBGRImage( refFrame.m_imagePyramid.getBaseImage() );
+    //     visualization::featurePointsInGrid(refBGR, refFrame, patchSize );
+    //     cv::imshow("grid_frame_0", refBGR);
+    // }
 
     Eigen::Matrix3d E;
     Eigen::Matrix3d F;
@@ -208,15 +208,15 @@ int main( int argc, char* argv[] )
     Matcher::computeEssentialMatrix( refFrame, curFrame, 1.0, E );
     // Eigen::Matrix3d R2;
     // algorithm::decomposeEssentialMatrix( E, R, R2, t );
-    std::cout << "E: " << E.format( utils::eigenFormat() ) << std::endl;
+    // std::cout << "E: " << E.format( utils::eigenFormat() ) << std::endl;
     // std::cout << "R: " << R.format( utils::eigenFormat() ) << std::endl;
     // std::cout << "R2: " << R2.format( utils::eigenFormat() ) << std::endl;
     // std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
     F = curFrame.m_camera->invK().transpose() * E * refFrame.m_camera->invK();
-    std::cout << "F: " << F.format( utils::eigenFormat() ) << std::endl;
+    // std::cout << "F: " << F.format( utils::eigenFormat() ) << std::endl;
     algorithm::recoverPose( E, refFrame, curFrame, R, t );
-    std::cout << "R: " << R.format( utils::eigenFormat() ) << std::endl;
-    std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
+    // std::cout << "R: " << R.format( utils::eigenFormat() ) << std::endl;
+    // std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
     // std::cout << "E new: " << (R * algorithm::hat(t)).format( utils::eigenFormat() ) << std::endl;
     // std::cout << "determinant: " << R.determinant() << std::endl;
     // std::cout << "ref C: " << refFrame.cameraInWorld().format( utils::eigenFormat() ) << std::endl;
@@ -247,15 +247,15 @@ int main( int argc, char* argv[] )
 
     double medianDepth = algorithm::computeMedian( depthCurFrame );
     // std::cout << "Mean: " << depthCurFrame.mean() << std::endl;
-    std::cout << "Median: " << medianDepth << std::endl;
+    // std::cout << "Median: " << medianDepth << std::endl;
     const double scale = 1.0 / medianDepth;
-    std::cout << "translation without scale: " << curFrame.m_TransW2F.translation().transpose() << std::endl;
+    // std::cout << "translation without scale: " << curFrame.m_TransW2F.translation().transpose() << std::endl;
 
     // C_1 = C_0 + scale * (C_1 - C_0)
     // t = -R * C_1
     curFrame.m_TransW2F.translation() = -curFrame.m_TransW2F.rotationMatrix() *
                                         ( refFrame.cameraInWorld() + scale * ( curFrame.cameraInWorld() - refFrame.cameraInWorld() ) );
-    std::cout << "translation with scale: " << curFrame.m_TransW2F.translation().transpose() << std::endl;
+    // std::cout << "translation with scale: " << curFrame.m_TransW2F.translation().transpose() << std::endl;
 
     // std::cout << "Before scaling depth 0: " << depthCurFrame(0) << std::endl;
     // depthCurFrame *= scale;
@@ -309,15 +309,15 @@ int main( int argc, char* argv[] )
     algorithm::depthCamera( curFrame, newCurDepths );
     medianDepth           = algorithm::computeMedian( newCurDepths );
     const double minDepth = newCurDepths.minCoeff();
-    std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
+    // std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
     curFrame.setKeyframe();
 
     {
-        cv::Mat refBGR = visualization::getBGRImage( refFrame.m_imagePyramid.getBaseImage() );
-        cv::Mat curBGR = visualization::getBGRImage( curFrame.m_imagePyramid.getBaseImage() );
-        visualization::featurePointsInGrid(refBGR, refFrame, patchSize );
+        // cv::Mat refBGR = visualization::getBGRImage( refFrame.m_imagePyramid.getBaseImage() );
+        // cv::Mat curBGR = visualization::getBGRImage( curFrame.m_imagePyramid.getBaseImage() );
+        // visualization::featurePointsInGrid(refBGR, refFrame, patchSize );
+        // cv::imshow("grid_frame_0", refBGR);
 
-        cv::imshow("grid_frame_0", refBGR);
         // visualization::featurePoints(refBGR, refFrame);
         // visualization::featurePoints( curBGR, curFrame );
         // visualization::project3DPoints(curBGR, curFrame);
@@ -331,18 +331,18 @@ int main( int argc, char* argv[] )
     const cv::Mat newImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000002.png" ), cv::IMREAD_GRAYSCALE );
     Frame newFrame( camera, newImg );
 
-    {
-        cv::Mat curBGR = visualization::getBGRImage( curFrame.m_imagePyramid.getBaseImage() );
-        cv::Mat newBGR = visualization::getBGRImage( newFrame.m_imagePyramid.getBaseImage() );
-        visualization::featurePoints( curBGR, curFrame);
-        // visualization::featurePoints(newBGR, newFrame);
-        // visualization::project3DPoints(curBGR, curFrame);
-        visualization::projectPointsWithRelativePose( newBGR, curFrame, newFrame );
-        cv::Mat stickImg;
-        visualization::stickTwoImageHorizontally( curBGR, newBGR, stickImg );
-        // cv::imshow("both_image_1_2", stickImg);
-        // cv::imshow("relative_1_2", newBGR);
-    }
+    // {
+    //     cv::Mat curBGR = visualization::getBGRImage( curFrame.m_imagePyramid.getBaseImage() );
+    //     cv::Mat newBGR = visualization::getBGRImage( newFrame.m_imagePyramid.getBaseImage() );
+    //     visualization::featurePoints( curBGR, curFrame);
+    //     // visualization::featurePoints(newBGR, newFrame);
+    //     // visualization::project3DPoints(curBGR, curFrame);
+    //     visualization::projectPointsWithRelativePose( newBGR, curFrame, newFrame );
+    //     cv::Mat stickImg;
+    //     visualization::stickTwoImageHorizontally( curBGR, newBGR, stickImg );
+    //     // cv::imshow("both_image_1_2", stickImg);
+    //     // cv::imshow("relative_1_2", newBGR);
+    // }
 
     ImageAlignment match( 5, 0, 3, 6 );
     t1 = std::chrono::high_resolution_clock::now();

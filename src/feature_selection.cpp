@@ -1,6 +1,7 @@
 #include "feature_selection.hpp"
 
 #include <algorithm>
+#include <vector>
 #include <memory>
 #include <cmath>
 
@@ -199,8 +200,62 @@ void FeatureSelection::detectFeaturesInGrid( Frame& frame, const int32_t gridSiz
 
     // std::cout << "rows: " << rows << ", cols: " << cols << std::endl;
 
+    struct gridData
+    {
+        int x;
+        int y;
+        float max;
+        gridData()
+        {
+            x = -1;
+            y = -1;
+            max = 0.0;
+        }
+    };
+
+    std::vector <gridData> stack(cols);
+    std::vector < std::vector <gridData> > table(rows, stack);
+
+    float* pixelPtr = m_gradientMagnitude.ptr<float>();
+    for(int i(0); i< m_gradientMagnitude.rows; i++)
+    {
+        for(int j(0); j< m_gradientMagnitude.cols; j++, pixelPtr++)
+        {
+            const int indy = i / gridSize;
+            const int indx = j / gridSize;
+            if (*pixelPtr > table[indy][indx].max)
+            {
+                table[indy][indx].max = *pixelPtr;
+                table[indy][indx].x = j;
+                table[indy][indx].y = i;
+            }
+        }
+    }
+
+    for(int i(0); i<table.size(); i++)
+    {
+        for (int j(0); j<table[i].size(); j++)
+        {
+            // std::cout << "row id: " << table[i][j].y << ", col id: " << table[i][j].x << ", max: " <<  table[i][j].max << std::endl; 
+            const auto x = table[i][j].x;
+            const auto y = table[i][j].y;
+            const auto max = table[i][j].max;
+            if (max > 0)
+            {
+                std::unique_ptr< Feature > feature = std::make_unique< Feature >(
+                    frame, Eigen::Vector2d( x, y ), 
+                    m_gradientMagnitude.at< float >( y, x ),  
+                    m_gradientOrientation.at< float >( y, x ), 0 );
+                frame.addFeature(feature);
+            }
+        }
+    }
+
+    // std::cout << "bimbooooo" << std::endl;
+
     // std::vector< cv::KeyPoint > keyPoints;
     // keyPoints.reserve( 10 * numberCandidate );
+    /*
     for (int r(0); r < rows; r++)
     {
         for (int c(0); c < cols; c++)
@@ -210,7 +265,7 @@ void FeatureSelection::detectFeaturesInGrid( Frame& frame, const int32_t gridSiz
             const cv::Rect PatchROI( c * gridSize, r * gridSize, maxColIdx, maxROwIdx );
             // std::cout << "left corner: [" << r * gridSize << " , " << c * gridSize << "] -> ";
             const cv::Mat gradientPatch = m_gradientMagnitude( PatchROI );
-            float max = -1;
+            float max = 0.0;
             int rowIdx = -1;
             int colIdx = -1;
             for ( int i( 0 ); i < maxROwIdx; i++ )
@@ -225,20 +280,16 @@ void FeatureSelection::detectFeaturesInGrid( Frame& frame, const int32_t gridSiz
                     }
                 }
             }
-            // std::cout << " selected at [" << rowIdx << " , " << colIdx << "]" << std::endl;
-            // if ( gradientPatch.at< float >( i, j ) > 75.0 )
-            // {
+
+            std::cout << "row id: " << rowIdx << ", col id: " << colIdx << ", max: " <<  max << std::endl; 
             std::unique_ptr< Feature > feature = std::make_unique< Feature >(
                     frame, Eigen::Vector2d( colIdx, rowIdx ), 
                     m_gradientMagnitude.at< float >( rowIdx, colIdx ),  
                     m_gradientOrientation.at< float >( rowIdx, colIdx ), 0 );
             frame.addFeature(feature);
-            // keyPoints.emplace_back( cv::KeyPoint( cv::Point2i( coldIdx, rowIdx ), 1.0,
-            //                                     m_gradientOrientation.at< float >( rowIdx, coldIdx ),
-            //                                     m_gradentMagnitude.at< float >( rowIdx, coldIdx ) ) );
-            // }
         }
     }
+    */
 }
 
 // void FeatureSelection::computeGradient( const cv::Mat& currentTemplateImage,
