@@ -79,6 +79,7 @@ set(LIBRARY_SOURCES
     algorithm.cpp
     visualization.cpp
     utils.cpp
+    system.cpp
     main.cpp
     )
 

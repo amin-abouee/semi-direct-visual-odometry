@@ -280,6 +280,7 @@ NLLS::NLLSResult NLLS::optimizeLM( Sophus::SE3d& pose,
             cntTotalProjectedPixels = preTotalProjectedPixels;
         }
         // std::cout << "Iteration: " << curIteration << ", Chi error: " << chiSquaredError << std::endl;
+        visualize( cntTotalProjectedPixels );
         ++curIteration;
     }
     const double rmse = std::sqrt( chiSquaredError / cntTotalProjectedPixels );

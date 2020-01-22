@@ -71,6 +71,29 @@ bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, c
 
 int main( int argc, char* argv[] )
 {
+#ifdef EIGEN_MALLOC_ALREADY_ALIGNED
+    std::cout << "EIGEN_MALLOC_ALREADY_ALIGNED" << std::endl;
+#endif
+
+#ifdef EIGEN_FAST_MATH
+    std::cout << "EIGEN_FAST_MATH" << std::endl;
+#endif
+
+#ifdef EIGEN_USE_MKL_ALL
+    std::cout << "EIGEN_USE_MKL_ALL" << std::endl;
+#endif
+
+#ifdef EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    std::cout << "EIGEN_MAKE_ALIGNED_OPERATOR_NEW" << std::endl;
+#endif
+
+#ifdef EIGEN_USE_BLAS
+    std::cout << "EIGEN_USE_BLAS" << std::endl;
+#endif
+    std::cout << "EIGEN_HAS_CXX11_CONTAINERS: " << EIGEN_HAS_CXX11_CONTAINERS << std::endl;
+    std::cout << "EIGEN_MAX_CPP_VER: " << EIGEN_MAX_CPP_VER << std::endl;
+    std::cout << "EIGEN_HAS_CXX11_MATH: " << EIGEN_HAS_CXX11_MATH << std::endl;
+    // std::cout << "Number of Threads: " << Eigen::nbThreads( ) << std::endl;
     // Eigen::setNbThreads(4);
     // std::cout << "Number of Threads: " << Eigen::nbThreads( ) << std::endl;
 
@@ -111,25 +134,25 @@ int main( int argc, char* argv[] )
     const cv::Mat refImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000000.png" ), cv::IMREAD_GRAYSCALE );
     const cv::Mat curImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000001.png" ), cv::IMREAD_GRAYSCALE );
 
-    Eigen::Matrix3d K;
-    K << 7.215377e+02, 0.000000e+00, 6.095593e+02, 0.000000e+00, 7.215377e+02, 1.728540e+02, 0.000000e+00, 0.000000e+00, 1.000000e+00;
-    // std::cout << "Camera Matrix: \n" << K << std::endl;
+    // Eigen::Matrix3d K;
+    // K << 7.215377e+02, 0.000000e+00, 6.095593e+02, 0.000000e+00, 7.215377e+02, 1.728540e+02, 0.000000e+00, 0.000000e+00, 1.000000e+00;
+    // // std::cout << "Camera Matrix: \n" << K << std::endl;
 
-    Eigen::Matrix3d E;
-    E << .22644456e-03, -7.06943058e-01, -4.05822481e-03, 7.06984545e-01, 1.22048201e-03, 1.26855863e-02, 3.25653616e-03, -1.46073125e-02,
-      -2.59077801e-05;
-    // std::cout << "Old E: " << E.format( utils::eigenFormat() ) << std::endl;
+    // Eigen::Matrix3d E;
+    // E << .22644456e-03, -7.06943058e-01, -4.05822481e-03, 7.06984545e-01, 1.22048201e-03, 1.26855863e-02, 3.25653616e-03, -1.46073125e-02,
+    //   -2.59077801e-05;
+    // // std::cout << "Old E: " << E.format( utils::eigenFormat() ) << std::endl;
 
-    Eigen::Matrix3d F;
-    F << -5.33286713e-08, -1.49632194e-03, 2.67961447e-01, 1.49436356e-03, -2.27291565e-06, -9.03327631e-01, -2.68937438e-01,
-      9.02739500e-01, 1.00000000e+00;
-    // std::cout << "Fundamental Matrix: \n" << F << std::endl;
+    // Eigen::Matrix3d F;
+    // F << -5.33286713e-08, -1.49632194e-03, 2.67961447e-01, 1.49436356e-03, -2.27291565e-06, -9.03327631e-01, -2.68937438e-01,
+    //   9.02739500e-01, 1.00000000e+00;
+    // // std::cout << "Fundamental Matrix: \n" << F << std::endl;
 
-    Eigen::Vector3d C( -0.01793327, -0.00577164, 1 );
+    // Eigen::Vector3d C( -0.01793327, -0.00577164, 1 );
 
-    // Do the cheirality check.
-    Eigen::Matrix3d R;
-    R << 0.99999475, 0.0017505, -0.0027263, -0.00174731, 0.99999779, 0.00117013, 0.00272834, -0.00116536, 0.9999956;
+    // // Do the cheirality check.
+    // Eigen::Matrix3d R;
+    // R << 0.99999475, 0.0017505, -0.0027263, -0.00174731, 0.99999779, 0.00117013, 0.00272834, -0.00116536, 0.9999956;
     // std::cout << "Old R1: " << R.format( utils::eigenFormat() ) << std::endl;
 
     // Eigen::Matrix3d R;
@@ -137,7 +160,7 @@ int main( int argc, char* argv[] )
     // 0.99920165;
 
     // Eigen::Vector3d t( -0.0206659, -0.00456935, 0.999776 );
-    Eigen::Vector3d t( 0.0206659, 0.00456935, -0.999776 );
+    // Eigen::Vector3d t( 0.0206659, 0.00456935, -0.999776 );
     // std::cout << "Old t: " << t.format( utils::eigenFormat() ) << std::endl;
 
     // PinholeCamera camera( 1242, 375, K( 0, 0 ), K( 1, 1 ), K( 0, 2 ), K( 1, 2 ), 0.0, 0.0, 0.0, 0.0, 0.0 );
@@ -166,6 +189,11 @@ int main( int argc, char* argv[] )
     featureSelection.detectFeaturesInGrid( refFrame, patchSize );
     // visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize,
     // "Feature-Point-In-Grid");
+
+    Eigen::Matrix3d E;
+    Eigen::Matrix3d F;
+    Eigen::Matrix3d R;
+    Eigen::Vector3d t;
 
     Matcher::computeOpticalFlowSparse( refFrame, curFrame, patchSizeOptFlow );
     Matcher::computeEssentialMatrix( refFrame, curFrame, 1.0, E );
@@ -276,12 +304,12 @@ int main( int argc, char* argv[] )
     curFrame.setKeyframe();
 
     {
-        cv::Mat refBGR = visualization::getBGRImage(refFrame.m_imagePyramid.getBaseImage());
-        cv::Mat curBGR = visualization::getBGRImage(curFrame.m_imagePyramid.getBaseImage());
+        cv::Mat refBGR = visualization::getBGRImage( refFrame.m_imagePyramid.getBaseImage() );
+        cv::Mat curBGR = visualization::getBGRImage( curFrame.m_imagePyramid.getBaseImage() );
         // visualization::featurePoints(refBGR, refFrame);
-        visualization::featurePoints(curBGR, curFrame);
+        visualization::featurePoints( curBGR, curFrame );
         // visualization::project3DPoints(curBGR, curFrame);
-        visualization::projectPointsWithRelativePose(curBGR, refFrame, curFrame);
+        visualization::projectPointsWithRelativePose( curBGR, refFrame, curFrame );
         // cv::Mat stickImg;
         // visualization::stickTwoImageHorizontally(refBGR, curBGR, stickImg);
         // cv::imshow("both image", stickImg);
@@ -292,14 +320,14 @@ int main( int argc, char* argv[] )
     Frame newFrame( camera, newImg );
 
     {
-        cv::Mat curBGR = visualization::getBGRImage(curFrame.m_imagePyramid.getBaseImage());
-        cv::Mat newBGR = visualization::getBGRImage(newFrame.m_imagePyramid.getBaseImage());
-        visualization::featurePoints(curBGR, curFrame);
+        cv::Mat curBGR = visualization::getBGRImage( curFrame.m_imagePyramid.getBaseImage() );
+        cv::Mat newBGR = visualization::getBGRImage( newFrame.m_imagePyramid.getBaseImage() );
+        visualization::featurePoints( curBGR, curFrame );
         // visualization::featurePoints(newBGR, newFrame);
         // visualization::project3DPoints(curBGR, curFrame);
-        visualization::projectPointsWithRelativePose(newBGR, curFrame, newFrame);
+        visualization::projectPointsWithRelativePose( newBGR, curFrame, newFrame );
         cv::Mat stickImg;
-        visualization::stickTwoImageHorizontally(curBGR, newBGR, stickImg);
+        visualization::stickTwoImageHorizontally( curBGR, newBGR, stickImg );
         // cv::imshow("both_image_1_2", stickImg);
         // cv::imshow("relative_1_2", newBGR);
     }
@@ -312,16 +340,16 @@ int main( int argc, char* argv[] )
               << std::endl;
 
     {
-        cv::Mat curBGR = visualization::getBGRImage(curFrame.m_imagePyramid.getBaseImage());
-        cv::Mat newBGR = visualization::getBGRImage(newFrame.m_imagePyramid.getBaseImage());
-        visualization::featurePoints(curBGR, curFrame);
+        cv::Mat curBGR = visualization::getBGRImage( curFrame.m_imagePyramid.getBaseImage() );
+        cv::Mat newBGR = visualization::getBGRImage( newFrame.m_imagePyramid.getBaseImage() );
+        visualization::featurePoints( curBGR, curFrame );
         // visualization::featurePointsInGrid(curBGR, curFrame, 50);
         // visualization::featurePoints(newBGR, newFrame);
         // visualization::project3DPoints(curBGR, curFrame);
-        visualization::projectPointsWithRelativePose(newBGR, curFrame, newFrame);
+        visualization::projectPointsWithRelativePose( newBGR, curFrame, newFrame );
         cv::Mat stickImg;
-        visualization::stickTwoImageHorizontally(curBGR, newBGR, stickImg);
-        cv::imshow("both_image_1_2_optimization", stickImg);
+        visualization::stickTwoImageHorizontally( curBGR, newBGR, stickImg );
+        cv::imshow( "both_image_1_2_optimization", stickImg );
         // cv::imshow("relative_1_2", newBGR);
     }
 
@@ -352,10 +380,10 @@ int main( int argc, char* argv[] )
     // const double mu    = point.norm();
     // std::cout << "position feature: " << refFrame.m_frameFeatures[ 3 ]->m_feature.transpose() << std::endl;
     // {
-        // const double mu    = 20.0;
-        // const double sigma = 1.0;
-        // visualization::epipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, mu - sigma,
-        //                                 mu + sigma, "Epipolar-Line-Feature-3" );
+    // const double mu    = 20.0;
+    // const double sigma = 1.0;
+    // visualization::epipolarLine( refFrame, curFrame, refFrame.m_frameFeatures[ 3 ]->m_feature, mu - sigma,
+    //                                 mu + sigma, "Epipolar-Line-Feature-3" );
     // }
 
     // visualization::epipolarLinesWithPoints( refFrame, curFrame, pointsWorld, 150.0, "Epipolar-Lines-Depths" );
@@ -378,29 +406,6 @@ int main( int argc, char* argv[] )
     // visualization::grayImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude" );
     // visualization::HSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
     // visualization::HSVColoredImage( featureSelection.m_gradientMagnitude, "Gradient Magnitude HSV" );
-#ifdef EIGEN_MALLOC_ALREADY_ALIGNED
-    std::cout << "EIGEN_MALLOC_ALREADY_ALIGNED" << std::endl;
-#endif
-
-#ifdef EIGEN_FAST_MATH
-    std::cout << "EIGEN_FAST_MATH" << std::endl;
-#endif
-
-#ifdef EIGEN_USE_MKL_ALL
-    std::cout << "EIGEN_USE_MKL_ALL" << std::endl;
-#endif
-
-#ifdef EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    std::cout << "EIGEN_MAKE_ALIGNED_OPERATOR_NEW" << std::endl;
-#endif
-
-#ifdef EIGEN_USE_BLAS
-    std::cout << "EIGEN_USE_BLAS" << std::endl;
-#endif
-    std::cout << "EIGEN_HAS_CXX11_CONTAINERS: " << EIGEN_HAS_CXX11_CONTAINERS << std::endl;
-    std::cout << "EIGEN_MAX_CPP_VER: " << EIGEN_MAX_CPP_VER << std::endl;
-    std::cout << "EIGEN_HAS_CXX11_MATH: " << EIGEN_HAS_CXX11_MATH << std::endl;
-    // std::cout << "Number of Threads: " << Eigen::nbThreads( ) << std::endl;
 
     cv::waitKey( 0 );
     return 0;
