@@ -280,17 +280,50 @@ int main( int argc, char* argv[] )
         cv::Mat curBGR = visualization::getBGRImage(curFrame.m_imagePyramid.getBaseImage());
         // visualization::featurePoints(refBGR, refFrame);
         visualization::featurePoints(curBGR, curFrame);
-        visualization::project3DPoints(curBGR, curFrame);
+        // visualization::project3DPoints(curBGR, curFrame);
+        visualization::projectPointsWithRelativePose(curBGR, refFrame, curFrame);
         // cv::Mat stickImg;
         // visualization::stickTwoImageHorizontally(refBGR, curBGR, stickImg);
         // cv::imshow("both image", stickImg);
-        cv::imshow("feature_cur_img", curBGR);
+        // cv::imshow("relative_0_1", curBGR);
     }
 
     const cv::Mat newImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000002.png" ), cv::IMREAD_GRAYSCALE );
     Frame newFrame( camera, newImg );
+
+    {
+        cv::Mat curBGR = visualization::getBGRImage(curFrame.m_imagePyramid.getBaseImage());
+        cv::Mat newBGR = visualization::getBGRImage(newFrame.m_imagePyramid.getBaseImage());
+        visualization::featurePoints(curBGR, curFrame);
+        // visualization::featurePoints(newBGR, newFrame);
+        // visualization::project3DPoints(curBGR, curFrame);
+        visualization::projectPointsWithRelativePose(newBGR, curFrame, newFrame);
+        cv::Mat stickImg;
+        visualization::stickTwoImageHorizontally(curBGR, newBGR, stickImg);
+        // cv::imshow("both_image_1_2", stickImg);
+        // cv::imshow("relative_1_2", newBGR);
+    }
+
     ImageAlignment match( 5, 0, 3 );
+    t1 = std::chrono::high_resolution_clock::now();
     match.align( curFrame, newFrame );
+    t2 = std::chrono::high_resolution_clock::now();
+    std::cout << "Elapsed time for alignment: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count() << " ms"
+              << std::endl;
+
+    {
+        cv::Mat curBGR = visualization::getBGRImage(curFrame.m_imagePyramid.getBaseImage());
+        cv::Mat newBGR = visualization::getBGRImage(newFrame.m_imagePyramid.getBaseImage());
+        visualization::featurePoints(curBGR, curFrame);
+        // visualization::featurePointsInGrid(curBGR, curFrame, 50);
+        // visualization::featurePoints(newBGR, newFrame);
+        // visualization::project3DPoints(curBGR, curFrame);
+        visualization::projectPointsWithRelativePose(newBGR, curFrame, newFrame);
+        cv::Mat stickImg;
+        visualization::stickTwoImageHorizontally(curBGR, newBGR, stickImg);
+        cv::imshow("both_image_1_2_optimization", stickImg);
+        // cv::imshow("relative_1_2", newBGR);
+    }
 
     // matcher.findTemplateMatch(refFrame, curFrame, 5, 99);
     // visualization visualize;

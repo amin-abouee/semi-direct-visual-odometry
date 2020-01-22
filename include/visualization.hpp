@@ -156,7 +156,7 @@ void project3DPoints (cv::Mat& img, const Frame& frame);
 
 void projectPointsWithRelativePose (cv::Mat& img, const Frame& refFrame, const Frame& curFrame);
 
-void projectPointsWithF (cv::Mat& img, const Frame& refFrame, const Eigen::Matrix3d& F);
+// void projectPointsWithF (cv::Mat& img, const Frame& refFrame, const Eigen::Matrix3d& F);
 
 void projectLinesWithRelativePose (cv::Mat& img, const Frame& refFrame, const Frame& curFrame, const uint32_t rangeInPixels);
 

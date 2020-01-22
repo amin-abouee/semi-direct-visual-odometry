@@ -830,7 +830,7 @@ void visualization::featurePoints(cv::Mat& img, const Frame& frame)
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
         const auto& feature = frame.m_frameFeatures[ i ]->m_feature;
-        cv::circle( img, cv::Point2d( feature.x(), feature.y() ), 5.0, colors.at( "green" ) );
+        cv::circle( img, cv::Point2d( feature.x(), feature.y() ), 5.0, colors.at( "pink" ) );
     }
 }
 
@@ -879,25 +879,37 @@ void visualization::project3DPoints (cv::Mat& img, const Frame& frame)
 void visualization::projectPointsWithRelativePose (cv::Mat& img, const Frame& refFrame, const Frame& curFrame)
 {
     const Sophus::SE3d relativePose = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
-    const Eigen::Matrix3d E      = relativePose.rotationMatrix() * algorithm::hat( relativePose.translation() );
-    const Eigen::Matrix3d F = refFrame.m_camera->invK().transpose() * E * curFrame.m_camera->invK();
-    projectPointsWithF(img, refFrame, F);
-}
+    // const Eigen::Matrix3d E      = relativePose.rotationMatrix() * algorithm::hat( relativePose.translation() );
+    // const Eigen::Matrix3d F = refFrame.m_camera->invK().transpose() * E * curFrame.m_camera->invK();
+    // projectPointsWithF(img, refFrame, F);
 
-void visualization::projectPointsWithF (cv::Mat& img, const Frame& refFrame, const Eigen::Matrix3d& F)
-{
     const auto szPoints = refFrame.numberObservation();
+    const Eigen::Vector3d C     = refFrame.cameraInWorld();
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
-        const auto& refHomogenous = refFrame.m_frameFeatures[ i ]->m_homogenous;
-        Eigen::Vector3d line = F * refHomogenous;
-        double nu            = line( 0 ) * line( 0 ) + line( 1 ) * line( 1 );
-        nu                   = 1 / std::sqrt( nu );
-        line *= nu;
-        line /= line(2);
-        cv::circle( img, cv::Point2d( line.x(), line.y() ), 5.0, colors.at( "orange") );
+        const auto& feature = refFrame.m_frameFeatures[i];
+        const double depthNorm = ( feature->m_point->m_position - C ).norm();
+        const Eigen::Vector3d refPoint( feature->m_bearingVec * depthNorm );
+        const Eigen::Vector3d curPoint( relativePose * refPoint );
+        const Eigen::Vector2d curFeature( curFrame.camera2image( curPoint ) );
+        cv::circle( img, cv::Point2d( curFeature.x(), curFeature.y() ), 8.0, colors.at( "orange") );
     }
 }
+
+// void visualization::projectPointsWithF (cv::Mat& img, const Frame& refFrame, const Eigen::Matrix3d& F)
+// {
+//     const auto szPoints = refFrame.numberObservation();
+//     for ( std::size_t i( 0 ); i < szPoints; i++ )
+//     {
+//         const auto& refHomogenous = refFrame.m_frameFeatures[ i ]->m_homogenous;
+//         Eigen::Vector3d line = F * refHomogenous;
+//         double nu            = line( 0 ) * line( 0 ) + line( 1 ) * line( 1 );
+//         nu                   = 1 / std::sqrt( nu );
+//         line *= nu;
+//         line /= line(2);
+//         cv::circle( img, cv::Point2d( line.x(), line.y() ), 5.0, colors.at( "orange") );
+//     }
+// }
 
 void visualization::projectLinesWithRelativePose (cv::Mat& img, const Frame& refFrame, const Frame& curFrame, const uint32_t rangeInPixels)
 {

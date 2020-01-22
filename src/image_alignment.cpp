@@ -52,7 +52,6 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
     // when we wanna compare a uint32 with an int32, the c++ can not compare -1 with 0
     for ( int32_t level( m_maxLevel ); level >= m_minLevel; level-- )
     {
-        // level = 0;
         computeJacobian( refFrame, level );
         // std::cout << "visible for jacobian: " << std::count( m_refVisibility.begin(), m_refVisibility.end(), true ) * m_patchArea << std::endl;
         auto lambdaResidualFunctor = [this, &refFrame, &curFrame, &level]( Sophus::SE3d& pose ) -> uint32_t {
@@ -61,8 +60,7 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
         // break;
         std::tie(optimizationStatus, error) = m_optimizer.optimizeLM( relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor);
         // std::cout << "error at level " << level << " is: "<< error << " with status: " << static_cast<std::underlying_type<NLLS::Status>::type>(optimizationStatus) << std::endl;
-        std::cout << "error at level " << level << " is: "<< error << " with status: " << static_cast<uint32_t>(optimizationStatus) << std::endl;
-        // break;
+        // std::cout << "error at level " << level << " is: "<< error << " with status: " << static_cast<uint32_t>(optimizationStatus) << std::endl;
     }
 
     curFrame.m_TransW2F = refFrame.m_TransW2F * relativePose;
