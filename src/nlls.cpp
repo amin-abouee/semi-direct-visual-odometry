@@ -46,7 +46,7 @@ NLLS::NLLSResult NLLS::optimizeGN( Sophus::SE3d& pose,
                                    const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor )
 {
     // const uint32_t numUnknowns     = 6;
-    const uint32_t numObservations = m_residuals.size();
+    const auto numObservations = m_residuals.size();
 
     Status optimizeStatus = Status::Failed;
 
@@ -150,7 +150,7 @@ NLLS::NLLSResult NLLS::optimizeLM( Sophus::SE3d& pose,
                                    const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor )
 {
     // const uint32_t numUnknowns     = 6;
-    const uint32_t numObservations = m_residuals.size();
+    const auto numObservations = m_residuals.size();
 
     Status optimizeStatus = Status::Failed;
     if ( numObservations < m_numUnknowns )
@@ -280,7 +280,7 @@ NLLS::NLLSResult NLLS::optimizeLM( Sophus::SE3d& pose,
             cntTotalProjectedPixels = preTotalProjectedPixels;
         }
         // std::cout << "Iteration: " << curIteration << ", Chi error: " << chiSquaredError << std::endl;
-        visualize( cntTotalProjectedPixels );
+        // visualize( cntTotalProjectedPixels );
         ++curIteration;
     }
     const double rmse = std::sqrt( chiSquaredError / cntTotalProjectedPixels );
@@ -380,7 +380,7 @@ bool NLLS::updateParameters( const double preSquaredError, const double curSquar
 
 double NLLS::computeChiSquaredError()
 {
-    const uint32_t numObservations = m_residuals.size();
+    const auto numObservations = m_residuals.size();
     double chiSquaredError         = 0.0;
 
     for ( std::size_t i( 0 ); i < numObservations; i++ )
@@ -441,6 +441,9 @@ void NLLS::visualize( const uint32_t numValidProjectedPoints )
             sum += m_residuals( i );
         }
     }
+
+    pack[ "figure_size_width" ] = uint32_t(1600);
+    pack[ "figure_size_height" ] = uint32_t(900);
 
     // std::cout << "sum: " << sum << std::endl;
 

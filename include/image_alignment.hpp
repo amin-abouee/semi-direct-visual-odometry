@@ -13,7 +13,7 @@
 class ImageAlignment
 {
 public:
-    explicit ImageAlignment( uint32_t patchSize, int32_t minLevel, int32_t maxLevel );
+    explicit ImageAlignment( uint32_t patchSize, int32_t minLevel, int32_t maxLevel, uint32_t numParameters );
     ImageAlignment( const ImageAlignment& rhs );
     ImageAlignment( ImageAlignment&& rhs );
     ImageAlignment& operator=( const ImageAlignment& rhs );

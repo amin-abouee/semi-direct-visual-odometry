@@ -11,15 +11,15 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 
-ImageAlignment::ImageAlignment( uint32_t patchSize, int32_t minLevel, int32_t maxLevel )
+ImageAlignment::ImageAlignment( uint32_t patchSize, int32_t minLevel, int32_t maxLevel, uint32_t numParameters )
     : m_patchSize( patchSize )
     , m_halfPatchSize( patchSize / 2 )
     , m_patchArea( patchSize * patchSize )
     , m_minLevel( minLevel )
     , m_maxLevel( maxLevel )
-    , m_optimizer( 6 )
+    , m_optimizer( numParameters )
 {
-    std::cout << "c'tor image alignment" << std::endl;
+    // std::cout << "c'tor image alignment" << std::endl;
 }
 
 double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
@@ -34,10 +34,10 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
     m_refVisibility.resize( numFeatures, false );
     // m_curVisibility.resize( numFeatures, false );
 
-    std::cout << "jacobian size: " << m_optimizer.m_jacobian.rows() << " , " << m_optimizer.m_jacobian.cols() << std::endl;
-    std::cout << "residuals size: " << m_optimizer.m_residuals.rows() << " , " << m_optimizer.m_residuals.cols() << std::endl;
-    std::cout << "reference Patch size: " << m_refPatches.size << std::endl;
-    std::cout << "number Observation: " << numObservations << std::endl;
+    // std::cout << "jacobian size: " << m_optimizer.m_jacobian.rows() << " , " << m_optimizer.m_jacobian.cols() << std::endl;
+    // std::cout << "residuals size: " << m_optimizer.m_residuals.rows() << " , " << m_optimizer.m_residuals.cols() << std::endl;
+    // std::cout << "reference Patch size: " << m_refPatches.size << std::endl;
+    // std::cout << "number Observation: " << numObservations << std::endl;
 
     Sophus::SE3d relativePose;
 
@@ -76,7 +76,7 @@ void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
     // std::cout << "Image data:\n" << refImage << std::endl;
     const algorithm::MapXRowConst refImageEigen( refImage.ptr< uint8_t >(), refImage.rows, refImage.cols );
     // std::cout << "Image data:\n" << refImageEigen.block(0, 0, 20, 20) << std::endl;
-    const uint32_t stride       = refImage.cols;
+    // const uint32_t stride       = refImage.cols;
     const double levelDominator = 1 << level;
     const double scale          = 1.0 / levelDominator;
     const Eigen::Vector3d C     = frame.cameraInWorld();
@@ -145,7 +145,7 @@ uint32_t ImageAlignment::computeResiduals( Frame& refFrame, Frame& curFrame, uin
     const cv::Mat& curImage = curFrame.m_imagePyramid.getImageAtLevel( level );
     const algorithm::MapXRowConst curImageEigen( curImage.ptr< uint8_t >(), curImage.rows, curImage.cols );
     const int32_t border             = m_halfPatchSize + 2;
-    const uint32_t stride            = curImage.cols;
+    // const uint32_t stride            = curImage.cols;
     const double levelDominator      = 1 << level;
     const double scale               = 1.0 / levelDominator;
     const Eigen::Vector3d C          = refFrame.cameraInWorld();

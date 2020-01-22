@@ -573,86 +573,89 @@ cv::Mat visualization::getBGRImage( const cv::Mat& img )
     return imgBGR;
 }
 
-void visualization::drawHistogram( std::vector< double >& data, const std::string& color, const std::string& windowName )
-{
-    auto maxIter       = std::max_element( data.begin(), data.end() );
-    const int maxValue = std::ceil( *maxIter );
-    // Set the size of output image to 1200x780 pixels
-    plt::figure_size( 1200, 780 );
+// void visualization::drawHistogram( std::vector< double >& data, const std::string& color, const std::string& windowName )
+// {
+//     auto maxIter       = std::max_element( data.begin(), data.end() );
+//     // const int maxValue = std::ceil( *maxIter );
+//     // Set the size of output image to 1200x780 pixels
+//     plt::figure_size( 1200, 780 );
 
-    plt::hist( data, 50, color );
+//     plt::hist( data, 50, color );
 
-    // plt::xlim(0, 100);
-    plt::xlabel( windowName );
-    // plt::ylim(0, maxValue);
-    plt::ylabel( "numbers" );
+//     // plt::xlim(0, 100);
+//     plt::xlabel( windowName );
+//     // plt::ylim(0, maxValue);
+//     plt::ylabel( "numbers" );
 
-    plt::title( windowName );
-    plt::show();
-}
+//     plt::title( windowName );
+//     plt::show();
+// }
 
-void visualization::drawHistogram( const std::vector< std::vector< double > >& data,
-                                   const cv::Mat& hessian,
-                                   const cv::Mat& resPatches,
-                                   const std::vector< std::string >& colors,
-                                   const uint32_t maxFiguresInRow,
-                                   const std::vector< std::string >& windowsName,
-                                   std::map< std::string, std::any >& pack )
-{
-    // const auto numFigures = data.size();
-    // const uint32_t numberNecessaryCols = maxFiguresInRow;
-    // const uint32_t numberNecessaryRows = static_cast< uint32_t >( std::ceil( numFigures / static_cast< float >( maxFiguresInRow ) ) );
+// void visualization::drawHistogram( const std::vector< std::vector< double > >& data,
+//                                    const cv::Mat& hessian,
+//                                    const cv::Mat& resPatches,
+//                                    const std::vector< std::string >& colors,
+//                                    const uint32_t maxFiguresInRow,
+//                                    const std::vector< std::string >& windowsName,
+//                                    std::map< std::string, std::any >& pack )
+// {
+//     // const auto numFigures = data.size();
+//     // const uint32_t numberNecessaryCols = maxFiguresInRow;
+//     // const uint32_t numberNecessaryRows = static_cast< uint32_t >( std::ceil( numFigures / static_cast< float >( maxFiguresInRow ) ) );
 
-    plt::figure_size( 3000, 1125 );
-    // for(std::size_t i(0); i < data.size(); i++)
-    // {
-    //     plt::subplot(numberNecessaryRows, numberNecessaryCols, i+1);
-    //     plt::hist( data[i], 50, colors[i] );
-    //     plt::xlabel( windowsName[i] );
-    //     plt::ylabel( "numbers" );
-    //     plt::title( windowsName[i] );
-    // }
-    // plt::show();
+//     plt::figure_size( 3000, 1125 );
+//     // for(std::size_t i(0); i < data.size(); i++)
+//     // {
+//     //     plt::subplot(numberNecessaryRows, numberNecessaryCols, i+1);
+//     //     plt::hist( data[i], 50, colors[i] );
+//     //     plt::xlabel( windowsName[i] );
+//     //     plt::ylabel( "numbers" );
+//     //     plt::title( windowsName[i] );
+//     // }
+//     // plt::show();
 
-    plt::subplot2grid( 9, 11, 0, 0, 4, 6 );
-    plt::hist( data[ 0 ], 50, colors[ 0 ] );
-    plt::xlabel( windowsName[ 0 ] );
-    plt::ylabel( "numbers" );
-    plt::title( windowsName[ 0 ] );
+//     plt::subplot2grid( 9, 11, 0, 0, 4, 6 );
+//     plt::hist( data[ 0 ], 50, colors[ 0 ] );
+//     plt::xlabel( windowsName[ 0 ] );
+//     plt::ylabel( "numbers" );
+//     plt::title( windowsName[ 0 ] );
 
-    plt::subplot2grid( 9, 11, 5, 0, 4, 6 );
-    plt::hist( data[ 1 ], 50, colors[ 1 ] );
-    plt::xlabel( windowsName[ 1 ] );
-    plt::ylabel( "numbers" );
-    plt::title( windowsName[ 1 ] );
+//     plt::subplot2grid( 9, 11, 5, 0, 4, 6 );
+//     plt::hist( data[ 1 ], 50, colors[ 1 ] );
+//     plt::xlabel( windowsName[ 1 ] );
+//     plt::ylabel( "numbers" );
+//     plt::title( windowsName[ 1 ] );
 
-    plt::subplot2grid( 9, 11, 0, 7, 4, 4 );
-    std::map< std::string, std::string > keywords;
-    keywords[ "cmap" ] = "gray";
-    plt::imshow( resPatches.ptr(), resPatches.rows, resPatches.cols, 1, keywords );
-    plt::title( windowsName[ 2 ] );
+//     plt::subplot2grid( 9, 11, 0, 7, 4, 4 );
+//     std::map< std::string, std::string > keywords;
+//     keywords[ "cmap" ] = "gray";
+//     plt::imshow( resPatches.ptr(), resPatches.rows, resPatches.cols, 1, keywords );
+//     plt::title( windowsName[ 2 ] );
 
-    // https://answers.opencv.org/question/27248/max-and-min-values-in-a-mat/
-    double min, max;
-    cv::minMaxLoc( hessian, &min, &max );
-    const float maxAbsolute = std::max( std::abs( min ), std::abs( max ) );
-    std::cout << "Min: " << min << ", Abs Max: " << max << std::endl;
-    // std::cout << "Abs Min: " << -maxAbsolute << ", Abs Max: " << maxAbsolute << std::endl;
-    // https://matplotlib.org/tutorials/colors/colormaps.html#diverging
-    plt::subplot2grid( 9, 11, 5, 7, 4, 4 );
-    keywords[ "cmap" ] = "coolwarm";
-    // keywords["vmin"] = std::to_string(-1.0);
-    // keywords["vmax"] = std::to_string(1.0);
-    // std::cout << "vmin: " << keywords["vmin"] << ", vmax: " << keywords["vmax"] << std::endl;
-    plt::imshow( hessian.ptr(), hessian.rows, hessian.cols, 1, keywords );
-    plt::title( windowsName[ 3 ] );
+//     // https://answers.opencv.org/question/27248/max-and-min-values-in-a-mat/
+//     double min, max;
+//     cv::minMaxLoc( hessian, &min, &max );
+//     const float maxAbsolute = std::max( std::abs( min ), std::abs( max ) );
+//     std::cout << "Min: " << min << ", Abs Max: " << max << std::endl;
+//     // std::cout << "Abs Min: " << -maxAbsolute << ", Abs Max: " << maxAbsolute << std::endl;
+//     // https://matplotlib.org/tutorials/colors/colormaps.html#diverging
+//     plt::subplot2grid( 9, 11, 5, 7, 4, 4 );
+//     keywords[ "cmap" ] = "coolwarm";
+//     // keywords["vmin"] = std::to_string(-1.0);
+//     // keywords["vmax"] = std::to_string(1.0);
+//     // std::cout << "vmin: " << keywords["vmin"] << ", vmax: " << keywords["vmax"] << std::endl;
+//     plt::imshow( hessian.ptr(), hessian.rows, hessian.cols, 1, keywords );
+//     plt::title( windowsName[ 3 ] );
 
-    // plt::show();
-}
+//     // plt::show();
+// }
 
 void visualization::drawHistogram( std::map< std::string, std::any >& pack )
 {
-    plt::figure_size( 1600, 900 );
+    // https://www.tutorialspoint.com/matplotlib/matplotlib_subplot2grid_function.htm
+    auto height     = std::any_cast< uint32_t >( pack[ "figure_size_height" ] );
+    auto width     = std::any_cast< uint32_t >( pack[ "figure_size_width" ] );
+    plt::figure_size( width, height );
 
     try
     {
@@ -823,10 +826,8 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
 
 void visualization::featurePoints(cv::Mat& img, const Frame& frame)
 {
-    // cv::Mat imgBGR;
-    // cv::cvtColor( frame.m_imagePyramid.getBaseImage(), imgBGR, cv::COLOR_GRAY2BGR );
-
     const auto szPoints = frame.numberObservation();
+    std::cout << "# observation visualization: " << szPoints << std::endl;
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
         const auto& feature = frame.m_frameFeatures[ i ]->m_feature;

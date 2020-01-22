@@ -176,7 +176,9 @@ int main( int argc, char* argv[] )
     // std::cout << "transformation 1 -> 2: " << T_pre2cur.params().transpose() << std::endl;
 
     const nlohmann::json& algoJson  = configJson[ "algorithm" ];
-    const uint32_t numFeature       = algoJson[ "number_detected_features" ].get< uint32_t >();
+    // const uint32_t numFeature       = algoJson[ "number_detected_features" ].get< uint32_t >();
+
+    // keep it as int32_t. in detect fea 
     const int32_t patchSize         = algoJson[ "grid_size_select_features" ].get< int32_t >();
     const uint16_t patchSizeOptFlow = algoJson[ "patch_size_optical_flow" ].get< uint16_t >();
 
@@ -187,8 +189,15 @@ int main( int argc, char* argv[] )
     auto t1 = std::chrono::high_resolution_clock::now();
     // featureSelection.detectFeaturesSSC( refFrame, numFeature );
     featureSelection.detectFeaturesInGrid( refFrame, patchSize );
+    std::cout << "# observation: " << refFrame.numberObservation() << std::endl;
     // visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize,
     // "Feature-Point-In-Grid");
+
+    {
+        cv::Mat refBGR = visualization::getBGRImage( refFrame.m_imagePyramid.getBaseImage() );
+        visualization::featurePointsInGrid(refBGR, refFrame, patchSize );
+        cv::imshow("grid_frame_0", refBGR);
+    }
 
     Eigen::Matrix3d E;
     Eigen::Matrix3d F;
@@ -209,7 +218,7 @@ int main( int argc, char* argv[] )
     std::cout << "R: " << R.format( utils::eigenFormat() ) << std::endl;
     std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
     // std::cout << "E new: " << (R * algorithm::hat(t)).format( utils::eigenFormat() ) << std::endl;
-    std::cout << "determinant: " << R.determinant() << std::endl;
+    // std::cout << "determinant: " << R.determinant() << std::endl;
     // std::cout << "ref C: " << refFrame.cameraInWorld().format( utils::eigenFormat() ) << std::endl;
     // std::cout << "cur C: " << curFrame.cameraInWorld().format( utils::eigenFormat() ) << std::endl;
     // std::cout << "ref w-T: " << refFrame.m_TransW2F.translation().format( utils::eigenFormat() ) << std::endl;
@@ -306,10 +315,13 @@ int main( int argc, char* argv[] )
     {
         cv::Mat refBGR = visualization::getBGRImage( refFrame.m_imagePyramid.getBaseImage() );
         cv::Mat curBGR = visualization::getBGRImage( curFrame.m_imagePyramid.getBaseImage() );
+        visualization::featurePointsInGrid(refBGR, refFrame, patchSize );
+
+        cv::imshow("grid_frame_0", refBGR);
         // visualization::featurePoints(refBGR, refFrame);
-        visualization::featurePoints( curBGR, curFrame );
+        // visualization::featurePoints( curBGR, curFrame );
         // visualization::project3DPoints(curBGR, curFrame);
-        visualization::projectPointsWithRelativePose( curBGR, refFrame, curFrame );
+        // visualization::projectPointsWithRelativePose( curBGR, refFrame, curFrame );
         // cv::Mat stickImg;
         // visualization::stickTwoImageHorizontally(refBGR, curBGR, stickImg);
         // cv::imshow("both image", stickImg);
@@ -322,7 +334,7 @@ int main( int argc, char* argv[] )
     {
         cv::Mat curBGR = visualization::getBGRImage( curFrame.m_imagePyramid.getBaseImage() );
         cv::Mat newBGR = visualization::getBGRImage( newFrame.m_imagePyramid.getBaseImage() );
-        visualization::featurePoints( curBGR, curFrame );
+        visualization::featurePoints( curBGR, curFrame);
         // visualization::featurePoints(newBGR, newFrame);
         // visualization::project3DPoints(curBGR, curFrame);
         visualization::projectPointsWithRelativePose( newBGR, curFrame, newFrame );
@@ -332,7 +344,7 @@ int main( int argc, char* argv[] )
         // cv::imshow("relative_1_2", newBGR);
     }
 
-    ImageAlignment match( 5, 0, 3 );
+    ImageAlignment match( 5, 0, 3, 6 );
     t1 = std::chrono::high_resolution_clock::now();
     match.align( curFrame, newFrame );
     t2 = std::chrono::high_resolution_clock::now();

@@ -135,15 +135,15 @@ cv::Scalar generateColor( const float min, const float max, const float value );
 
 cv::Mat getBGRImage( const cv::Mat& img );
 
-void drawHistogram( std::vector< double >& data, const std::string& color, const std::string& windowName );
+// void drawHistogram( std::vector< double >& data, const std::string& color, const std::string& windowName );
 
-void drawHistogram( const std::vector< std::vector< double > >& data,
-                    const cv::Mat& hessian,
-                    const cv::Mat& resPatches,
-                    const std::vector< std::string >& colors,
-                    const uint32_t maxFiguresInRow,
-                    const std::vector< std::string >& windowsName,
-                    std::map<std::string, std::any>& pack );
+// void drawHistogram( const std::vector< std::vector< double > >& data,
+//                     const cv::Mat& hessian,
+//                     const cv::Mat& resPatches,
+//                     const std::vector< std::string >& colors,
+//                     const uint32_t maxFiguresInRow,
+//                     const std::vector< std::string >& windowsName,
+//                     std::map<std::string, std::any>& pack );
 
 void drawHistogram( std::map<std::string, std::any>& pack );
 
