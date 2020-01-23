@@ -8,7 +8,7 @@
 #include <opencv2/core.hpp>
 
 #include "frame.hpp"
-#include "nlls.hpp"
+#include "optimizer.hpp"
 
 class ImageAlignment
 {
@@ -32,7 +32,7 @@ private:
 
     // Eigen::Matrix< double, Eigen::Dynamic, 6 > m_jacobian;
     // Eigen::VectorXd m_residual;
-    NLLS m_optimizer;
+    Optimizer m_optimizer;
     cv::Mat m_refPatches;
     std::vector< bool > m_refVisibility;
     // std::vector< bool > m_curVisibility;

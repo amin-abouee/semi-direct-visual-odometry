@@ -50,7 +50,7 @@ public:
 
     void detectFeaturesWithSSC( Frame& frame, const uint32_t numberCandidate );
 
-    void detectFeaturesInGrid( Frame& frame, const int32_t gridSize );
+    void detectFeaturesInGrid( Frame& frame, const uint32_t gridSize );
 
     // std::vector< Feature > m_features;
     cv::Mat m_gradientMagnitude;

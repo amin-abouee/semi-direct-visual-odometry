@@ -1,8 +1,8 @@
 #include "image_alignment.hpp"
 #include "algorithm.hpp"
 #include "feature.hpp"
-#include "visualization.hpp"
 #include "utils.hpp"
+#include "visualization.hpp"
 
 #include <algorithm>
 
@@ -27,11 +27,14 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
     if ( refFrame.numberObservation() == 0 )
         return 0;
 
-    const std::size_t numFeatures    = refFrame.numberObservation();
+    // auto t1 = std::chrono::high_resolution_clock::now();
+    const std::size_t numFeatures  = refFrame.numberObservation();
     const uint32_t numObservations = numFeatures * m_patchArea;
-    m_refPatches                     = cv::Mat( numFeatures, m_patchArea, CV_32F );
-    m_optimizer.initParameters(numObservations);
+    m_refPatches                   = cv::Mat( numFeatures, m_patchArea, CV_32F );
+    m_optimizer.initParameters( numObservations );
     m_refVisibility.resize( numFeatures, false );
+    // std::cout << "Init: " << std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count() << std::endl;
+
     // m_curVisibility.resize( numFeatures, false );
 
     // std::cout << "jacobian size: " << m_optimizer.m_jacobian.rows() << " , " << m_optimizer.m_jacobian.cols() << std::endl;
@@ -47,21 +50,43 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
     // };
 
     auto lambdaUpdateFunctor = [this]( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) -> void { update( pose, dx ); };
-    double error = 0.0;
-    NLLS::Status optimizationStatus;
+    double error             = 0.0;
+    Optimizer::Status optimizationStatus;
+
+    // uint64_t timerJacobian = 0;
+    // uint64_t timeroptimize = 0;
+
+    // auto t3 = std::chrono::high_resolution_clock::now();
     // when we wanna compare a uint32 with an int32, the c++ can not compare -1 with 0
     for ( int32_t level( m_maxLevel ); level >= m_minLevel; level-- )
     {
+        // t1 = std::chrono::high_resolution_clock::now();
         computeJacobian( refFrame, level );
-        // std::cout << "visible for jacobian: " << std::count( m_refVisibility.begin(), m_refVisibility.end(), true ) * m_patchArea << std::endl;
+        // timerJacobian += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
+
         auto lambdaResidualFunctor = [this, &refFrame, &curFrame, &level]( Sophus::SE3d& pose ) -> uint32_t {
             return computeResiduals( refFrame, curFrame, level, pose );
         };
-        // break;
-        std::tie(optimizationStatus, error) = m_optimizer.optimizeLM( relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor);
-        // std::cout << "error at level " << level << " is: "<< error << " with status: " << static_cast<std::underlying_type<NLLS::Status>::type>(optimizationStatus) << std::endl;
-        // std::cout << "error at level " << level << " is: "<< error << " with status: " << static_cast<uint32_t>(optimizationStatus) << std::endl;
+        // t1 = std::chrono::high_resolution_clock::now();
+        std::tie( optimizationStatus, error ) = m_optimizer.optimizeLM( relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor );
+        // timeroptimize += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
+
+        // std::cout << "error at level " << level << " is: "<< error << " with status: " <<
+        // static_cast<std::underlying_type<NLLS::Status>::type>(optimizationStatus) << std::endl; std::cout << "error at level " << level
+        // << " is: "<< error << " with status: " << static_cast<uint32_t>(optimizationStatus) << std::endl;
     }
+    // std::cout << "total: " << std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t3 ).count() << std::endl;
+    // std::cout << "timerJacobian: " << timerJacobian << std::endl;
+    // std::cout << "timeroptimize: " << timeroptimize << std::endl;
+    // std::cout << "m_timerResiduals: " << m_optimizer.m_timerResiduals << std::endl;
+    // std::cout << "m_timerSolve: " << m_optimizer.m_timerSolve << std::endl;
+    // std::cout << "m_timerHessina: " << m_optimizer.m_timerHessian << std::endl;
+    // std::cout << "m_timerLambda: " << m_optimizer.m_timerLambda << std::endl;
+    // std::cout << "m_timerSwitch: " << m_optimizer.m_timerSwitch << std::endl;
+    // std::cout << "m_timerLambda: " << m_optimizer.m_timerLambda << std::endl;
+    // std::cout << "m_timerUpdateParameters: " << m_optimizer.m_timerUpdateParameters << std::endl;
+    // std::cout << "m_timerCheck: " << m_optimizer.m_timerCheck << std::endl;
+    // std::cout << "m_timerFor: " << m_optimizer.m_timerFor << std::endl;
 
     curFrame.m_TransW2F = refFrame.m_TransW2F * relativePose;
     return error;
@@ -121,9 +146,9 @@ void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
                 const double rowIdx = v + y;
                 const double colIdx = u + x;
                 *pixelPtr           = algorithm::bilinearInterpolation( refImageEigen, colIdx, rowIdx );
-                const double dx = 0.5 * ( algorithm::bilinearInterpolation( refImageEigen, colIdx + 1, rowIdx ) -
+                const double dx     = 0.5 * ( algorithm::bilinearInterpolation( refImageEigen, colIdx + 1, rowIdx ) -
                                           algorithm::bilinearInterpolation( refImageEigen, colIdx - 1, rowIdx ) );
-                const double dy = 0.5 * ( algorithm::bilinearInterpolation( refImageEigen, colIdx, rowIdx + 1 ) -
+                const double dy     = 0.5 * ( algorithm::bilinearInterpolation( refImageEigen, colIdx, rowIdx + 1 ) -
                                           algorithm::bilinearInterpolation( refImageEigen, colIdx, rowIdx - 1 ) );
                 m_optimizer.m_jacobian.row( cntFeature * m_patchArea + cntPixel ) = dx * imageJac.row( 0 ) + dy * imageJac.row( 1 );
                 // std::cout << "index: " << cntFeature * m_patchArea + cntPixel << std::endl;
@@ -138,13 +163,12 @@ void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
     // visualization::templatePatches( m_refPatches, cntFeature, m_patchSize, 10, 10, 12 );
 }
 
-
 // if we define the residual error as current image - reference image, we do not need to apply the negative for gradient
 uint32_t ImageAlignment::computeResiduals( Frame& refFrame, Frame& curFrame, uint32_t level, Sophus::SE3d& pose )
 {
     const cv::Mat& curImage = curFrame.m_imagePyramid.getImageAtLevel( level );
     const algorithm::MapXRowConst curImageEigen( curImage.ptr< uint8_t >(), curImage.rows, curImage.cols );
-    const int32_t border             = m_halfPatchSize + 2;
+    const int32_t border = m_halfPatchSize + 2;
     // const uint32_t stride            = curImage.cols;
     const double levelDominator      = 1 << level;
     const double scale               = 1.0 / levelDominator;
@@ -190,8 +214,8 @@ uint32_t ImageAlignment::computeResiduals( Frame& refFrame, Frame& curFrame, uin
                 const float curPixelValue = algorithm::bilinearInterpolation( curImageEigen, colIdx, rowIdx );
 
                 // ****
-                // IF we compute the error of inverse compositional as r = T(x) - I(W), then we should solve (delta p) = -(JtWT).inverse() * JtWr
-                // BUt if we take r = I(W) - T(x) a residual error, then (delta p) = (JtWT).inverse() * JtWr
+                // IF we compute the error of inverse compositional as r = T(x) - I(W), then we should solve (delta p) = -(JtWT).inverse() *
+                // JtWr BUt if we take r = I(W) - T(x) a residual error, then (delta p) = (JtWT).inverse() * JtWr
                 // ***
 
                 m_optimizer.m_residuals( cntFeature * m_patchArea + cntPixel ) = static_cast< double >( curPixelValue - *pixelPtr );
@@ -272,6 +296,6 @@ void ImageAlignment::update( Sophus::SE3d& pose, const Eigen::VectorXd& dx )
 
 void ImageAlignment::resetParameters()
 {
-    std::fill(m_refVisibility.begin(), m_refVisibility.end(), false);
-    m_refPatches = cv::Scalar(0.0);
+    std::fill( m_refVisibility.begin(), m_refVisibility.end(), false );
+    m_refPatches = cv::Scalar( 0.0 );
 }

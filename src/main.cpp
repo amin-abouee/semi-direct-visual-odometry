@@ -139,7 +139,8 @@ int main( int argc, char* argv[] )
     // // std::cout << "Camera Matrix: \n" << K << std::endl;
 
     // Eigen::Matrix3d E;
-    // E << .22644456e-03, -7.06943058e-01, -4.05822481e-03, 7.06984545e-01, 1.22048201e-03, 1.26855863e-02, 3.25653616e-03, -1.46073125e-02,
+    // E << .22644456e-03, -7.06943058e-01, -4.05822481e-03, 7.06984545e-01, 1.22048201e-03, 1.26855863e-02, 3.25653616e-03,
+    // -1.46073125e-02,
     //   -2.59077801e-05;
     // // std::cout << "Old E: " << E.format( utils::eigenFormat() ) << std::endl;
 
@@ -175,12 +176,15 @@ int main( int argc, char* argv[] )
     // Sophus::SE3d T_pre2cur = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
     // std::cout << "transformation 1 -> 2: " << T_pre2cur.params().transpose() << std::endl;
 
-    const nlohmann::json& algoJson  = configJson[ "algorithm" ];
+    const nlohmann::json& algoJson = configJson[ "algorithm" ];
     // const uint32_t numFeature       = algoJson[ "number_detected_features" ].get< uint32_t >();
 
-    // keep it as int32_t. in detect fea 
-    const int32_t patchSize         = algoJson[ "grid_size_select_features" ].get< int32_t >();
-    const uint16_t patchSizeOptFlow = algoJson[ "patch_size_optical_flow" ].get< uint16_t >();
+    // keep it as int32_t. in detect fea
+    const uint32_t gridSize             = algoJson[ "grid_size_select_features" ].get< uint32_t >();
+    const uint32_t patchSizeOptFlow     = algoJson[ "patch_size_optical_flow" ].get< uint32_t >();
+    const uint32_t patchSize            = algoJson[ "patch_size_image_alignment" ].get< uint32_t >();
+    const uint32_t minLevelImagePyramid = algoJson[ "min_level_image_pyramid" ].get< uint32_t >();
+    const uint32_t maxLevelImagePyramid = algoJson[ "max_level_image_pyramid" ].get< uint32_t >();
 
     FeatureSelection featureSelection( refFrame.m_imagePyramid.getBaseImage() );
     // std::cout << "Fundamental Matrix: \n" << F << std::endl;
@@ -188,7 +192,7 @@ int main( int argc, char* argv[] )
 
     auto t1 = std::chrono::high_resolution_clock::now();
     // featureSelection.detectFeaturesSSC( refFrame, numFeature );
-    featureSelection.detectFeaturesInGrid( refFrame, patchSize );
+    featureSelection.detectFeaturesInGrid( refFrame, gridSize );
     // std::cout << "# observation: " << refFrame.numberObservation() << std::endl;
     // visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize,
     // "Feature-Point-In-Grid");
@@ -301,7 +305,7 @@ int main( int argc, char* argv[] )
     // Matcher::findTemplateMatch(refFrame, curFrame, patchSizeOptFlow, 35);
 
     auto t2 = std::chrono::high_resolution_clock::now();
-    std::cout << "Elapsed time for matching: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count() << " ms"
+    std::cout << "Elapsed time for matching: " << std::chrono::duration_cast< std::chrono::microseconds >( t2 - t1 ).count() << " micro sec"
               << std::endl;
 
     numObserves = refFrame.numberObservation();
@@ -344,11 +348,11 @@ int main( int argc, char* argv[] )
     //     // cv::imshow("relative_1_2", newBGR);
     // }
 
-    ImageAlignment match( 5, 0, 3, 6 );
+    ImageAlignment match( patchSize, minLevelImagePyramid, maxLevelImagePyramid, 6 );
     t1 = std::chrono::high_resolution_clock::now();
     match.align( curFrame, newFrame );
     t2 = std::chrono::high_resolution_clock::now();
-    std::cout << "Elapsed time for alignment: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count() << " ms"
+    std::cout << "Elapsed time for alignment: " << std::chrono::duration_cast< std::chrono::microseconds >( t2 - t1 ).count() << " micro sec"
               << std::endl;
 
     {

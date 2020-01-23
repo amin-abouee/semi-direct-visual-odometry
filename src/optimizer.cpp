@@ -1,4 +1,4 @@
-#include "nlls.hpp"
+#include "optimizer.hpp"
 #include "algorithm.hpp"
 #include "utils.hpp"
 #include "visualization.hpp"
@@ -6,7 +6,7 @@
 #include <any>
 #include <opencv2/core/eigen.hpp>
 
-NLLS::NLLS( const u_int32_t numUnknowns )
+Optimizer::Optimizer( const u_int32_t numUnknowns )
     : m_numUnknowns( numUnknowns )
     , m_hessian( numUnknowns, numUnknowns )
     , m_gradient( numUnknowns )
@@ -23,16 +23,25 @@ NLLS::NLLS( const u_int32_t numUnknowns )
     m_levenbergMethod = LevenbergMethod::Nielsen;
     // std::cout << "Size hessian: " << m_hessian.rows() << " , " << m_hessian.cols() << std::endl;
     // std::cout << "Size gradient: " << m_gradient.size() << std::endl;
+
+    // m_timerResiduals        = 0;
+    // m_timerSolve            = 0;
+    // m_timerHessian          = 0;
+    // m_timerSwitch           = 0;
+    // m_timerLambda            = 0;
+    // m_timerUpdateParameters = 0;
+    // m_timerCheck            = 0;
+    // m_timerFor              = 0;
 }
 
-// double NLLS::optimizeGN( Sophus::SE3d& pose,
+// double Optimizer::optimizeGN( Sophus::SE3d& pose,
 //                 const std::function< unsigned int( Sophus::SE3d& pose) >& lambdaResidualFunctor,
 //                 const std::size_t numObservations)
 // {
 //     return optimizeGN(pose, lambdaResidualFunctor, nullptr, numObservations, false);
 // }
 
-// double NLLS::optimizeGN( Sophus::SE3d& pose,
+// double Optimizer::optimizeGN( Sophus::SE3d& pose,
 //                 const std::function< unsigned int( Sophus::SE3d& pose) >& lambdaResidualFunctor,
 //                 const std::function< unsigned int( Sophus::SE3d& pose ) >& lambdaJacobianFunctor,
 //                 const std::size_t numObservations)
@@ -40,10 +49,11 @@ NLLS::NLLS( const u_int32_t numUnknowns )
 //     return optimizeGN(pose, lambdaResidualFunctor, lambdaJacobianFunctor, numObservations, true);
 // }
 
-NLLS::NLLSResult NLLS::optimizeGN( Sophus::SE3d& pose,
-                                   const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaResidualFunctor,
-                                   const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaJacobianFunctor,
-                                   const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor )
+Optimizer::OptimizerResult Optimizer::optimizeGN(
+  Sophus::SE3d& pose,
+  const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaResidualFunctor,
+  const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaJacobianFunctor,
+  const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor )
 {
     // const uint32_t numUnknowns     = 6;
     const auto numObservations = m_residuals.size();
@@ -78,18 +88,20 @@ NLLS::NLLSResult NLLS::optimizeGN( Sophus::SE3d& pose,
         if ( computeJacobian == true )
             lambdaJacobianFunctor( pose );
 
-        for ( std::size_t i( 0 ); i < numObservations; i++ )
-        {
-            if ( m_visiblePoints( i ) == true )
-            {
-                const auto Jac = m_jacobian.row( i );
-                // std::cout << "Jac " << i << ": " << Jac << std::endl;
-                m_hessian.noalias() += Jac.transpose() * Jac * m_weights( i );
-                m_gradient.noalias() += Jac.transpose() * m_residuals( i ) * m_weights( i );
-                chiSquaredError += m_residuals( i ) * m_residuals( i ) * m_weights( i );
-                // squaredError += m_residuals( i ) * m_residuals( i );
-            }
-        }
+        // for ( std::size_t i( 0 ); i < numObservations; i++ )
+        // {
+        //     if ( m_visiblePoints( i ) == true )
+        //     {
+        //         const auto Jac = m_jacobian.row( i );
+        //         // std::cout << "Jac " << i << ": " << Jac << std::endl;
+        //         m_hessian.noalias() += Jac.transpose() * Jac * m_weights( i );
+        //         m_gradient.noalias() += Jac.transpose() * m_residuals( i ) * m_weights( i );
+        //         chiSquaredError += m_residuals( i ) * m_residuals( i ) * m_weights( i );
+        //         // squaredError += m_residuals( i ) * m_residuals( i );
+        //     }
+        // }
+        m_hessian.noalias() = m_jacobian.transpose() * m_weights.asDiagonal() * m_jacobian;
+        m_gradient.noalias() = m_jacobian.transpose() * m_weights.asDiagonal() * m_residuals;
         m_dx.noalias() = m_hessian.ldlt().solve( m_gradient );
         // m_dx.noalias() = m_hessian.ldlt().solve( m_gradient );
         // std::cout << "With -gradient: " << (m_hessian.ldlt().solve( -m_gradient )).transpose() << std::endl;
@@ -144,11 +156,13 @@ NLLS::NLLSResult NLLS::optimizeGN( Sophus::SE3d& pose,
     return std::make_pair( optimizeStatus, rmse );
 }
 
-NLLS::NLLSResult NLLS::optimizeLM( Sophus::SE3d& pose,
-                                   const std::function< uint32_t( Sophus::SE3d& ) >& lambdaResidualFunctor,
-                                   const std::function< uint32_t( Sophus::SE3d& ) >& lambdaJacobianFunctor,
-                                   const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor )
+Optimizer::OptimizerResult Optimizer::optimizeLM(
+  Sophus::SE3d& pose,
+  const std::function< uint32_t( Sophus::SE3d& ) >& lambdaResidualFunctor,
+  const std::function< uint32_t( Sophus::SE3d& ) >& lambdaJacobianFunctor,
+  const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor )
 {
+    // auto t3 = std::chrono::high_resolution_clock::now();
     // const uint32_t numUnknowns     = 6;
     const auto numObservations = m_residuals.size();
 
@@ -173,11 +187,13 @@ NLLS::NLLSResult NLLS::optimizeLM( Sophus::SE3d& pose,
     double lambda = 1e-2;
     double nu     = 2.0;
 
+    // auto t1 = std::chrono::high_resolution_clock::now();
     /// run for the first time to get the chi error
     resetAllParameters( computeJacobian );
     cntTotalProjectedPixels = lambdaResidualFunctor( pose );
     tukeyWeighting( cntTotalProjectedPixels );
     chiSquaredError = computeChiSquaredError();
+    // m_timerResiduals += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
 
     Sophus::SE3d prePose = pose;
 
@@ -190,32 +206,65 @@ NLLS::NLLSResult NLLS::optimizeLM( Sophus::SE3d& pose,
     // while ( curIteration < m_maxIteration && !stop )
     while ( curIteration < m_maxIteration )
     {
+        // t1 = std::chrono::high_resolution_clock::now();
         // store the current data into the previous ones before updating the parameters
         if ( successIteration == true )
         {
-            prePose            = pose;
-            preChiSquaredError = chiSquaredError;
-            // std::cout << "line 176 -> pre: " << preChiSquaredError << ", cur: " << chiSquaredError << std::endl;
+            prePose                 = pose;
+            preChiSquaredError      = chiSquaredError;
             preResiduals            = m_residuals;
             preWeights              = m_weights;
             preVisiblePoints        = m_visiblePoints;
             preTotalProjectedPixels = cntTotalProjectedPixels;
-            optimizeStatus = Status::Success;
+            optimizeStatus          = Status::Success;
         }
+        // m_timerSwitch += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
 
         if ( computeJacobian == true )
             lambdaJacobianFunctor( pose );
 
-        for ( std::size_t i( 0 ); i < numObservations; i++ )
-        {
-            if ( m_visiblePoints( i ) == true )
-            {
-                const auto Jac = m_jacobian.row( i );
-                m_hessian.noalias() += Jac.transpose() * Jac * m_weights( i );
-                m_gradient.noalias() += Jac.transpose() * m_residuals( i ) * m_weights( i );
-            }
-        }
+        // t1 = std::chrono::high_resolution_clock::now();
 
+        // double sumRes = 0.0;
+        // double sumWei = 0.0;
+        // int cnt = 0;
+        // for ( std::size_t i( 0 ); i < numObservations; i++ )
+        // {
+        //     if ( m_visiblePoints( i ) == true )
+        //     {
+        //         // cnt++;
+        //         // sumRes+= m_residuals(i);
+        //         // sumWei+= m_weights(i);
+        //         std::cout << "[ "<< i << ", true, "<<m_weights(i)<<", " << m_residuals(i) << ", "<< m_jacobian.row( i ) << " ]" << std::endl;
+        //     }
+        //     else
+        //     {
+        //         std::cout << "[ "<< i << ", false, "<<m_weights(i)<<", " << m_residuals(i) << ", "<< m_jacobian.row( i ) << " ]" << std::endl;
+        //     }
+            
+        // }
+        // std::cout << std::endl;
+
+        // std::cout << "mean res: " << sumRes/cnt << ". mean weights: " << sumWei/cnt << std::endl;
+        // m_hessian.setZero();
+        // m_gradient.setZero();
+        // for ( std::size_t i( 0 ); i < numObservations; i++ )
+        // {
+        //     if ( m_visiblePoints( i ) == true )
+        //     {
+        //         const auto Jac = m_jacobian.row( i );
+        //         m_hessian.noalias() += Jac.transpose() * Jac * m_weights( i );
+        //         m_gradient.noalias() += Jac.transpose() * m_residuals( i ) * m_weights( i );
+                
+        //     }
+        // }
+        // std::cout << "hessian sum: " << m_hessian << std::endl;
+        m_hessian.noalias() = m_jacobian.transpose() * m_weights.asDiagonal() * m_jacobian;
+        m_gradient.noalias() = m_jacobian.transpose() * m_weights.asDiagonal() * m_residuals;
+        // std::cout << "hessian linear: " << m_hessian << std::endl;
+        // m_timerHessian += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
+
+        // t1 = std::chrono::high_resolution_clock::now();
         const Eigen::Matrix< double, 1, 6 > jwj = ( m_hessian ).diagonal();
 
         if ( m_levenbergMethod == LevenbergMethod::Marquardt )
@@ -233,12 +282,16 @@ NLLS::NLLSResult NLLS::optimizeLM( Sophus::SE3d& pose,
             for ( std::size_t i( 0 ); i < m_numUnknowns; i++ )
                 m_hessian( i, i ) += lambda;
         }
+        // m_timerLambda += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
 
+        // t1 = std::chrono::high_resolution_clock::now();
         m_dx.noalias() = m_hessian.ldlt().solve( m_gradient );
-
+        // std::cout << "dx: " << m_dx.transpose() << std::endl;
         // pose updated here
         lambdaUpdateFunctor( pose, m_dx );
+        // m_timerSolve += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
 
+        // t1 = std::chrono::high_resolution_clock::now();
         if ( m_dx.maxCoeff() > m_maxCoffDx )
         {
             optimizeStatus = Status::Max_Coff_Dx;
@@ -260,15 +313,22 @@ NLLS::NLLSResult NLLS::optimizeLM( Sophus::SE3d& pose,
             optimizeStatus = normDiffPose < m_normInfDiff ? Status::Norm_Inf_Diff : optimizeStatus;
             break;
         }
+        // m_timerCheck += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
 
+        // t1 = std::chrono::high_resolution_clock::now();
         resetResidualParameters();
         cntTotalProjectedPixels = lambdaResidualFunctor( pose );
         tukeyWeighting( cntTotalProjectedPixels );
         chiSquaredError = computeChiSquaredError();
-        // std::cout << "line 235 -> pre: " << preChiSquaredError << ", cur: " << chiSquaredError << std::endl;
+        m_timerResiduals +=
+        //   std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
 
+        // t1               = std::chrono::high_resolution_clock::now();
         successIteration = updateParameters( preChiSquaredError, chiSquaredError, lambda, nu );
+        // m_timerUpdateParameters +=
+        //   std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
 
+        // t1 = std::chrono::high_resolution_clock::now();
         // rollback to the previous stable parameters
         if ( successIteration == false )
         {
@@ -279,15 +339,18 @@ NLLS::NLLSResult NLLS::optimizeLM( Sophus::SE3d& pose,
             m_visiblePoints         = preVisiblePoints;
             cntTotalProjectedPixels = preTotalProjectedPixels;
         }
+        // m_timerSwitch += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
         // std::cout << "Iteration: " << curIteration << ", Chi error: " << chiSquaredError << std::endl;
         // visualize( cntTotalProjectedPixels );
         ++curIteration;
     }
     const double rmse = std::sqrt( chiSquaredError / cntTotalProjectedPixels );
+    // m_timerFor += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t3 ).count();
+    // std::cout << "Pose: " << pose.params().transpose() << std::endl;
     return std::make_pair( optimizeStatus, rmse );
 }
 
-void NLLS::initParameters( const std::size_t numObservations )
+void Optimizer::initParameters( const std::size_t numObservations )
 {
     m_jacobian.resize( numObservations, m_numUnknowns );
     m_residuals.resize( numObservations );
@@ -295,7 +358,7 @@ void NLLS::initParameters( const std::size_t numObservations )
     m_visiblePoints.resize( numObservations );
 }
 
-void NLLS::resetAllParameters( bool clearJacobian )
+void Optimizer::resetAllParameters( bool clearJacobian )
 {
     m_hessian.setZero();
     m_gradient.setZero();
@@ -306,14 +369,14 @@ void NLLS::resetAllParameters( bool clearJacobian )
         m_jacobian.setZero();
 }
 
-void NLLS::resetResidualParameters()
+void Optimizer::resetResidualParameters()
 {
     m_residuals.setConstant( std::numeric_limits< double >::max() );
     m_weights.setConstant( 0.0 );
     m_visiblePoints.setConstant( false );
 }
 
-bool NLLS::updateParameters( const double preSquaredError, const double curSquaredError, double& lambda, double& nu )
+bool Optimizer::updateParameters( const double preSquaredError, const double curSquaredError, double& lambda, double& nu )
 {
     const double rho = preSquaredError - curSquaredError;
     if ( m_levenbergMethod == LevenbergMethod::Marquardt )
@@ -378,10 +441,10 @@ bool NLLS::updateParameters( const double preSquaredError, const double curSquar
     return false;
 }
 
-double NLLS::computeChiSquaredError()
+double Optimizer::computeChiSquaredError()
 {
     const auto numObservations = m_residuals.size();
-    double chiSquaredError         = 0.0;
+    double chiSquaredError     = 0.0;
 
     for ( std::size_t i( 0 ); i < numObservations; i++ )
     {
@@ -393,7 +456,7 @@ double NLLS::computeChiSquaredError()
     return chiSquaredError;
 }
 
-void NLLS::tukeyWeighting( const uint32_t numValidProjectedPoints )
+void Optimizer::tukeyWeighting( const uint32_t numValidProjectedPoints )
 {
     double sigma = algorithm::computeSigma( m_residuals, numValidProjectedPoints );
     if ( sigma <= std::numeric_limits< double >::epsilon() )
@@ -424,7 +487,7 @@ void NLLS::tukeyWeighting( const uint32_t numValidProjectedPoints )
     // visualization::drawHistogram(residuals, "b", "residuals");
 }
 
-void NLLS::visualize( const uint32_t numValidProjectedPoints )
+void Optimizer::visualize( const uint32_t numValidProjectedPoints )
 {
     std::map< std::string, std::any > pack;
 
@@ -442,8 +505,8 @@ void NLLS::visualize( const uint32_t numValidProjectedPoints )
         }
     }
 
-    pack[ "figure_size_width" ] = uint32_t(1600);
-    pack[ "figure_size_height" ] = uint32_t(900);
+    pack[ "figure_size_width" ]  = uint32_t( 1600 );
+    pack[ "figure_size_height" ] = uint32_t( 900 );
 
     // std::cout << "sum: " << sum << std::endl;
 

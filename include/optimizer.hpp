@@ -1,5 +1,5 @@
-#ifndef __NLLS_HPP__
-#define __NLLS_HPP__
+#ifndef __OPTIMIZER_HPP__
+#define __OPTIMIZER_HPP__
 
 #include <cmath>
 #include <iostream>
@@ -9,7 +9,7 @@
 
 #include "estimator.hpp"
 
-class NLLS
+class Optimizer
 {
 public:
 
@@ -34,7 +34,7 @@ public:
         Failed = 9
     };
 
-    using NLLSResult = std::pair < Status, double>;
+    using OptimizerResult = std::pair < Status, double>;
 
     uint32_t m_numUnknowns;
     Eigen::MatrixXd m_hessian;
@@ -60,12 +60,12 @@ public:
     Eigen::Matrix< double, 6, 6 > m_covarianceMatrixParameters;
     Eigen::Matrix< double, 6, 1 > m_asymptoticStandardUncertaintyParameter;
 
-    explicit NLLS( const uint32_t numUnknowns );
-    NLLS( const NLLS& rhs );
-    NLLS( NLLS&& rhs );
-    NLLS& operator=( const NLLS& rhs );
-    NLLS& operator=( NLLS&& rhs );
-    ~NLLS()       = default;
+    explicit Optimizer( const uint32_t numUnknowns );
+    Optimizer( const Optimizer& rhs );
+    Optimizer( Optimizer&& rhs );
+    Optimizer& operator=( const Optimizer& rhs );
+    Optimizer& operator=( Optimizer&& rhs );
+    ~Optimizer()       = default;
 
     // double optimizeGN( Sophus::SE3d& pose,
     //             const std::function< unsigned int( Sophus::SE3d& pose) >& lambdaResidualFunctor,
@@ -76,17 +76,26 @@ public:
     //             const std::function< unsigned int( Sophus::SE3d& pose) >& lambdaJacobianFunctor,
     //             const std::size_t numObservations);
 
-    NLLSResult optimizeGN( Sophus::SE3d& pose,
+    OptimizerResult optimizeGN( Sophus::SE3d& pose,
                        const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaResidualFunctor,
                        const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaJacobianFunctor,
                        const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
 
-    NLLSResult optimizeLM( Sophus::SE3d& pose,
+    OptimizerResult optimizeLM( Sophus::SE3d& pose,
                        const std::function< uint32_t( Sophus::SE3d& ) >& lambdaResidualFunctor,
                        const std::function< uint32_t( Sophus::SE3d& ) >& lambdaJacobianFunctor,
                        const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
 
     void initParameters( const std::size_t numObservations );
+
+    uint64_t m_timerResiduals;
+    uint64_t m_timerSolve;
+    uint64_t m_timerHessian;
+    uint64_t m_timerSwitch;
+    uint64_t m_timerLambda;
+    uint64_t m_timerUpdateParameters;
+    uint64_t m_timerCheck;
+    uint64_t m_timerFor;
 
 private:
     void resetAllParameters( bool clearJacobian = false );
@@ -105,4 +114,4 @@ private:
     void visualize( const uint32_t numValidProjectedPoints );
 };
 
-#endif /* __NLLS_HPP__ */
+#endif /* __OPTIMIZER_HPP__ */

@@ -72,7 +72,7 @@ set(LIBRARY_SOURCES
     feature.cpp
     point.cpp
     image_alignment.cpp
-    nlls.cpp
+    optimizer.cpp
     estimator.cpp
     matcher.cpp
     feature_selection.cpp
