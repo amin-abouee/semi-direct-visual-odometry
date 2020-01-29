@@ -6,20 +6,17 @@
 #include <fstream>
 #include <iostream>
 
-#include <opencv2/calib3d.hpp>
 #include <opencv2/core.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
-#include <opencv2/imgproc.hpp>
 // #include <opencv2/core/eigen.hpp>
 
 #include <Eigen/Core>
 
 #include "algorithm.hpp"
 #include "feature_selection.hpp"
-#include "frame.hpp"
 #include "image_alignment.hpp"
 #include "matcher.hpp"
-#include "pinhole_camera.hpp"
 #include "point.hpp"
 #include "utils.hpp"
 #include "visualization.hpp"
@@ -46,28 +43,7 @@ nlohmann::json createConfigParser( const std::string& fileName )
     return configParser;
 }
 
-bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs )
-{
-    try
-    {
-        cv::FileStorage fs( filename, cv::FileStorage::READ );
-        if ( !fs.isOpened() )
-        {
-            std::cout << "Failed to open " << filename << std::endl;
-            return false;
-        }
 
-        fs[ "K" ] >> cameraMatrix;
-        fs[ "d" ] >> distortionCoeffs;
-        fs.release();
-        return true;
-    }
-    catch ( std::exception& e )
-    {
-        std::cout << e.what() << std::endl;
-        return false;
-    }
-}
 
 int main( int argc, char* argv[] )
 {
@@ -121,12 +97,12 @@ int main( int argc, char* argv[] )
     const std::string calibrationFile = utils::findAbsoluteFilePath( cameraJson[ "camera_calibration" ].get< std::string >() );
     cv::Mat cameraMatrix;
     cv::Mat distortionCoeffs;
-    bool result = loadCameraIntrinsics( calibrationFile, cameraMatrix, distortionCoeffs );
-    if ( result == false )
-    {
-        std::cout << "Failed to open the calibration file, check config.json file" << std::endl;
-        return EXIT_FAILURE;
-    }
+    // bool result = loadCameraIntrinsizcs( calibrationFile, cameraMatrix, distortionCoeffs );
+    // if ( result == false )
+    // {
+    //     std::cout << "Failed to open the calibration file, check config.json file" << std::endl;
+    //     return EXIT_FAILURE;
+    // }
 
     const int32_t imgWidth  = cameraJson[ "img_width" ].get< int32_t >();
     const int32_t imgHeight = cameraJson[ "img_height" ].get< int32_t >();
@@ -365,7 +341,7 @@ int main( int argc, char* argv[] )
         visualization::projectPointsWithRelativePose( newBGR, curFrame, newFrame );
         cv::Mat stickImg;
         visualization::stickTwoImageHorizontally( curBGR, newBGR, stickImg );
-        cv::imshow( "both_image_1_2_optimization", stickImg );
+        // cv::imshow( "both_image_1_2_optimization", stickImg );
         // cv::imshow("relative_1_2", newBGR);
     }
 
