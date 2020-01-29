@@ -3,6 +3,10 @@
 
 #include <iostream>
 #include <string>
+#include <memory>
+
+#include <nlohmann/json.hpp>
+
 
 // https://stackoverflow.com/a/55296858/1804533
 // https://stackoverflow.com/a/34653512/1804533
@@ -19,13 +23,10 @@ public:
 
     static Config* getInstance()
     {
-        std::call_once(m_once, []() {
-            m_instance.reset(new T);
-        });
         return m_instance.get();
     }
 
-    static Config* getInstanceString(const std::string& configFile)
+    static Config* init(const std::string& configFile)
     {
         std::call_once(m_once, [&]() {
             m_instance.reset(new Config(configFile));
@@ -33,11 +34,7 @@ public:
         return m_instance.get();
     }
 
-private:
-    explicit Config(const std::string& configFile);
-    static std::unique_ptr<Config> m_instance;
-    static std::once_flag m_once;
-
+    nlohmann::json m_configJson;
     std::string m_logFilePath;
     std::string m_cameraCalibrationPath;
     uint32_t m_imgWidth;
@@ -48,6 +45,10 @@ private:
     uint32_t m_minLevelImagePyramid;
     uint32_t m_maxLevelImagePyramid;
 
+private:
+    explicit Config(const std::string& configFile);
+    static std::unique_ptr<Config> m_instance;
+    static std::once_flag m_once;
 };
 
 #endif /* __CONFIG_HPP__ */

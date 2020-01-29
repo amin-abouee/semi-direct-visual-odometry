@@ -3,21 +3,26 @@
 
 #include <opencv2/calib3d.hpp>
 
-System::System(const nlohmann::json& jsonConfig)
+System::System()
 {
-    const nlohmann::json& cameraJson  = jsonConfig[ "camera" ];
-    const std::string calibrationFile = utils::findAbsoluteFilePath( cameraJson[ "camera_calibration" ].get< std::string >() );
+    // const nlohmann::json& cameraJson  = jsonConfig[ "camera" ];
+    // const std::string calibrationFile = utils::findAbsoluteFilePath( cameraJson[ "camera_calibration" ].get< std::string >() );
+    // cv::Mat cameraMatrix;
+    // cv::Mat distortionCoeffs;
+    // bool result = loadCameraIntrinsics( calibrationFile, cameraMatrix, distortionCoeffs );
+    // if ( result == false )
+    // {
+    //     std::cout << "Failed to open the calibration file, check config.json file" << std::endl;
+    //     // return EXIT_FAILURE;
+    // }
+
+    // const int32_t imgWidth  = cameraJson[ "img_width" ].get< int32_t >();
+    // const int32_t imgHeight = cameraJson[ "img_height" ].get< int32_t >();
+    m_config = Config::getInstance();
+    const std::string calibrationFile = utils::findAbsoluteFilePath( m_config->m_cameraCalibrationPath );
     cv::Mat cameraMatrix;
     cv::Mat distortionCoeffs;
-    bool result = loadCameraIntrinsics( calibrationFile, cameraMatrix, distortionCoeffs );
-    if ( result == false )
-    {
-        std::cout << "Failed to open the calibration file, check config.json file" << std::endl;
-        // return EXIT_FAILURE;
-    }
-
-    const int32_t imgWidth  = cameraJson[ "img_width" ].get< int32_t >();
-    const int32_t imgHeight = cameraJson[ "img_height" ].get< int32_t >();
+    m_camera = std::make_shared<PinholeCamera>( m_config->m_imgWidth, m_config->m_imgHeight, cameraMatrix, distortionCoeffs );
 }
 
 bool System::loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs )

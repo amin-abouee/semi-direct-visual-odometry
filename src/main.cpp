@@ -20,28 +20,14 @@
 #include "point.hpp"
 #include "utils.hpp"
 #include "visualization.hpp"
+#include "config.hpp"
 
 // #include "spdlog/sinks/stdout_color_sinks.h"
 #include <spdlog/spdlog.h>
 
 #include <nlohmann/json.hpp>
 
-nlohmann::json createConfigParser( const std::string& fileName )
-{
-    std::cout << "filename: " << fileName << std::endl;
-    nlohmann::json configParser;
-    try
-    {
-        std::ifstream fileReader( fileName );
-        configParser = nlohmann::json::parse( fileReader );
-        fileReader.close();
-    }
-    catch ( const std::exception& e )
-    {
-        std::cerr << "JSON Parser Error:" << e.what() << '\n';
-    }
-    return configParser;
-}
+
 
 
 
@@ -87,14 +73,17 @@ int main( int argc, char* argv[] )
     else
         configIOFile = "config/config.json";
 
+    Config::init(utils::findAbsoluteFilePath( configIOFile ));
+    Config* config = Config::getInstance();
+
     // std::string oma = utils::findAbsoluteFilePath(configIOFile);
 
-    const nlohmann::json& configJson = createConfigParser( utils::findAbsoluteFilePath( configIOFile ) );
+    // const nlohmann::json& configJson = createConfigParser( utils::findAbsoluteFilePath( configIOFile ) );
     // std::cout << configJson[ "file_paths" ][ "camera_calibration" ].get< std::string >() << std::endl;
     // std::ifstream jsonFile(configFile);
 
-    const nlohmann::json& cameraJson  = configJson[ "camera" ];
-    const std::string calibrationFile = utils::findAbsoluteFilePath( cameraJson[ "camera_calibration" ].get< std::string >() );
+    // const nlohmann::json& cameraJson  = configJson[ "camera" ];
+    // const std::string calibrationFile = utils::findAbsoluteFilePath( cameraJson[ "camera_calibration" ].get< std::string >() );
     cv::Mat cameraMatrix;
     cv::Mat distortionCoeffs;
     // bool result = loadCameraIntrinsizcs( calibrationFile, cameraMatrix, distortionCoeffs );
@@ -104,8 +93,8 @@ int main( int argc, char* argv[] )
     //     return EXIT_FAILURE;
     // }
 
-    const int32_t imgWidth  = cameraJson[ "img_width" ].get< int32_t >();
-    const int32_t imgHeight = cameraJson[ "img_height" ].get< int32_t >();
+    // const int32_t imgWidth  = cameraJson[ "img_width" ].get< int32_t >();
+    // const int32_t imgHeight = cameraJson[ "img_height" ].get< int32_t >();
 
     const cv::Mat refImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000000.png" ), cv::IMREAD_GRAYSCALE );
     const cv::Mat curImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000001.png" ), cv::IMREAD_GRAYSCALE );
@@ -141,7 +130,7 @@ int main( int argc, char* argv[] )
     // std::cout << "Old t: " << t.format( utils::eigenFormat() ) << std::endl;
 
     // PinholeCamera camera( 1242, 375, K( 0, 0 ), K( 1, 1 ), K( 0, 2 ), K( 1, 2 ), 0.0, 0.0, 0.0, 0.0, 0.0 );
-    PinholeCamera camera( imgWidth, imgHeight, cameraMatrix, distortionCoeffs );
+    PinholeCamera camera( config->m_imgWidth, config->m_imgHeight, cameraMatrix, distortionCoeffs );
     Frame refFrame( camera, refImg );
     Frame curFrame( camera, curImg );
 
@@ -152,15 +141,15 @@ int main( int argc, char* argv[] )
     // Sophus::SE3d T_pre2cur = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
     // std::cout << "transformation 1 -> 2: " << T_pre2cur.params().transpose() << std::endl;
 
-    const nlohmann::json& algoJson = configJson[ "algorithm" ];
+    // const nlohmann::json& algoJson = configJson[ "algorithm" ];
     // const uint32_t numFeature       = algoJson[ "number_detected_features" ].get< uint32_t >();
 
     // keep it as int32_t. in detect fea
-    const uint32_t gridSize             = algoJson[ "grid_size_select_features" ].get< uint32_t >();
-    const uint32_t patchSizeOptFlow     = algoJson[ "patch_size_optical_flow" ].get< uint32_t >();
-    const uint32_t patchSize            = algoJson[ "patch_size_image_alignment" ].get< uint32_t >();
-    const uint32_t minLevelImagePyramid = algoJson[ "min_level_image_pyramid" ].get< uint32_t >();
-    const uint32_t maxLevelImagePyramid = algoJson[ "max_level_image_pyramid" ].get< uint32_t >();
+    // const uint32_t gridSize             = algoJson[ "grid_size_select_features" ].get< uint32_t >();
+    // const uint32_t patchSizeOptFlow     = algoJson[ "patch_size_optical_flow" ].get< uint32_t >();
+    // const uint32_t patchSize            = algoJson[ "patch_size_image_alignment" ].get< uint32_t >();
+    // const uint32_t minLevelImagePyramid = algoJson[ "min_level_image_pyramid" ].get< uint32_t >();
+    // const uint32_t maxLevelImagePyramid = algoJson[ "max_level_image_pyramid" ].get< uint32_t >();
 
     FeatureSelection featureSelection( refFrame.m_imagePyramid.getBaseImage() );
     // std::cout << "Fundamental Matrix: \n" << F << std::endl;
@@ -168,7 +157,7 @@ int main( int argc, char* argv[] )
 
     auto t1 = std::chrono::high_resolution_clock::now();
     // featureSelection.detectFeaturesSSC( refFrame, numFeature );
-    featureSelection.detectFeaturesInGrid( refFrame, gridSize );
+    featureSelection.detectFeaturesInGrid( refFrame, config->m_gridPixelSize );
     // std::cout << "# observation: " << refFrame.numberObservation() << std::endl;
     // visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize,
     // "Feature-Point-In-Grid");
@@ -184,7 +173,7 @@ int main( int argc, char* argv[] )
     Eigen::Matrix3d R;
     Eigen::Vector3d t;
 
-    Matcher::computeOpticalFlowSparse( refFrame, curFrame, patchSizeOptFlow );
+    Matcher::computeOpticalFlowSparse( refFrame, curFrame, config->m_patchSizeOpticalFlow );
     Matcher::computeEssentialMatrix( refFrame, curFrame, 1.0, E );
     // Eigen::Matrix3d R2;
     // algorithm::decomposeEssentialMatrix( E, R, R2, t );
@@ -324,7 +313,7 @@ int main( int argc, char* argv[] )
     //     // cv::imshow("relative_1_2", newBGR);
     // }
 
-    ImageAlignment match( patchSize, minLevelImagePyramid, maxLevelImagePyramid, 6 );
+    ImageAlignment match( config->m_patchSizeImageAlignment, config->m_minLevelImagePyramid, config->m_maxLevelImagePyramid, 6 );
     t1 = std::chrono::high_resolution_clock::now();
     match.align( curFrame, newFrame );
     t2 = std::chrono::high_resolution_clock::now();

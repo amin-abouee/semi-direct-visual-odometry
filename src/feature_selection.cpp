@@ -11,13 +11,13 @@
 
 #include <Eigen/Core>
 
-#include "spdlog/sinks/stdout_color_sinks.h"
+// #include "spdlog/sinks/stdout_color_sinks.h"
 
 FeatureSelection::FeatureSelection(const cv::Mat& imgGray)
 {
-    featureLogger = spdlog::stdout_color_mt( "FeatureSelection" );
-    featureLogger->set_level( spdlog::level::debug );
-    featureLogger->set_pattern( "[%Y-%m-%d %H:%M:%S] [%s:%#] [%n->%l] [thread:%t] %v" );
+    // featureLogger = spdlog::stdout_color_mt( "FeatureSelection" );
+    // featureLogger->set_level( spdlog::level::debug );
+    // featureLogger->set_pattern( "[%Y-%m-%d %H:%M:%S] [%s:%#] [%n->%l] [thread:%t] %v" );
 
     // https://answers.opencv.org/question/199237/most-accurate-visual-representation-of-gradient-magnitude/
     // https://answers.opencv.org/question/136622/how-to-calculate-gradient-in-c-using-opencv/
@@ -51,7 +51,7 @@ FeatureSelection::FeatureSelection(const cv::Mat& imgGray)
     // std::cout << "Elapsed time for gradient magnitude: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
             //   << std::endl;
 
-    featureLogger->info("Elapsed time for gradient magnitude: {}", std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count());
+    // featureLogger->info("Elapsed time for gradient magnitude: {}", std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count());
 }
 
 // FeatureSelection::FeatureSelection( const cv::Mat& imgGray )

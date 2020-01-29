@@ -4,6 +4,7 @@
 #include "pinhole_camera.hpp"
 #include "frame.hpp"
 #include "feature_selection.hpp"
+#include "config.hpp"
 
 #include <iostream>
 #include <opencv2/core.hpp>
@@ -18,7 +19,7 @@ public:
     std::shared_ptr<Frame> m_curFrame;
     std::unique_ptr<FeatureSelection> m_featureSelection;
 
-    explicit System(const nlohmann::json& jsonConfig);
+    explicit System();
     System (const System& rhs) = delete;
     System (System&& rhs) = delete;
     System& operator= (const System& rhs) = delete;
@@ -31,6 +32,8 @@ public:
 
 private:
     bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs );
+
+    Config* m_config;
 };
 
 #endif /* __SYSTEM_HPP__ */
