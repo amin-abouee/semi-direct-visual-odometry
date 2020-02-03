@@ -17,6 +17,7 @@ public:
     std::shared_ptr<PinholeCamera> m_camera;
     std::shared_ptr<Frame> m_refFrame;
     std::shared_ptr<Frame> m_curFrame;
+    std::shared_ptr<Frame> m_newFrame;
     std::unique_ptr<FeatureSelection> m_featureSelection;
 
     explicit System(Config& config);
@@ -26,9 +27,9 @@ public:
     System& operator= (System&& rhs) = delete;
     ~System() = default;
 
-    void processFirstFrame();
-    void processSecondFrame();
-    void processNextFrame();
+    void processFirstFrame(const cv::Mat& firstImg);
+    void processSecondFrame(const cv::Mat& secondImg);
+    void processNextFrame(const cv::Mat& newImg);
 
 private:
     bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs );

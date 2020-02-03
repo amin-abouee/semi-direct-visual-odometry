@@ -16,11 +16,11 @@
 #include "algorithm.hpp"
 // #include "feature_selection.hpp"
 #include "system.hpp"
-#include "image_alignment.hpp"
-#include "matcher.hpp"
+// #include "image_alignment.hpp"
+// #include "matcher.hpp"
 // #include "point.hpp"
 #include "utils.hpp"
-#include "visualization.hpp"
+// #include "visualization.hpp"
 // #include "config.hpp"
 
 // #include "spdlog/sinks/stdout_color_sinks.h"
@@ -38,7 +38,7 @@ int main( int argc, char* argv[] )
     std::shared_ptr<int> mySharedPtrB = mySharedPtrA;
     std::cout << "mySharedPtrB: " << mySharedPtrB.use_count() << std::endl;
 
-System system();
+// System system();
 
 #ifdef EIGEN_MALLOC_ALREADY_ALIGNED
     std::cout << "EIGEN_MALLOC_ALREADY_ALIGNED" << std::endl;
@@ -82,7 +82,8 @@ System system();
 
     // Config::init(utils::findAbsoluteFilePath( configIOFile ));
     // Config* config = Config::getInstance();
-    Config config = Config(utils::findAbsoluteFilePath( configIOFile ));
+    Config config (utils::findAbsoluteFilePath( configIOFile ));
+    System system(config);
 
     // std::string oma = utils::findAbsoluteFilePath(configIOFile);
 
@@ -92,8 +93,8 @@ System system();
 
     // const nlohmann::json& cameraJson  = configJson[ "camera" ];
     // const std::string calibrationFile = utils::findAbsoluteFilePath( cameraJson[ "camera_calibration" ].get< std::string >() );
-    cv::Mat cameraMatrix;
-    cv::Mat distortionCoeffs;
+    // cv::Mat cameraMatrix;
+    // cv::Mat distortionCoeffs;
     // bool result = loadCameraIntrinsizcs( calibrationFile, cameraMatrix, distortionCoeffs );
     // if ( result == false )
     // {
@@ -137,10 +138,11 @@ System system();
     // Eigen::Vector3d t( 0.0206659, 0.00456935, -0.999776 );
     // std::cout << "Old t: " << t.format( utils::eigenFormat() ) << std::endl;
 
-    PinholeCamera camera( 1242, 375, cameraMatrix, distortionCoeffs );
+    // PinholeCamera camera( 1242, 375, cameraMatrix, distortionCoeffs );
     // PinholeCamera camera( config->m_imgWidth, config->m_imgHeight, cameraMatrix, distortionCoeffs );
-    Frame refFrame( camera, refImg );
-    Frame curFrame( camera, curImg );
+    // Frame refFrame( camera, refImg );
+    system.processFirstFrame(refImg);
+    // Frame curFrame( camera, curImg );
 
     // std::cout << "transformation W -> 1: " << refFrame.m_TransW2F.params().transpose() << std::endl;
     // std::cout << "transformation W -> 2: " << curFrame.m_TransW2F.params().transpose() << std::endl;
@@ -159,13 +161,13 @@ System system();
     // const uint32_t minLevelImagePyramid = algoJson[ "min_level_image_pyramid" ].get< uint32_t >();
     // const uint32_t maxLevelImagePyramid = algoJson[ "max_level_image_pyramid" ].get< uint32_t >();
 
-    FeatureSelection featureSelection( refFrame.m_imagePyramid.getBaseImage() );
+    // FeatureSelection featureSelection( refFrame.m_imagePyramid.getBaseImage() );
     // std::cout << "Fundamental Matrix: \n" << F << std::endl;
     // Matcher matcher;
 
     auto t1 = std::chrono::high_resolution_clock::now();
     // featureSelection.detectFeaturesSSC( refFrame, numFeature );
-    featureSelection.detectFeaturesInGrid( refFrame, 20 );
+    // featureSelection.detectFeaturesInGrid( refFrame, 20 );
     // std::cout << "# observation: " << refFrame.numberObservation() << std::endl;
     // visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize,
     // "Feature-Point-In-Grid");
@@ -176,22 +178,22 @@ System system();
     //     cv::imshow("grid_frame_0", refBGR);
     // }
 
-    Eigen::Matrix3d E;
-    Eigen::Matrix3d F;
-    Eigen::Matrix3d R;
-    Eigen::Vector3d t;
+    // Eigen::Matrix3d E;
+    // Eigen::Matrix3d F;
+    // Eigen::Matrix3d R;
+    // Eigen::Vector3d t;
 
-    Matcher::computeOpticalFlowSparse( refFrame, curFrame, 11 );
-    Matcher::computeEssentialMatrix( refFrame, curFrame, 1.0, E );
+    // Matcher::computeOpticalFlowSparse( refFrame, curFrame, 11 );
+    // Matcher::computeEssentialMatrix( refFrame, curFrame, 1.0, E );
     // Eigen::Matrix3d R2;
     // algorithm::decomposeEssentialMatrix( E, R, R2, t );
     // std::cout << "E: " << E.format( utils::eigenFormat() ) << std::endl;
     // std::cout << "R: " << R.format( utils::eigenFormat() ) << std::endl;
     // std::cout << "R2: " << R2.format( utils::eigenFormat() ) << std::endl;
     // std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
-    F = curFrame.m_camera->invK().transpose() * E * refFrame.m_camera->invK();
+    // F = curFrame.m_camera->invK().transpose() * E * refFrame.m_camera->invK();
     // std::cout << "F: " << F.format( utils::eigenFormat() ) << std::endl;
-    algorithm::recoverPose( E, refFrame, curFrame, R, t );
+    // algorithm::recoverPose( E, refFrame, curFrame, R, t );
     // std::cout << "R: " << R.format( utils::eigenFormat() ) << std::endl;
     // std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
     // std::cout << "E new: " << (R * algorithm::hat(t)).format( utils::eigenFormat() ) << std::endl;
@@ -205,13 +207,13 @@ System system();
     // curFrame.m_TransW2F = refFrame.m_TransW2F * Sophus::SE3d( temp.toRotationMatrix(), t );
     // Eigen::MatrixXd pointsRefCamera(3, curFrame.numberObservation());
     // algorithm::pointsRefCamera(refFrame, curFrame, pointsRefCamera);
-    std::size_t numObserves = curFrame.numberObservation();
-    Eigen::MatrixXd pointsWorld( 3, numObserves );
-    Eigen::MatrixXd pointsCurCamera( 3, numObserves );
-    Eigen::VectorXd depthCurFrame( numObserves );
-    algorithm::points3DWorld( refFrame, curFrame, pointsWorld );
-    algorithm::transferPointsWorldToCam( curFrame, pointsWorld, pointsCurCamera );
-    algorithm::depthCamera( curFrame, pointsWorld, depthCurFrame );
+    // std::size_t numObserves = curFrame.numberObservation();
+    // Eigen::MatrixXd pointsWorld( 3, numObserves );
+    // Eigen::MatrixXd pointsCurCamera( 3, numObserves );
+    // Eigen::VectorXd depthCurFrame( numObserves );
+    // algorithm::points3DWorld( refFrame, curFrame, pointsWorld );
+    // algorithm::transferPointsWorldToCam( curFrame, pointsWorld, pointsCurCamera );
+    // algorithm::depthCamera( curFrame, pointsWorld, depthCurFrame );
 
     // for(int i(0); i< numObserves; i++)
     // {
@@ -222,49 +224,49 @@ System system();
     // visualization::epipolarLinesWithPoints( refFrame, curFrame, pointsWorld, 15.0, "Epipolar-Lines-Depths-first" );
     // algorithm::normalizedDepthsCurCamera( curFrame, pointsWorld, depthCurFrame );
 
-    double medianDepth = algorithm::computeMedian( depthCurFrame );
+    // double medianDepth = algorithm::computeMedian( depthCurFrame );
     // std::cout << "Mean: " << depthCurFrame.mean() << std::endl;
     // std::cout << "Median: " << medianDepth << std::endl;
-    const double scale = 1.0 / medianDepth;
+    // const double scale = 1.0 / medianDepth;
     // std::cout << "translation without scale: " << curFrame.m_TransW2F.translation().transpose() << std::endl;
 
     // C_1 = C_0 + scale * (C_1 - C_0)
     // t = -R * C_1
-    curFrame.m_TransW2F.translation() = -curFrame.m_TransW2F.rotationMatrix() *
-                                        ( refFrame.cameraInWorld() + scale * ( curFrame.cameraInWorld() - refFrame.cameraInWorld() ) );
+    // curFrame.m_TransW2F.translation() = -curFrame.m_TransW2F.rotationMatrix() *
+    //                                     ( refFrame.cameraInWorld() + scale * ( curFrame.cameraInWorld() - refFrame.cameraInWorld() ) );
     // std::cout << "translation with scale: " << curFrame.m_TransW2F.translation().transpose() << std::endl;
 
     // std::cout << "Before scaling depth 0: " << depthCurFrame(0) << std::endl;
     // depthCurFrame *= scale;
     // std::cout << "After scaling depth 0: " << depthCurFrame(0) << std::endl;
 
-    pointsCurCamera *= scale;
-    algorithm::transferPointsCamToWorld( curFrame, pointsCurCamera, pointsWorld );
-    uint32_t cnt = 0;
-    for ( std::size_t i( 0 ); i < numObserves; i++ )
-    {
-        const Eigen::Vector2d refFeature = refFrame.m_frameFeatures[ i ]->m_feature;
-        const Eigen::Vector2d curFeature = curFrame.m_frameFeatures[ i ]->m_feature;
-        if ( refFrame.m_camera->isInFrame( refFeature, 5.0 ) == true && curFrame.m_camera->isInFrame( curFeature, 5.0 ) == true &&
-             pointsCurCamera.col( i ).z() > 0 )
-        {
-            std::shared_ptr< Point > point = std::make_shared< Point >( pointsWorld.col( i ) );
-            //    std::cout << "3D points: " << point->m_position.format(utils::eigenFormat()) << std::endl;
-            refFrame.m_frameFeatures[ i ]->setPoint( point );
-            curFrame.m_frameFeatures[ i ]->setPoint( point );
-            cnt++;
-        }
-    }
-    refFrame.m_frameFeatures.erase( std::remove_if( refFrame.m_frameFeatures.begin(), refFrame.m_frameFeatures.end(),
-                                                    []( const auto& feature ) { return feature->m_point == nullptr; } ),
-                                    refFrame.m_frameFeatures.end() );
+    // pointsCurCamera *= scale;
+    // algorithm::transferPointsCamToWorld( curFrame, pointsCurCamera, pointsWorld );
+    // uint32_t cnt = 0;
+    // for ( std::size_t i( 0 ); i < numObserves; i++ )
+    // {
+    //     const Eigen::Vector2d refFeature = refFrame.m_frameFeatures[ i ]->m_feature;
+    //     const Eigen::Vector2d curFeature = curFrame.m_frameFeatures[ i ]->m_feature;
+    //     if ( refFrame.m_camera->isInFrame( refFeature, 5.0 ) == true && curFrame.m_camera->isInFrame( curFeature, 5.0 ) == true &&
+    //          pointsCurCamera.col( i ).z() > 0 )
+    //     {
+    //         std::shared_ptr< Point > point = std::make_shared< Point >( pointsWorld.col( i ) );
+    //         //    std::cout << "3D points: " << point->m_position.format(utils::eigenFormat()) << std::endl;
+    //         refFrame.m_frameFeatures[ i ]->setPoint( point );
+    //         curFrame.m_frameFeatures[ i ]->setPoint( point );
+    //         cnt++;
+    //     }
+    // }
+    // refFrame.m_frameFeatures.erase( std::remove_if( refFrame.m_frameFeatures.begin(), refFrame.m_frameFeatures.end(),
+    //                                                 []( const auto& feature ) { return feature->m_point == nullptr; } ),
+    //                                 refFrame.m_frameFeatures.end() );
 
-    curFrame.m_frameFeatures.erase( std::remove_if( curFrame.m_frameFeatures.begin(), curFrame.m_frameFeatures.end(),
-                                                    []( const auto& feature ) { return feature->m_point == nullptr; } ),
-                                    curFrame.m_frameFeatures.end() );
+    // curFrame.m_frameFeatures.erase( std::remove_if( curFrame.m_frameFeatures.begin(), curFrame.m_frameFeatures.end(),
+    //                                                 []( const auto& feature ) { return feature->m_point == nullptr; } ),
+    //                                 curFrame.m_frameFeatures.end() );
 
-    std::cout << "Points: " << pointsWorld.cols() << " cnt: " << cnt << " num ref observes: " << refFrame.numberObservation()
-              << " num cur observes: " << curFrame.numberObservation() << std::endl;
+    // std::cout << "Points: " << pointsWorld.cols() << " cnt: " << cnt << " num ref observes: " << refFrame.numberObservation()
+    //           << " num cur observes: " << curFrame.numberObservation() << std::endl;
     // algorithm::transferPointsCurToWorld(curFrame, pointsCurCamera, pointsWorld);
 
     // for ( std::size_t i( 0 ); i < numObserves; i++ )
@@ -277,10 +279,12 @@ System system();
     // R = R2;
     // Matcher::findTemplateMatch(refFrame, curFrame, patchSizeOptFlow, 35);
 
+    system.processSecondFrame(curImg);
     auto t2 = std::chrono::high_resolution_clock::now();
     std::cout << "Elapsed time for matching: " << std::chrono::duration_cast< std::chrono::microseconds >( t2 - t1 ).count() << " micro sec"
               << std::endl;
 
+/*
     numObserves = refFrame.numberObservation();
     Eigen::VectorXd newCurDepths( numObserves );
     algorithm::depthCamera( curFrame, newCurDepths );
@@ -288,6 +292,7 @@ System system();
     const double minDepth = newCurDepths.minCoeff();
     // std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
     curFrame.setKeyframe();
+*/
 
     {
         // cv::Mat refBGR = visualization::getBGRImage( refFrame.m_imagePyramid.getBaseImage() );
@@ -305,8 +310,10 @@ System system();
         // cv::imshow("relative_0_1", curBGR);
     }
 
+
     const cv::Mat newImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000002.png" ), cv::IMREAD_GRAYSCALE );
-    Frame newFrame( camera, newImg );
+    // Frame newFrame( camera, newImg );
+    system.processNextFrame(newImg);
 
     // {
     //     cv::Mat curBGR = visualization::getBGRImage( curFrame.m_imagePyramid.getBaseImage() );
@@ -321,6 +328,7 @@ System system();
     //     // cv::imshow("relative_1_2", newBGR);
     // }
 
+/*
     ImageAlignment match( 5, 0, 3, 6 );
     t1 = std::chrono::high_resolution_clock::now();
     match.align( curFrame, newFrame );
@@ -341,6 +349,7 @@ System system();
         // cv::imshow( "both_image_1_2_optimization", stickImg );
         // cv::imshow("relative_1_2", newBGR);
     }
+*/
 
     // matcher.findTemplateMatch(refFrame, curFrame, 5, 99);
     // visualization visualize;
