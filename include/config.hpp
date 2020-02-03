@@ -15,24 +15,25 @@
 class Config final
 {
 public:
+    explicit Config(const std::string& configFile);
     Config (const Config& rhs) = delete;
     Config (Config&& rhs) = delete;
     Config& operator= (const Config& rhs) = delete;
     Config& operator= (Config&& rhs) = delete;
     ~Config() = default;
 
-    static Config* getInstance()
-    {
-        return m_instance.get();
-    }
+    // static Config* getInstance()
+    // {
+    //     return m_instance.get();
+    // }
 
-    static Config* init(const std::string& configFile)
-    {
-        std::call_once(m_once, [&]() {
-            m_instance.reset(new Config(configFile));
-        });
-        return m_instance.get();
-    }
+    // static Config* init(const std::string& configFile)
+    // {
+    //     std::call_once(m_once, [&]() {
+    //         m_instance.reset(new Config(configFile));
+    //     });
+    //     return m_instance.get();
+    // }
 
     nlohmann::json m_configJson;
     std::string m_logFilePath;
@@ -46,9 +47,9 @@ public:
     uint32_t m_maxLevelImagePyramid;
 
 private:
-    explicit Config(const std::string& configFile);
-    static std::unique_ptr<Config> m_instance;
-    static std::once_flag m_once;
+    // explicit Config(const std::string& configFile);
+    // static std::unique_ptr<Config> m_instance;
+    // static std::once_flag m_once;
 };
 
 #endif /* __CONFIG_HPP__ */

@@ -1,11 +1,12 @@
 #include "config.hpp"
+#include <fstream>
 
 Config::Config(const std::string& configFile)
 {
     nlohmann::json configParser;
     try
     {
-        std::ifstream fileReader( fileName );
+        std::ifstream fileReader( configFile );
         m_configJson = nlohmann::json::parse( fileReader );
         fileReader.close();
     }
@@ -20,7 +21,7 @@ Config::Config(const std::string& configFile)
     uint32_t m_imgWidth = cameraJson[ "img_width" ].get< int32_t >();
     uint32_t m_imgHeight = cameraJson[ "img_height" ].get< int32_t >();
 
-    const nlohmann::json& algoJson = configJson[ "algorithm" ];
+    const nlohmann::json& algoJson = m_configJson[ "algorithm" ];
     uint32_t m_gridPixelSize = algoJson[ "grid_size_select_features" ].get< uint32_t >();
     uint32_t m_patchSizeOpticalFlow = algoJson[ "patch_size_optical_flow" ].get< uint32_t >();
     uint32_t m_patchSizeImageAlignment = algoJson[ "patch_size_image_alignment" ].get< uint32_t >();

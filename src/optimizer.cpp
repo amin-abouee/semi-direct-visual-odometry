@@ -352,10 +352,10 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
 
 void Optimizer::initParameters( const std::size_t numObservations )
 {
-    m_jacobian.resize( numObservations, m_numUnknowns );
-    m_residuals.resize( numObservations );
-    m_weights.resize( numObservations );
-    m_visiblePoints.resize( numObservations );
+    m_jacobian.conservativeResize( numObservations, m_numUnknowns );
+    m_residuals.conservativeResize( numObservations );
+    m_weights.conservativeResize( numObservations );
+    m_visiblePoints.conservativeResize( numObservations );
 }
 
 void Optimizer::resetAllParameters( bool clearJacobian )

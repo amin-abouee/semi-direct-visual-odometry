@@ -19,7 +19,7 @@ public:
     std::shared_ptr<Frame> m_curFrame;
     std::unique_ptr<FeatureSelection> m_featureSelection;
 
-    explicit System();
+    explicit System(Config& config);
     System (const System& rhs) = delete;
     System (System&& rhs) = delete;
     System& operator= (const System& rhs) = delete;

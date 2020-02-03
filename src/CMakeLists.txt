@@ -21,17 +21,17 @@ find_package(nlohmann_json REQUIRED)
 #   -DOpenMP_omp_LIBRARY=/usr/local/opt/libomp/lib/libomp.dylib \
 #   ..
 
-if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    set (OpenMP_C_FLAGS "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
-    set (OpenMP_C_LIB_NAMES "omp")
-    set (OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
-    set (OpenMP_CXX_LIB_NAMES "omp")
-    set (OpenMP_omp_LIBRARY "/usr/local/opt/libomp/lib/libomp.dylib")
-endif()
+# if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+#     set (OpenMP_C_FLAGS "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
+#     set (OpenMP_C_LIB_NAMES "omp")
+#     set (OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
+#     set (OpenMP_CXX_LIB_NAMES "omp")
+#     set (OpenMP_omp_LIBRARY "/usr/local/opt/libomp/lib/libomp.dylib")
+# endif()
 
 # https://cliutils.gitlab.io/modern-cmake/chapters/packages/OpenMP.html
 # https://stackoverflow.com/questions/56202041/compiling-and-linking-against-openmp-with-appleclang-on-mac-os-x-mojave
-find_package(OpenMP REQUIRED)
+# find_package(OpenMP REQUIRED)
 
 # https://github.com/gabime/spdlog/blob/v1.x/example/CMakeLists.txt
 find_package(spdlog)
@@ -78,8 +78,9 @@ set(LIBRARY_SOURCES
     feature_selection.cpp
     algorithm.cpp
     visualization.cpp
-    utils.cpp
+    config.cpp
     system.cpp
+    utils.cpp
     main.cpp
     )
 
@@ -127,7 +128,7 @@ target_link_libraries(visual_odometry PRIVATE $<$<CXX_COMPILER_ID:GNU>:stdc++fs>
 target_link_libraries (visual_odometry PRIVATE Python2::Python Python2::NumPy)
 
 if(OpenMP_CXX_FOUND)
-    target_link_libraries(visual_odometry PRIVATE OpenMP::OpenMP_CXX)
+    # target_link_libraries(visual_odometry PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
 # https://stackoverflow.com/a/27558697/1804533

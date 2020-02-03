@@ -14,13 +14,14 @@
 #include <Eigen/Core>
 
 #include "algorithm.hpp"
-#include "feature_selection.hpp"
+// #include "feature_selection.hpp"
+#include "system.hpp"
 #include "image_alignment.hpp"
 #include "matcher.hpp"
-#include "point.hpp"
+// #include "point.hpp"
 #include "utils.hpp"
 #include "visualization.hpp"
-#include "config.hpp"
+// #include "config.hpp"
 
 // #include "spdlog/sinks/stdout_color_sinks.h"
 #include <spdlog/spdlog.h>
@@ -29,10 +30,16 @@
 
 
 
-
-
 int main( int argc, char* argv[] )
 {
+    int * myPointer = new int(5);
+    std::shared_ptr<int> mySharedPtrA(myPointer);
+    std::cout << "mySharedPtrA: " << mySharedPtrA.use_count() << std::endl;
+    std::shared_ptr<int> mySharedPtrB = mySharedPtrA;
+    std::cout << "mySharedPtrB: " << mySharedPtrB.use_count() << std::endl;
+
+System system();
+
 #ifdef EIGEN_MALLOC_ALREADY_ALIGNED
     std::cout << "EIGEN_MALLOC_ALREADY_ALIGNED" << std::endl;
 #endif
@@ -73,8 +80,9 @@ int main( int argc, char* argv[] )
     else
         configIOFile = "config/config.json";
 
-    Config::init(utils::findAbsoluteFilePath( configIOFile ));
-    Config* config = Config::getInstance();
+    // Config::init(utils::findAbsoluteFilePath( configIOFile ));
+    // Config* config = Config::getInstance();
+    Config config = Config(utils::findAbsoluteFilePath( configIOFile ));
 
     // std::string oma = utils::findAbsoluteFilePath(configIOFile);
 
@@ -129,8 +137,8 @@ int main( int argc, char* argv[] )
     // Eigen::Vector3d t( 0.0206659, 0.00456935, -0.999776 );
     // std::cout << "Old t: " << t.format( utils::eigenFormat() ) << std::endl;
 
-    // PinholeCamera camera( 1242, 375, K( 0, 0 ), K( 1, 1 ), K( 0, 2 ), K( 1, 2 ), 0.0, 0.0, 0.0, 0.0, 0.0 );
-    PinholeCamera camera( config->m_imgWidth, config->m_imgHeight, cameraMatrix, distortionCoeffs );
+    PinholeCamera camera( 1242, 375, cameraMatrix, distortionCoeffs );
+    // PinholeCamera camera( config->m_imgWidth, config->m_imgHeight, cameraMatrix, distortionCoeffs );
     Frame refFrame( camera, refImg );
     Frame curFrame( camera, curImg );
 
@@ -157,7 +165,7 @@ int main( int argc, char* argv[] )
 
     auto t1 = std::chrono::high_resolution_clock::now();
     // featureSelection.detectFeaturesSSC( refFrame, numFeature );
-    featureSelection.detectFeaturesInGrid( refFrame, config->m_gridPixelSize );
+    featureSelection.detectFeaturesInGrid( refFrame, 20 );
     // std::cout << "# observation: " << refFrame.numberObservation() << std::endl;
     // visualization::featurePointsInGrid(featureSelection.m_gradientMagnitude, refFrame, patchSize,
     // "Feature-Point-In-Grid");
@@ -173,7 +181,7 @@ int main( int argc, char* argv[] )
     Eigen::Matrix3d R;
     Eigen::Vector3d t;
 
-    Matcher::computeOpticalFlowSparse( refFrame, curFrame, config->m_patchSizeOpticalFlow );
+    Matcher::computeOpticalFlowSparse( refFrame, curFrame, 11 );
     Matcher::computeEssentialMatrix( refFrame, curFrame, 1.0, E );
     // Eigen::Matrix3d R2;
     // algorithm::decomposeEssentialMatrix( E, R, R2, t );
@@ -313,7 +321,7 @@ int main( int argc, char* argv[] )
     //     // cv::imshow("relative_1_2", newBGR);
     // }
 
-    ImageAlignment match( config->m_patchSizeImageAlignment, config->m_minLevelImagePyramid, config->m_maxLevelImagePyramid, 6 );
+    ImageAlignment match( 5, 0, 3, 6 );
     t1 = std::chrono::high_resolution_clock::now();
     match.align( curFrame, newFrame );
     t2 = std::chrono::high_resolution_clock::now();

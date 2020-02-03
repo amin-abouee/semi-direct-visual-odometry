@@ -3,7 +3,7 @@
 
 #include <opencv2/calib3d.hpp>
 
-System::System()
+System::System(Config& config): m_config(&config)
 {
     // const nlohmann::json& cameraJson  = jsonConfig[ "camera" ];
     // const std::string calibrationFile = utils::findAbsoluteFilePath( cameraJson[ "camera_calibration" ].get< std::string >() );
@@ -18,7 +18,7 @@ System::System()
 
     // const int32_t imgWidth  = cameraJson[ "img_width" ].get< int32_t >();
     // const int32_t imgHeight = cameraJson[ "img_height" ].get< int32_t >();
-    m_config = Config::getInstance();
+    // m_config = Config::getInstance();
     const std::string calibrationFile = utils::findAbsoluteFilePath( m_config->m_cameraCalibrationPath );
     cv::Mat cameraMatrix;
     cv::Mat distortionCoeffs;
