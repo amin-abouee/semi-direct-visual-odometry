@@ -22,6 +22,8 @@ public:
 
     double align( Frame& refFrame, Frame& curFrame );
 
+    // Matrix<double, 6, 6> getFisherInformation();
+
 private:
     uint32_t m_patchSize;
     uint32_t m_halfPatchSize;

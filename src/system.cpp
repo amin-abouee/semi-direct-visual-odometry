@@ -42,6 +42,7 @@ void System::processFirstFrame(const cv::Mat& firstImg)
     m_featureSelection->detectFeaturesInGrid( *m_refFrame, m_config->m_gridPixelSize );
 
     m_refFrame->setKeyframe();
+    m_allKeyFrames.emplace_back(m_refFrame);
 }
 
 void System::processSecondFrame(const cv::Mat& secondImg)
@@ -106,30 +107,40 @@ void System::processSecondFrame(const cv::Mat& secondImg)
     const double minDepth = newCurDepths.minCoeff();
     // std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
     m_curFrame->setKeyframe();
+    m_allKeyFrames.emplace_back(m_curFrame);
 }
 
 void System::processNextFrame(const cv::Mat& newImg)
 {
-    m_newFrame = std::make_shared<Frame>(*m_camera, newImg);
+    // std::cout << "counter: " << m_refFrame.use_count() << std::endl;
+    m_refFrame = std::move(m_curFrame);
+    std::cout << "counter ref: " << m_refFrame.use_count() << std::endl;
+    m_curFrame = std::make_shared<Frame>(*m_camera, newImg);
+    std::cout << "counter cur: " << m_curFrame.use_count() << std::endl;
+
     ImageAlignment match( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid, m_config->m_maxLevelImagePyramid, 6 );
     auto t1 = std::chrono::high_resolution_clock::now();
-    match.align( *m_curFrame, *m_newFrame );
+    match.align( *m_refFrame, *m_curFrame );
     auto t2 = std::chrono::high_resolution_clock::now();
     std::cout << "Elapsed time for alignment: " << std::chrono::duration_cast< std::chrono::microseconds >( t2 - t1 ).count() << " micro sec"
               << std::endl;
     {
+        cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
         cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
-        cv::Mat newBGR = visualization::getBGRImage( m_newFrame->m_imagePyramid.getBaseImage() );
-        visualization::featurePoints( curBGR, *m_curFrame );
+        visualization::featurePoints( refBGR, *m_refFrame, visualization::drawingRectangle );
         // visualization::featurePointsInGrid(curBGR, curFrame, 50);
         // visualization::featurePoints(newBGR, newFrame);
         // visualization::project3DPoints(curBGR, curFrame);
-        visualization::projectPointsWithRelativePose( newBGR, *m_curFrame, *m_newFrame );
+        visualization::projectPointsWithRelativePose( curBGR, *m_refFrame, *m_curFrame );
         cv::Mat stickImg;
-        visualization::stickTwoImageHorizontally( curBGR, newBGR, stickImg );
+        visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
         cv::imshow( "both_image_1_2_optimization", stickImg );
-        cv::imshow("relative_1_2", newBGR);
+        // cv::imshow("relative_1_2", curBGR);
     }
+    m_allKeyFrames.emplace_back(m_curFrame);
+
+    for(const auto& ptr: m_allKeyFrames)
+        std::cout << "idx: " << ptr->m_id << ", counter: " << ptr.use_count() << std::endl;
 }
 
 bool System::loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs )

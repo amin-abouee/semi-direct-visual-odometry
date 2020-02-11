@@ -17,8 +17,9 @@ public:
     std::shared_ptr<PinholeCamera> m_camera;
     std::shared_ptr<Frame> m_refFrame;
     std::shared_ptr<Frame> m_curFrame;
-    std::shared_ptr<Frame> m_newFrame;
+    // std::shared_ptr<Frame> m_newFrame;
     std::unique_ptr<FeatureSelection> m_featureSelection;
+    std::vector < std::shared_ptr<Frame> > m_allKeyFrames;
 
     explicit System(Config& config);
     System (const System& rhs) = delete;
