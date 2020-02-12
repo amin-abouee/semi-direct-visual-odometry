@@ -28,8 +28,8 @@ class Frame final
 {
 public:
 EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    static uint32_t m_frameCounter;
-    uint32_t m_id;
+    static uint64_t m_frameCounter;
+    uint64_t m_id;
     const PinholeCamera* m_camera;
     // std::reference_wrapper<PinholeCamera> m_camera;
     Sophus::SE3d m_TransW2F;

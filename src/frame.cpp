@@ -1,7 +1,7 @@
 #include "frame.hpp"
 #include "feature.hpp"
 
-uint32_t Frame::m_frameCounter;
+uint64_t Frame::m_frameCounter;
 
 Frame::Frame( const PinholeCamera& camera, const cv::Mat& img )
     : m_id( m_frameCounter++ )

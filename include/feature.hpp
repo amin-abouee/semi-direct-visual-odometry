@@ -22,6 +22,8 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         EDGELET
     };
 
+    static uint64_t m_featureCounter;
+    uint64_t m_id;
     Frame* m_frame;
     FeatureType m_type;
     Eigen::Vector2d m_feature;

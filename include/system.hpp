@@ -32,6 +32,10 @@ public:
     void processSecondFrame(const cv::Mat& secondImg);
     void processNextFrame(const cv::Mat& newImg);
 
+    void reportSummaryFrames();
+    void reportSummaryFeatures();
+    void reportSummaryPoints();
+
 private:
     bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs );
 

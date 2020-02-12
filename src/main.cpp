@@ -314,7 +314,8 @@ int main( int argc, char* argv[] )
     const cv::Mat newImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000002.png" ), cv::IMREAD_GRAYSCALE );
     // Frame newFrame( camera, newImg );
     system.processNextFrame(newImg);
-
+    system.reportSummaryFrames();
+    system.reportSummaryFeatures();
     // {
     //     cv::Mat curBGR = visualization::getBGRImage( curFrame.m_imagePyramid.getBaseImage() );
     //     cv::Mat newBGR = visualization::getBGRImage( newFrame.m_imagePyramid.getBaseImage() );
