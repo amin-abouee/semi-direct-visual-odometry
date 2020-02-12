@@ -142,15 +142,17 @@ void System::processNextFrame( const cv::Mat& newImg )
     {
         const auto& point                     = refFeatures->m_point->m_position;
         const auto& curFeature                = m_curFrame->world2image( point );
-        std::unique_ptr< Feature > newFeature = std::make_unique< Feature >( *m_curFrame, curFeature, 0.0 );
-        // m_curFrame->m_frameFeatures.emplace_back( newFeature );
-        m_curFrame->addFeature(newFeature);
-        m_curFrame->m_frameFeatures.back()->setPoint( refFeatures->m_point );
+        if ( m_curFrame->m_camera->isInFrame( curFeature, 5.0 ) == true )
+        {
+            std::unique_ptr< Feature > newFeature = std::make_unique< Feature >( *m_curFrame, curFeature, 0.0 );
+            m_curFrame->addFeature(newFeature);
+            m_curFrame->m_frameFeatures.back()->setPoint( refFeatures->m_point );
+        }
     }
 
     m_allKeyFrames.emplace_back( m_curFrame );
-    for ( const auto& ptr : m_allKeyFrames )
-        std::cout << "idx: " << ptr->m_id << ", counter: " << ptr.use_count() << std::endl;
+    // for ( const auto& ptr : m_allKeyFrames )
+    //     std::cout << "idx: " << ptr->m_id << ", counter: " << ptr.use_count() << std::endl;
 }
 
 void System::reportSummaryFrames()
