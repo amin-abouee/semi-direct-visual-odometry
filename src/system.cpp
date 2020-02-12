@@ -127,11 +127,11 @@ void System::processNextFrame(const cv::Mat& newImg)
     {
         cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
         cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
-        visualization::featurePoints( refBGR, *m_refFrame, visualization::drawingRectangle );
+        visualization::featurePoints( refBGR, *m_refFrame, 11, "pink", visualization::drawingRectangle );
         // visualization::featurePointsInGrid(curBGR, curFrame, 50);
         // visualization::featurePoints(newBGR, newFrame);
         // visualization::project3DPoints(curBGR, curFrame);
-        visualization::projectPointsWithRelativePose( curBGR, *m_refFrame, *m_curFrame );
+        visualization::projectPointsWithRelativePose( curBGR, *m_refFrame, *m_curFrame, 8, "orange", visualization::drawingCircle);
         cv::Mat stickImg;
         visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
         cv::imshow( "both_image_1_2_optimization", stickImg );

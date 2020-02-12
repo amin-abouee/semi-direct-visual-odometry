@@ -183,16 +183,6 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
 
     try
     {
-        // pack["residuals_data"] = residuals;
-        // pack["residuals_color"] = std::string("gray");
-        // pack["residuals_median"] = median;
-        // pack["residuals_median_color"] = "blue";
-        // pack["residuals_sigma"] = sigma;
-        // pack["residuals_sigma_color"] = "orange";
-        // pack["residuals_mad"] = mad;
-        // pack["residuals_mad_color"] = std::string("red");
-        // pack["residuals_windows_name"] = std::string("residuals");
-
         auto residuals      = std::any_cast< std::vector< double > >( pack[ "residuals_data" ] );
         auto residualsColor = std::any_cast< std::string >( pack[ "residuals_color" ] );
         auto numberBins     = std::any_cast< uint32_t >( pack[ "residuals_number_bins" ] );
@@ -351,22 +341,31 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
 void visualization::featurePoints(
   cv::Mat& img,
   const Frame& frame,
-  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const std::string& color ) >&
-    drawingFunctor )
+  const u_int32_t radiusSize,
+  const std::string& color,
+  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >& drawingFunctor )
 {
+    cv::Scalar colorRGB;
+    if ( colors.find( color ) != colors.end() )
+        colorRGB = colors.at(color);
+    else
+        colorRGB = colors.at("white");
+    
     const auto szPoints = frame.numberObservation();
-    // std::cout << "# observation visualization: " << szPoints << std::endl;
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
         const auto& feature = frame.m_frameFeatures[ i ]->m_feature;
-        // cv::circle( img, cv::Point2d( feature.x(), feature.y() ), 5.0, colors.at( "pink" ) );
-        drawingFunctor(img, feature, 11, "pink");
+        drawingFunctor( img, feature, radiusSize, colorRGB );
     }
 }
 
-void visualization::featurePointsInGrid( cv::Mat& img, const Frame& frame, const int32_t gridSize )
+void visualization::imageGrid( cv::Mat& img, const Frame& frame, const int32_t gridSize, const std::string& color )
 {
-    // featurePoints( img, frame );
+    cv::Scalar colorRGB;
+    if ( colors.find( color ) != colors.end() )
+        colorRGB = colors.at(color);
+    else
+        colorRGB = colors.at("white");
 
     const int width  = img.cols;
     const int height = img.rows;
@@ -375,27 +374,44 @@ void visualization::featurePointsInGrid( cv::Mat& img, const Frame& frame, const
     const int rows = height / gridSize;
     for ( int r( 1 ); r <= rows; r++ )
     {
-        cv::line( img, cv::Point2i( 0, r * gridSize ), cv::Point2i( width, r * gridSize ), colors.at( "amber" ) );
+        cv::line( img, cv::Point2i( 0, r * gridSize ), cv::Point2i( width, r * gridSize ), colorRGB );
     }
 
     for ( int c( 1 ); c <= cols; c++ )
     {
-        cv::line( img, cv::Point2i( c * gridSize, 0 ), cv::Point2i( c * gridSize, height ), colors.at( "amber" ) );
+        cv::line( img, cv::Point2i( c * gridSize, 0 ), cv::Point2i( c * gridSize, height ), colorRGB );
     }
 }
 
-void visualization::project3DPoints( cv::Mat& img, const Frame& frame )
+void visualization::project3DPoints(
+  cv::Mat& img,
+  const Frame& frame,
+  const u_int32_t radiusSize,
+  const std::string& color,
+  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >& drawingFunctor )
 {
+    cv::Scalar colorRGB;
+    if ( colors.find( color ) != colors.end() )
+        colorRGB = colors.at(color);
+    else
+        colorRGB = colors.at("white");
+
     const auto szPoints = frame.numberObservation();
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
         const Eigen::Vector3d& point = frame.m_frameFeatures[ i ]->m_point->m_position;
         const auto& feature          = frame.world2image( point );
-        cv::circle( img, cv::Point2d( feature.x(), feature.y() ), 8.0, colors.at( "pink" ) );
+        drawingFunctor( img, feature, radiusSize, colorRGB );
     }
 }
 
-void visualization::projectPointsWithRelativePose( cv::Mat& img, const Frame& refFrame, const Frame& curFrame )
+void visualization::projectPointsWithRelativePose(
+  cv::Mat& img,
+  const Frame& refFrame,
+  const Frame& curFrame,
+  const u_int32_t radiusSize,
+  const std::string& color,
+  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >& drawingFunctor )
 {
     const Sophus::SE3d relativePose = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
     // const Eigen::Matrix3d E      = relativePose.rotationMatrix() * algorithm::hat( relativePose.translation() );
@@ -411,35 +427,40 @@ void visualization::projectPointsWithRelativePose( cv::Mat& img, const Frame& re
         const Eigen::Vector3d refPoint( feature->m_bearingVec * depthNorm );
         const Eigen::Vector3d curPoint( relativePose * refPoint );
         const Eigen::Vector2d curFeature( curFrame.camera2image( curPoint ) );
-        cv::circle( img, cv::Point2d( curFeature.x(), curFeature.y() ), 8.0, colors.at( "orange" ) );
+        drawingFunctor( img, curFeature, radiusSize, colors.at( color ) );
     }
 }
 
-// void visualization::projectPointsWithF (cv::Mat& img, const Frame& refFrame, const Eigen::Matrix3d& F)
-// {
-//     const auto szPoints = refFrame.numberObservation();
-//     for ( std::size_t i( 0 ); i < szPoints; i++ )
-//     {
-//         const auto& refHomogenous = refFrame.m_frameFeatures[ i ]->m_homogenous;
-//         Eigen::Vector3d line = F * refHomogenous;
-//         double nu            = line( 0 ) * line( 0 ) + line( 1 ) * line( 1 );
-//         nu                   = 1 / std::sqrt( nu );
-//         line *= nu;
-//         line /= line(2);
-//         cv::circle( img, cv::Point2d( line.x(), line.y() ), 5.0, colors.at( "orange") );
-//     }
-// }
-
-void visualization::projectLinesWithRelativePose( cv::Mat& img, const Frame& refFrame, const Frame& curFrame, const uint32_t rangeInPixels )
+void visualization::projectLinesWithRelativePose(
+  cv::Mat& img,
+  const Frame& refFrame,
+  const Frame& curFrame,
+  const uint32_t rangeInPixels,
+  const std::string& color,
+  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
+    drawingFunctor )
 {
     const Sophus::SE3d relativePose = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
     const Eigen::Matrix3d E         = relativePose.rotationMatrix() * algorithm::hat( relativePose.translation() );
     const Eigen::Matrix3d F         = refFrame.m_camera->invK().transpose() * E * curFrame.m_camera->invK();
-    projectLinesWithF( img, refFrame, F, rangeInPixels );
+    projectLinesWithF( img, refFrame, F, rangeInPixels, color, drawingFunctor );
 }
 
-void visualization::projectLinesWithF( cv::Mat& img, const Frame& refFrame, const Eigen::Matrix3d& F, const uint32_t rangeInPixels )
+void visualization::projectLinesWithF(
+  cv::Mat& img,
+  const Frame& refFrame,
+  const Eigen::Matrix3d& F,
+  const uint32_t rangeInPixels,
+  const std::string& color,
+  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
+    drawingFunctor )
 {
+    cv::Scalar colorRGB;
+    if ( colors.find( color ) != colors.end() )
+        colorRGB = colors.at(color);
+    else
+        colorRGB = colors.at("white");
+    
     const auto szPoints = refFrame.numberObservation();
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
@@ -457,14 +478,26 @@ void visualization::projectLinesWithF( cv::Mat& img, const Frame& refFrame, cons
 
         pointMax.x() = pointCenter.x() + rangeInPixels;
         pointMax.y() = ( line( 0 ) * pointMax.x() + line( 2 ) ) / ( -line( 1 ) );
-        cv::line( img, cv::Point2d( pointMin.x(), pointMin.y() ), cv::Point2d( pointMax.x(), pointMax.y() ), colors.at( "amber" ) );
+        // cv::line( img, cv::Point2d( pointMin.x(), pointMin.y() ), cv::Point2d( pointMax.x(), pointMax.y() ), colors.at( "amber" ) );
+        drawingFunctor( img, pointMin, pointMax, colorRGB );
     }
 }
 
-void visualization::epipole( cv::Mat& img, const Frame& frame )
+void visualization::epipole(
+  cv::Mat& img,
+  const Frame& frame,
+  const u_int32_t radiusSize,
+  const std::string& color,
+  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >& drawingFunctor )
 {
+    cv::Scalar colorRGB;
+    if ( colors.find( color ) != colors.end() )
+        colorRGB = colors.at(color);
+    else
+        colorRGB = colors.at("white");
+
     const Eigen::Vector2d C = frame.camera2image( frame.cameraInWorld() );
-    cv::circle( img, cv::Point2d( C.x(), C.y() ), 8.0, colors.at( "red" ) );
+    drawingFunctor( img, C, radiusSize, colorRGB );
 }
 
 void visualization::stickTwoImageVertically( const cv::Mat& refImg, const cv::Mat& curImg, cv::Mat& img )

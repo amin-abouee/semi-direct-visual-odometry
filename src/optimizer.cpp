@@ -286,6 +286,7 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
 
         // t1 = std::chrono::high_resolution_clock::now();
         m_dx.noalias() = m_hessian.ldlt().solve( m_gradient );
+        // std::cout << "lambda: " << lambda << std::endl;
         // std::cout << "dx: " << m_dx.transpose() << std::endl;
         // pose updated here
         lambdaUpdateFunctor( pose, m_dx );
