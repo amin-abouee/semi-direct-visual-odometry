@@ -340,7 +340,7 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
 
 void visualization::featurePoints(
   cv::Mat& img,
-  const Frame& frame,
+  const std::shared_ptr<Frame>& frame,
   const u_int32_t radiusSize,
   const std::string& color,
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >& drawingFunctor )
@@ -351,15 +351,15 @@ void visualization::featurePoints(
     else
         colorRGB = colors.at("white");
     
-    const auto szPoints = frame.numberObservation();
+    const auto szPoints = frame->numberObservation();
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
-        const auto& feature = frame.m_frameFeatures[ i ]->m_feature;
+        const auto& feature = frame->m_frameFeatures[ i ]->m_feature;
         drawingFunctor( img, feature, radiusSize, colorRGB );
     }
 }
 
-void visualization::imageGrid( cv::Mat& img, const Frame& frame, const int32_t gridSize, const std::string& color )
+void visualization::imageGrid( cv::Mat& img, const std::shared_ptr<Frame>& frame, const int32_t gridSize, const std::string& color )
 {
     cv::Scalar colorRGB;
     if ( colors.find( color ) != colors.end() )
@@ -385,7 +385,7 @@ void visualization::imageGrid( cv::Mat& img, const Frame& frame, const int32_t g
 
 void visualization::project3DPoints(
   cv::Mat& img,
-  const Frame& frame,
+  const std::shared_ptr<Frame>& frame,
   const u_int32_t radiusSize,
   const std::string& color,
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >& drawingFunctor )
@@ -396,59 +396,59 @@ void visualization::project3DPoints(
     else
         colorRGB = colors.at("white");
 
-    const auto szPoints = frame.numberObservation();
+    const auto szPoints = frame->numberObservation();
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
-        const Eigen::Vector3d& point = frame.m_frameFeatures[ i ]->m_point->m_position;
-        const auto& feature          = frame.world2image( point );
+        const Eigen::Vector3d& point = frame->m_frameFeatures[ i ]->m_point->m_position;
+        const auto& feature          = frame->world2image( point );
         drawingFunctor( img, feature, radiusSize, colorRGB );
     }
 }
 
 void visualization::projectPointsWithRelativePose(
   cv::Mat& img,
-  const Frame& refFrame,
-  const Frame& curFrame,
+  const std::shared_ptr<Frame>& refFrame,
+  const std::shared_ptr<Frame>& curFrame,
   const u_int32_t radiusSize,
   const std::string& color,
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >& drawingFunctor )
 {
-    const Sophus::SE3d relativePose = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
+    const Sophus::SE3d relativePose = refFrame->m_TransW2F.inverse() * curFrame->m_TransW2F;
     // const Eigen::Matrix3d E      = relativePose.rotationMatrix() * algorithm::hat( relativePose.translation() );
     // const Eigen::Matrix3d F = refFrame.m_camera->invK().transpose() * E * curFrame.m_camera->invK();
     // projectPointsWithF(img, refFrame, F);
 
-    const auto szPoints     = refFrame.numberObservation();
-    const Eigen::Vector3d C = refFrame.cameraInWorld();
+    const auto szPoints     = refFrame->numberObservation();
+    const Eigen::Vector3d C = refFrame->cameraInWorld();
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
-        const auto& feature    = refFrame.m_frameFeatures[ i ];
+        const auto& feature    = refFrame->m_frameFeatures[ i ];
         const double depthNorm = ( feature->m_point->m_position - C ).norm();
         const Eigen::Vector3d refPoint( feature->m_bearingVec * depthNorm );
         const Eigen::Vector3d curPoint( relativePose * refPoint );
-        const Eigen::Vector2d curFeature( curFrame.camera2image( curPoint ) );
+        const Eigen::Vector2d curFeature( curFrame->camera2image( curPoint ) );
         drawingFunctor( img, curFeature, radiusSize, colors.at( color ) );
     }
 }
 
 void visualization::projectLinesWithRelativePose(
   cv::Mat& img,
-  const Frame& refFrame,
-  const Frame& curFrame,
+  const std::shared_ptr<Frame>& refFrame,
+  const std::shared_ptr<Frame>& curFrame,
   const uint32_t rangeInPixels,
   const std::string& color,
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
     drawingFunctor )
 {
-    const Sophus::SE3d relativePose = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
+    const Sophus::SE3d relativePose = refFrame->m_TransW2F.inverse() * curFrame->m_TransW2F;
     const Eigen::Matrix3d E         = relativePose.rotationMatrix() * algorithm::hat( relativePose.translation() );
-    const Eigen::Matrix3d F         = refFrame.m_camera->invK().transpose() * E * curFrame.m_camera->invK();
+    const Eigen::Matrix3d F         = refFrame->m_camera->invK().transpose() * E * curFrame->m_camera->invK();
     projectLinesWithF( img, refFrame, F, rangeInPixels, color, drawingFunctor );
 }
 
 void visualization::projectLinesWithF(
   cv::Mat& img,
-  const Frame& refFrame,
+  const std::shared_ptr<Frame>& refFrame,
   const Eigen::Matrix3d& F,
   const uint32_t rangeInPixels,
   const std::string& color,
@@ -461,10 +461,10 @@ void visualization::projectLinesWithF(
     else
         colorRGB = colors.at("white");
     
-    const auto szPoints = refFrame.numberObservation();
+    const auto szPoints = refFrame->numberObservation();
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
-        const auto& refHomogenous = refFrame.m_frameFeatures[ i ]->m_homogenous;
+        const auto& refHomogenous = refFrame->m_frameFeatures[ i ]->m_homogenous;
         Eigen::Vector3d line      = F * refHomogenous;
         double nu                 = line( 0 ) * line( 0 ) + line( 1 ) * line( 1 );
         nu                        = 1 / std::sqrt( nu );
@@ -485,7 +485,7 @@ void visualization::projectLinesWithF(
 
 void visualization::epipole(
   cv::Mat& img,
-  const Frame& frame,
+  const std::shared_ptr<Frame>& frame,
   const u_int32_t radiusSize,
   const std::string& color,
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >& drawingFunctor )
@@ -496,7 +496,7 @@ void visualization::epipole(
     else
         colorRGB = colors.at("white");
 
-    const Eigen::Vector2d C = frame.camera2image( frame.cameraInWorld() );
+    const Eigen::Vector2d C = frame->camera2image( frame->cameraInWorld() );
     drawingFunctor( img, C, radiusSize, colorRGB );
 }
 

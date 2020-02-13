@@ -22,13 +22,13 @@ ImageAlignment::ImageAlignment( uint32_t patchSize, int32_t minLevel, int32_t ma
     // std::cout << "c'tor image alignment" << std::endl;
 }
 
-double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
+double ImageAlignment::align( std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame )
 {
-    if ( refFrame.numberObservation() == 0 )
+    if ( refFrame->numberObservation() == 0 )
         return 0;
 
     // auto t1 = std::chrono::high_resolution_clock::now();
-    const std::size_t numFeatures  = refFrame.numberObservation();
+    const std::size_t numFeatures  = refFrame->numberObservation();
     const uint32_t numObservations = numFeatures * m_patchArea;
     m_refPatches                   = cv::Mat( numFeatures, m_patchArea, CV_32F );
     m_optimizer.initParameters( numObservations );
@@ -88,15 +88,15 @@ double ImageAlignment::align( Frame& refFrame, Frame& curFrame )
     // std::cout << "m_timerCheck: " << m_optimizer.m_timerCheck << std::endl;
     // std::cout << "m_timerFor: " << m_optimizer.m_timerFor << std::endl;
 
-    curFrame.m_TransW2F = refFrame.m_TransW2F * relativePose;
+    curFrame->m_TransW2F = refFrame->m_TransW2F * relativePose;
     return error;
 }
 
-void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
+void ImageAlignment::computeJacobian( std::shared_ptr<Frame>& frame, uint32_t level )
 {
     resetParameters();
     const int32_t border    = m_halfPatchSize + 2;
-    const cv::Mat& refImage = frame.m_imagePyramid.getImageAtLevel( level );
+    const cv::Mat& refImage = frame->m_imagePyramid.getImageAtLevel( level );
     // std::cout << "Type: " << refImage.type() << std::endl;
     // std::cout << "Image data:\n" << refImage << std::endl;
     const algorithm::MapXRowConst refImageEigen( refImage.ptr< uint8_t >(), refImage.rows, refImage.cols );
@@ -104,11 +104,11 @@ void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
     // const uint32_t stride       = refImage.cols;
     const double levelDominator = 1 << level;
     const double scale          = 1.0 / levelDominator;
-    const Eigen::Vector3d C     = frame.cameraInWorld();
-    const double fx             = frame.m_camera->fx() / levelDominator;
-    const double fy             = frame.m_camera->fy() / levelDominator;
+    const Eigen::Vector3d C     = frame->cameraInWorld();
+    const double fx             = frame->m_camera->fx() / levelDominator;
+    const double fy             = frame->m_camera->fy() / levelDominator;
     uint32_t cntFeature         = 0;
-    for ( const auto& feature : frame.m_frameFeatures )
+    for ( const auto& feature : frame->m_frameFeatures )
     {
         const double u     = feature->m_feature.x() * scale;
         const double v     = feature->m_feature.y() * scale;
@@ -127,7 +127,7 @@ void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
         const Eigen::Vector3d point( feature->m_bearingVec * depthNorm );
 
         /// just for test
-        const double depth = frame.world2camera( feature->m_point->m_position ).z();
+        const double depth = frame->world2camera( feature->m_point->m_position ).z();
         const Eigen::Vector3d newPoint( feature->m_homogenous * depth );
         ///
 
@@ -164,18 +164,18 @@ void ImageAlignment::computeJacobian( Frame& frame, uint32_t level )
 }
 
 // if we define the residual error as current image - reference image, we do not need to apply the negative for gradient
-uint32_t ImageAlignment::computeResiduals( Frame& refFrame, Frame& curFrame, uint32_t level, Sophus::SE3d& pose )
+uint32_t ImageAlignment::computeResiduals( std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame, uint32_t level, Sophus::SE3d& pose )
 {
-    const cv::Mat& curImage = curFrame.m_imagePyramid.getImageAtLevel( level );
+    const cv::Mat& curImage = curFrame->m_imagePyramid.getImageAtLevel( level );
     const algorithm::MapXRowConst curImageEigen( curImage.ptr< uint8_t >(), curImage.rows, curImage.cols );
     const int32_t border = m_halfPatchSize + 2;
     // const uint32_t stride            = curImage.cols;
     const double levelDominator      = 1 << level;
     const double scale               = 1.0 / levelDominator;
-    const Eigen::Vector3d C          = refFrame.cameraInWorld();
+    const Eigen::Vector3d C          = refFrame->cameraInWorld();
     uint32_t cntFeature              = 0;
     uint32_t cntTotalProjectedPixels = 0;
-    for ( const auto& feature : refFrame.m_frameFeatures )
+    for ( const auto& feature : refFrame->m_frameFeatures )
     {
         if ( m_refVisibility[ cntFeature ] == false )
         {
@@ -186,7 +186,7 @@ uint32_t ImageAlignment::computeResiduals( Frame& refFrame, Frame& curFrame, uin
         const double depthNorm = ( feature->m_point->m_position - C ).norm();
         const Eigen::Vector3d refPoint( feature->m_bearingVec * depthNorm );
         const Eigen::Vector3d curPoint( pose * refPoint );
-        const Eigen::Vector2d curFeature( curFrame.camera2image( curPoint ) );
+        const Eigen::Vector2d curFeature( curFrame->camera2image( curPoint ) );
         const double u     = curFeature.x() * scale;
         const double v     = curFeature.y() * scale;
         const int32_t uInt = static_cast< int32_t >( std::floor( u ) );

@@ -3,9 +3,9 @@
 
 uint64_t Frame::m_frameCounter;
 
-Frame::Frame( const PinholeCamera& camera, const cv::Mat& img )
+Frame::Frame( const std::shared_ptr<PinholeCamera>& camera, const cv::Mat& img )
     : m_id( m_frameCounter++ )
-    , m_camera( &camera )
+    , m_camera( camera )
     , m_TransW2F( Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero() )
     , m_imagePyramid( img, 4 )
     , m_keyFrame( false )

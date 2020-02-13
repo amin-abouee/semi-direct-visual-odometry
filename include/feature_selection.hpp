@@ -48,9 +48,9 @@ public:
     // D'tor
     ~FeatureSelection() = default;
 
-    void detectFeaturesWithSSC( Frame& frame, const uint32_t numberCandidate );
+    void detectFeaturesWithSSC( std::shared_ptr<Frame>& frame, const uint32_t numberCandidate );
 
-    void detectFeaturesInGrid( Frame& frame, const uint32_t gridSize );
+    void detectFeaturesInGrid( std::shared_ptr<Frame>& frame, const uint32_t gridSize );
 
     // std::vector< Feature > m_features;
     cv::Mat m_gradientMagnitude;
@@ -58,7 +58,7 @@ public:
 
 private:
     // Efficient adaptive non-maximal suppression algorithms for homogeneous spatial keypoint distribution
-    void Ssc( Frame& frame,
+    void Ssc( std::shared_ptr<Frame>& frame,
               const std::vector< cv::KeyPoint >& keyPoints,
               const uint32_t numRetPoints,
               const float tolerance,

@@ -313,7 +313,7 @@ int main( int argc, char* argv[] )
 
     const cv::Mat newImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000002.png" ), cv::IMREAD_GRAYSCALE );
     // Frame newFrame( camera, newImg );
-    system.processNextFrame(newImg);
+    system.processFrame(newImg);
     system.reportSummaryFrames();
     system.reportSummaryFeatures();
     // {

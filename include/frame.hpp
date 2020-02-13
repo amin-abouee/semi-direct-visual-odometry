@@ -30,7 +30,7 @@ public:
 EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     static uint64_t m_frameCounter;
     uint64_t m_id;
-    const PinholeCamera* m_camera;
+    const std::shared_ptr<PinholeCamera> m_camera;
     // std::reference_wrapper<PinholeCamera> m_camera;
     Sophus::SE3d m_TransW2F;
     Eigen::Matrix< double, 6, 6 > m_covPose;
@@ -39,7 +39,7 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     bool m_keyFrame;
 
     // C'tor
-    explicit Frame( const PinholeCamera& camera, const cv::Mat& img );
+    explicit Frame( const std::shared_ptr<PinholeCamera>& camera, const cv::Mat& img );
     // Copy C'tor
     Frame( const Frame& rhs ) = delete;  // non construction-copyable
     // move C'tor

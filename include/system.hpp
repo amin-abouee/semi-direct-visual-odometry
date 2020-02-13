@@ -30,7 +30,7 @@ public:
 
     void processFirstFrame(const cv::Mat& firstImg);
     void processSecondFrame(const cv::Mat& secondImg);
-    void processNextFrame(const cv::Mat& newImg);
+    void processFrame(const cv::Mat& newImg);
 
     void reportSummaryFrames();
     void reportSummaryFeatures();

@@ -24,7 +24,7 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     static uint64_t m_featureCounter;
     uint64_t m_id;
-    Frame* m_frame;
+    std::shared_ptr<Frame> m_frame;
     FeatureType m_type;
     Eigen::Vector2d m_feature;
     Eigen::Vector3d m_homogenous;
@@ -34,8 +34,8 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     double m_gradientMagnitude;
     std::shared_ptr<Point> m_point;
 
-    explicit Feature( Frame& frame, const Eigen::Vector2d& feature, const uint8_t level );
-    explicit Feature( Frame& frame,
+    explicit Feature( const std::shared_ptr<Frame>& frame, const Eigen::Vector2d& feature, const uint8_t level );
+    explicit Feature( const std::shared_ptr<Frame>& frame,
                       const Eigen::Vector2d& feature,
                       const double gradientMagnitude,
                       const double m_gradientOrientation,

@@ -93,18 +93,18 @@ void drawHistogram( std::map< std::string, std::any >& pack );
 
 void featurePoints(
   cv::Mat& img,
-  const Frame& frame,
+  const std::shared_ptr<Frame>& frame,
   const u_int32_t radiusSize,
   const std::string& color,
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >&
     drawingFunctor );
 
 /// visualize feature points in any input image (for instance on HSV image)
-void imageGrid( cv::Mat& img, const Frame& frame, const int32_t gridSize, const std::string& color );
+void imageGrid( cv::Mat& img, const std::shared_ptr<Frame>& frame, const int32_t gridSize, const std::string& color );
 
 void project3DPoints(
   cv::Mat& img,
-  const Frame& frame,
+  const std::shared_ptr<Frame>& frame,
   const u_int32_t radiusSize,
   const std::string& color,
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >&
@@ -112,8 +112,8 @@ void project3DPoints(
 
 void projectPointsWithRelativePose(
   cv::Mat& img,
-  const Frame& refFrame,
-  const Frame& curFrame,
+  const std::shared_ptr<Frame>& refFrame,
+  const std::shared_ptr<Frame>& curFrame,
   const u_int32_t radiusSize,
   const std::string& color,
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >&
@@ -121,8 +121,8 @@ void projectPointsWithRelativePose(
 
 void projectLinesWithRelativePose(
   cv::Mat& img,
-  const Frame& refFrame,
-  const Frame& curFrame,
+  const std::shared_ptr<Frame>& refFrame,
+  const std::shared_ptr<Frame>& curFrame,
   const uint32_t rangeInPixels,
   const std::string& color,
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
@@ -130,7 +130,7 @@ void projectLinesWithRelativePose(
 
 void projectLinesWithF(
   cv::Mat& img,
-  const Frame& refFrame,
+  const std::shared_ptr<Frame>& refFrame,
   const Eigen::Matrix3d& F,
   const uint32_t rangeInPixels,
   const std::string& color,
@@ -138,7 +138,7 @@ void projectLinesWithF(
     drawingFunctor );
 
 void epipole( cv::Mat& img,
-              const Frame& frame,
+              const std::shared_ptr<Frame>& frame,
               const u_int32_t radiusSize,
               const std::string& color,
               const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >&

@@ -21,7 +21,7 @@
 // | CV_64F |  6 | 14 | 22 | 30 |   38 |   46 |   54 |   62 |
 // +--------+----+----+----+----+------+------+------+------+
 
-// void algorithm::pointsRefCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsRefCamera )
+// void algorithm::pointsRefCamera( const std::shared_ptr<Frame>& refFrame, const std::shared_ptr<Frame>& curFrame, Eigen::MatrixXd& pointsRefCamera )
 // {
 //     const auto featureSz = refFrame.numberObservation();
 //     Eigen::Vector2d refFeature;
@@ -36,7 +36,7 @@
 //     }
 // }
 
-// void algorithm::pointsCurCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsCurCamera )
+// void algorithm::pointsCurCamera( const std::shared_ptr<Frame>& refFrame, const std::shared_ptr<Frame>& curFrame, Eigen::MatrixXd& pointsCurCamera )
 // {
 //     const auto featureSz = refFrame.numberObservation();
 //     Eigen::Vector2d refFeature;
@@ -51,85 +51,85 @@
 //     }
 // }
 
-void algorithm::points3DWorld( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsWorld )
+void algorithm::points3DWorld( const std::shared_ptr<Frame>& refFrame, const std::shared_ptr<Frame>& curFrame, Eigen::MatrixXd& pointsWorld )
 {
-    const auto featureSz = refFrame.numberObservation();
+    const auto featureSz = refFrame->numberObservation();
     // Eigen::Vector2d refFeature;
     // Eigen::Vector2d curFeature;
     Eigen::Vector3d pointWorld;
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
-        const Eigen::Vector2d refFeature = refFrame.m_frameFeatures[ i ]->m_feature;
-        const Eigen::Vector2d curFeature = curFrame.m_frameFeatures[ i ]->m_feature;
+        const Eigen::Vector2d refFeature = refFrame->m_frameFeatures[ i ]->m_feature;
+        const Eigen::Vector2d curFeature = curFrame->m_frameFeatures[ i ]->m_feature;
         triangulatePointDLT( refFrame, curFrame, refFeature, curFeature, pointWorld );
         pointsWorld.col( i ) = pointWorld;
         // pointsCurCamera.col( i ) = curFrame.world2camera( pointWorld );
     }
 }
 
-void algorithm::transferPointsWorldToCam( const Frame& frame, const Eigen::MatrixXd& pointsWorld, Eigen::MatrixXd& pointsCamera )
+void algorithm::transferPointsWorldToCam( const std::shared_ptr<Frame>& frame, const Eigen::MatrixXd& pointsWorld, Eigen::MatrixXd& pointsCamera )
 {
-    const auto featureSz = frame.numberObservation();
+    const auto featureSz = frame->numberObservation();
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
-        pointsCamera.col( i ) = frame.world2camera( pointsWorld.col( i ) );
+        pointsCamera.col( i ) = frame->world2camera( pointsWorld.col( i ) );
     }
 }
 
-void algorithm::transferPointsCamToWorld( const Frame& frame, const Eigen::MatrixXd& pointsCamera, Eigen::MatrixXd& pointsWorld )
+void algorithm::transferPointsCamToWorld( const std::shared_ptr<Frame>& frame, const Eigen::MatrixXd& pointsCamera, Eigen::MatrixXd& pointsWorld )
 {
-    const auto featureSz = frame.numberObservation();
+    const auto featureSz = frame->numberObservation();
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
-        pointsWorld.col( i ) = frame.camera2world( pointsCamera.col( i ) );
+        pointsWorld.col( i ) = frame->camera2world( pointsCamera.col( i ) );
     }
 }
 
-void algorithm::normalizedDepthCamera( const Frame& frame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& normalizedDepthCamera )
+void algorithm::normalizedDepthCamera( const std::shared_ptr<Frame>& frame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& normalizedDepthCamera )
 {
-    const auto featureSz = frame.numberObservation();
+    const auto featureSz = frame->numberObservation();
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
-        normalizedDepthCamera( i ) = frame.world2camera( pointsWorld.col( i ) ).norm();
+        normalizedDepthCamera( i ) = frame->world2camera( pointsWorld.col( i ) ).norm();
     }
 }
 
-void algorithm::normalizedDepthCamera( const Frame& frame, Eigen::VectorXd& normalizedDepthCamera )
+void algorithm::normalizedDepthCamera( const std::shared_ptr<Frame>& frame, Eigen::VectorXd& normalizedDepthCamera )
 {
-    const auto featureSz = frame.numberObservation();
+    const auto featureSz = frame->numberObservation();
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
-        normalizedDepthCamera( i ) = frame.world2camera( frame.m_frameFeatures[ i ]->m_point->m_position ).norm();
+        normalizedDepthCamera( i ) = frame->world2camera( frame->m_frameFeatures[ i ]->m_point->m_position ).norm();
     }
 }
 
-void algorithm::depthCamera( const Frame& frame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& depthCamera )
+void algorithm::depthCamera( const std::shared_ptr<Frame>& frame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& depthCamera )
 {
-    const auto featureSz = frame.numberObservation();
+    const auto featureSz = frame->numberObservation();
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
-        depthCamera( i ) = frame.world2camera( pointsWorld.col( i ) ).z();
+        depthCamera( i ) = frame->world2camera( pointsWorld.col( i ) ).z();
     }
 }
 
-void algorithm::depthCamera( const Frame& frame, Eigen::VectorXd& depthCamera )
+void algorithm::depthCamera( const std::shared_ptr<Frame>& frame, Eigen::VectorXd& depthCamera )
 {
-    const auto featureSz = frame.numberObservation();
+    const auto featureSz = frame->numberObservation();
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
-        depthCamera( i ) = frame.world2camera( frame.m_frameFeatures[ i ]->m_point->m_position ).z();
+        depthCamera( i ) = frame->world2camera( frame->m_frameFeatures[ i ]->m_point->m_position ).z();
     }
 }
 
-void algorithm::triangulatePointHomogenousDLT( const Frame& refFrame,
-                                               const Frame& curFrame,
+void algorithm::triangulatePointHomogenousDLT( const std::shared_ptr<Frame>& refFrame,
+                                               const std::shared_ptr<Frame>& curFrame,
                                                const Eigen::Vector2d& refFeature,
                                                const Eigen::Vector2d& curFeature,
                                                Eigen::Vector3d& point )
 {
     Eigen::MatrixXd A( 4, 4 );
-    const Eigen::Matrix< double, 3, 4 > P1 = refFrame.m_camera->K() * refFrame.m_TransW2F.matrix3x4();
-    const Eigen::Matrix< double, 3, 4 > P2 = curFrame.m_camera->K() * curFrame.m_TransW2F.matrix3x4();
+    const Eigen::Matrix< double, 3, 4 > P1 = refFrame->m_camera->K() * refFrame->m_TransW2F.matrix3x4();
+    const Eigen::Matrix< double, 3, 4 > P2 = curFrame->m_camera->K() * curFrame->m_TransW2F.matrix3x4();
 
     A.row( 0 ) = ( refFeature.x() * P1.row( 2 ) ) - P1.row( 0 );
     A.row( 1 ) = ( refFeature.y() * P1.row( 2 ) ) - P1.row( 1 );
@@ -161,15 +161,15 @@ void algorithm::triangulatePointHomogenousDLT( const Frame& refFrame,
     point = res.head( 2 );
 }
 
-void algorithm::triangulatePointDLT( const Frame& refFrame,
-                                     const Frame& curFrame,
+void algorithm::triangulatePointDLT( const std::shared_ptr<Frame>& refFrame,
+                                     const std::shared_ptr<Frame>& curFrame,
                                      const Eigen::Vector2d& refFeature,
                                      const Eigen::Vector2d& curFeature,
                                      Eigen::Vector3d& point )
 {
     Eigen::MatrixXd A( 4, 3 );
-    const Eigen::Matrix< double, 3, 4 > P1 = refFrame.m_camera->K() * refFrame.m_TransW2F.matrix3x4();
-    const Eigen::Matrix< double, 3, 4 > P2 = curFrame.m_camera->K() * curFrame.m_TransW2F.matrix3x4();
+    const Eigen::Matrix< double, 3, 4 > P1 = refFrame->m_camera->K() * refFrame->m_TransW2F.matrix3x4();
+    const Eigen::Matrix< double, 3, 4 > P2 = curFrame->m_camera->K() * curFrame->m_TransW2F.matrix3x4();
 
     A.row( 0 ) << P1( 0, 0 ) - refFeature.x() * P1( 2, 0 ), P1( 0, 1 ) - refFeature.x() * P1( 2, 1 ),
       P1( 0, 2 ) - refFeature.x() * P1( 2, 2 );
@@ -239,7 +239,7 @@ void algorithm::decomposeEssentialMatrix( const Eigen::Matrix3d& E, Eigen::Matri
     // std::cout << "t: " << tc << std::endl;
 }
 
-void algorithm::recoverPose( const Eigen::Matrix3d& E, const Frame& refFrame, Frame& curFrame, Eigen::Matrix3d& R, Eigen::Vector3d& t )
+void algorithm::recoverPose( const Eigen::Matrix3d& E, const std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame, Eigen::Matrix3d& R, Eigen::Vector3d& t )
 {
     Eigen::Matrix3d R1;
     Eigen::Matrix3d R2;
@@ -265,15 +265,15 @@ void algorithm::recoverPose( const Eigen::Matrix3d& E, const Frame& refFrame, Fr
     {
         Eigen::Vector3d point1;
         Eigen::Vector3d point2;
-        curFrame.m_TransW2F = refFrame.m_TransW2F * poses[ i ];
-        triangulatePointDLT( refFrame, curFrame, refFrame.m_frameFeatures[ 0 ]->m_feature, curFrame.m_frameFeatures[ 0 ]->m_feature,
+        curFrame->m_TransW2F = refFrame->m_TransW2F * poses[ i ];
+        triangulatePointDLT( refFrame, curFrame, refFrame->m_frameFeatures[ 0 ]->m_feature, curFrame->m_frameFeatures[ 0 ]->m_feature,
                              point1 );
-        triangulatePointDLT( refFrame, curFrame, refFrame.m_frameFeatures[ 1 ]->m_feature, curFrame.m_frameFeatures[ 1 ]->m_feature,
+        triangulatePointDLT( refFrame, curFrame, refFrame->m_frameFeatures[ 1 ]->m_feature, curFrame->m_frameFeatures[ 1 ]->m_feature,
                              point2 );
-        Eigen::Vector3d refProject1 = refFrame.world2camera( point1 );
-        Eigen::Vector3d curProject1 = curFrame.world2camera( point1 );
-        Eigen::Vector3d refProject2 = refFrame.world2camera( point2 );
-        Eigen::Vector3d curProject2 = curFrame.world2camera( point2 );
+        Eigen::Vector3d refProject1 = refFrame->world2camera( point1 );
+        Eigen::Vector3d curProject1 = curFrame->world2camera( point1 );
+        Eigen::Vector3d refProject2 = refFrame->world2camera( point2 );
+        Eigen::Vector3d curProject2 = curFrame->world2camera( point2 );
         // std::cout << "output projct left corner, ref: " << refProject1.z() << ", cur: " << curProject1.z() <<
         // std::endl; std::cout << "output projct right corner, ref: " << refProject2.z() << ", cur: " <<
         // curProject2.z() << std::endl;
@@ -288,10 +288,10 @@ void algorithm::recoverPose( const Eigen::Matrix3d& E, const Frame& refFrame, Fr
     }
 }
 
-Sophus::SE3d algorithm::computeRelativePose( const Frame& refFrame, const Frame& curFrame )
+Sophus::SE3d algorithm::computeRelativePose( const std::shared_ptr<Frame>& refFrame, const std::shared_ptr<Frame>& curFrame )
 {
     // T_K-1_K = T_K-1_W * T_W_K
-    return refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
+    return refFrame->m_TransW2F.inverse() * curFrame->m_TransW2F;
 }
 
 // bool algorithm::checkCheirality()

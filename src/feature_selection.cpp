@@ -67,7 +67,7 @@ FeatureSelection::FeatureSelection(const cv::Mat& imgGray)
 //     m_features.reserve(numberFeatures * 2);
 // }
 
-void FeatureSelection::Ssc( Frame& frame,
+void FeatureSelection::Ssc( std::shared_ptr<Frame>& frame,
                             const std::vector< cv::KeyPoint >& keyPoints,
                             const uint32_t numRetPoints,
                             const float tolerance,
@@ -156,15 +156,15 @@ void FeatureSelection::Ssc( Frame& frame,
         const auto& kp = keyPoints[ ResultVec[ i ] ];
         std::unique_ptr< Feature > feature = std::make_unique< Feature >(
           frame, Eigen::Vector2d( kp.pt.x, kp.pt.y ), kp.response, kp.angle, 0 );
-        frame.addFeature(feature);
+        frame->addFeature(feature);
     }
 }
 
-void FeatureSelection::detectFeaturesWithSSC( Frame& frame, const uint32_t numberCandidate )
+void FeatureSelection::detectFeaturesWithSSC( std::shared_ptr<Frame>& frame, const uint32_t numberCandidate )
 {
     // const cv::Mat imgGray = frame.m_imagePyramid.getBaseImage();
-    const int width  = frame.m_camera->width();
-    const int height = frame.m_camera->height();
+    const int width  = frame->m_camera->width();
+    const int height = frame->m_camera->height();
 
     std::vector< cv::KeyPoint > keyPoints;
     keyPoints.reserve( 10 * numberCandidate );
@@ -190,10 +190,10 @@ void FeatureSelection::detectFeaturesWithSSC( Frame& frame, const uint32_t numbe
 }
 
 
-void FeatureSelection::detectFeaturesInGrid( Frame& frame, const uint32_t gridSize )
+void FeatureSelection::detectFeaturesInGrid( std::shared_ptr<Frame>& frame, const uint32_t gridSize )
 {
-    const uint32_t width  = frame.m_camera->width();
-    const uint32_t height = frame.m_camera->height();
+    const uint32_t width  = frame->m_camera->width();
+    const uint32_t height = frame->m_camera->height();
 
     const uint32_t cols = width / gridSize + 1;
     const uint32_t rows = height / gridSize + 1;
@@ -283,7 +283,7 @@ void FeatureSelection::detectFeaturesInGrid( Frame& frame, const uint32_t gridSi
                         frame, Eigen::Vector2d( colIdx, rowIdx ), 
                         m_gradientMagnitude.at< float >( rowIdx, colIdx ),  
                         m_gradientOrientation.at< float >( rowIdx, colIdx ), 0 );
-                frame.addFeature(feature);
+                frame->addFeature(feature);
             }
         }
     }

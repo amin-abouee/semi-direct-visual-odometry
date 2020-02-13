@@ -3,9 +3,9 @@
 uint64_t Feature::m_featureCounter;
 
 
-Feature::Feature( Frame& frame, const Eigen::Vector2d& feature, const uint8_t level )
+Feature::Feature( const std::shared_ptr<Frame>& frame, const Eigen::Vector2d& feature, const uint8_t level )
     : m_id( m_featureCounter++ )
-    , m_frame( &frame )
+    , m_frame( frame )
     , m_type(FeatureType::EDGELET)
     , m_feature( feature )
     , m_homogenous (feature.x(), feature.y(), 1.0)
@@ -17,13 +17,13 @@ Feature::Feature( Frame& frame, const Eigen::Vector2d& feature, const uint8_t le
 {
 }
 
-Feature::Feature( Frame& frame,
+Feature::Feature( const std::shared_ptr<Frame>& frame,
                   const Eigen::Vector2d& feature,
                   const double gradientMagnitude,
                   const double gradientOrientation,
                   const uint8_t level )
     : m_id( m_featureCounter++ )
-    , m_frame( &frame )
+    , m_frame( frame )
     , m_type(FeatureType::EDGELET)
     , m_feature( feature )
     , m_homogenous (feature.x(), feature.y(), 1.0)

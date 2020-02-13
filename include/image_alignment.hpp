@@ -20,7 +20,7 @@ public:
     ImageAlignment& operator=( ImageAlignment&& rhs );
     ~ImageAlignment()       = default;
 
-    double align( Frame& refFrame, Frame& curFrame );
+    double align( std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame );
 
     // Matrix<double, 6, 6> getFisherInformation();
 
@@ -32,15 +32,13 @@ private:
     int32_t m_minLevel;
     int32_t m_maxLevel;
 
-    // Eigen::Matrix< double, Eigen::Dynamic, 6 > m_jacobian;
-    // Eigen::VectorXd m_residual;
     Optimizer m_optimizer;
     cv::Mat m_refPatches;
     std::vector< bool > m_refVisibility;
     // std::vector< bool > m_curVisibility;
 
-    void computeJacobian( Frame& frame, uint32_t level );
-    uint32_t computeResiduals( Frame& refFrame, Frame& curFrame, uint32_t level, Sophus::SE3d& pose );
+    void computeJacobian( std::shared_ptr<Frame>& frame, uint32_t level );
+    uint32_t computeResiduals( std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame, uint32_t level, Sophus::SE3d& pose );
     void computeImageJac( Eigen::Matrix< double, 2, 6 >& imageJac, const Eigen::Vector3d& point, const double fx, const double fy );
     void update( Sophus::SE3d& pose, const Eigen::VectorXd& dx );
     void resetParameters();

@@ -35,11 +35,11 @@ System::System( Config& config ) : m_config( &config )
 
 void System::processFirstFrame( const cv::Mat& firstImg )
 {
-    m_refFrame = std::make_shared< Frame >( *m_camera, firstImg );
+    m_refFrame = std::make_shared< Frame >( m_camera, firstImg );
     // Frame refFrame( camera, refImg );
     m_featureSelection = std::make_unique< FeatureSelection >( m_refFrame->m_imagePyramid.getBaseImage() );
     // FeatureSelection featureSelection( m_refFrame->m_imagePyramid.getBaseImage() );
-    m_featureSelection->detectFeaturesInGrid( *m_refFrame, m_config->m_gridPixelSize );
+    m_featureSelection->detectFeaturesInGrid( m_refFrame, m_config->m_gridPixelSize );
 
     m_refFrame->setKeyframe();
     m_allKeyFrames.emplace_back( m_refFrame );
@@ -47,25 +47,25 @@ void System::processFirstFrame( const cv::Mat& firstImg )
 
 void System::processSecondFrame( const cv::Mat& secondImg )
 {
-    m_curFrame = std::make_shared< Frame >( *m_camera, secondImg );
+    m_curFrame = std::make_shared< Frame >( m_camera, secondImg );
 
     Eigen::Matrix3d E;
     Eigen::Matrix3d F;
     Eigen::Matrix3d R;
     Eigen::Vector3d t;
 
-    Matcher::computeOpticalFlowSparse( *m_refFrame, *m_curFrame, m_config->m_patchSizeOpticalFlow );
-    Matcher::computeEssentialMatrix( *m_refFrame, *m_curFrame, 1.0, E );
+    Matcher::computeOpticalFlowSparse( m_refFrame, m_curFrame, m_config->m_patchSizeOpticalFlow );
+    Matcher::computeEssentialMatrix( m_refFrame, m_curFrame, 1.0, E );
     F = m_curFrame->m_camera->invK().transpose() * E * m_refFrame->m_camera->invK();
-    algorithm::recoverPose( E, *m_refFrame, *m_curFrame, R, t );
+    algorithm::recoverPose( E, m_refFrame, m_curFrame, R, t );
 
     std::size_t numObserves = m_curFrame->numberObservation();
     Eigen::MatrixXd pointsWorld( 3, numObserves );
     Eigen::MatrixXd pointsCurCamera( 3, numObserves );
     Eigen::VectorXd depthCurFrame( numObserves );
-    algorithm::points3DWorld( *m_refFrame, *m_curFrame, pointsWorld );
-    algorithm::transferPointsWorldToCam( *m_curFrame, pointsWorld, pointsCurCamera );
-    algorithm::depthCamera( *m_curFrame, pointsWorld, depthCurFrame );
+    algorithm::points3DWorld( m_refFrame, m_curFrame, pointsWorld );
+    algorithm::transferPointsWorldToCam( m_curFrame, pointsWorld, pointsCurCamera );
+    algorithm::depthCamera( m_curFrame, pointsWorld, depthCurFrame );
     double medianDepth = algorithm::computeMedian( depthCurFrame );
     const double scale = 1.0 / medianDepth;
     m_curFrame->m_TransW2F.translation() =
@@ -73,7 +73,7 @@ void System::processSecondFrame( const cv::Mat& secondImg )
       ( m_refFrame->cameraInWorld() + scale * ( m_curFrame->cameraInWorld() - m_refFrame->cameraInWorld() ) );
 
     pointsCurCamera *= scale;
-    algorithm::transferPointsCamToWorld( *m_curFrame, pointsCurCamera, pointsWorld );
+    algorithm::transferPointsCamToWorld( m_curFrame, pointsCurCamera, pointsWorld );
     uint32_t cnt = 0;
     for ( std::size_t i( 0 ); i < numObserves; i++ )
     {
@@ -102,7 +102,7 @@ void System::processSecondFrame( const cv::Mat& secondImg )
 
     numObserves = m_refFrame->numberObservation();
     Eigen::VectorXd newCurDepths( numObserves );
-    algorithm::depthCamera( *m_curFrame, newCurDepths );
+    algorithm::depthCamera( m_curFrame, newCurDepths );
     medianDepth           = algorithm::computeMedian( newCurDepths );
     const double minDepth = newCurDepths.minCoeff();
     // std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
@@ -110,28 +110,28 @@ void System::processSecondFrame( const cv::Mat& secondImg )
     m_allKeyFrames.emplace_back( m_curFrame );
 }
 
-void System::processNextFrame( const cv::Mat& newImg )
+void System::processFrame( const cv::Mat& newImg )
 {
-    // std::cout << "counter: " << m_refFrame.use_count() << std::endl;
+    // https://docs.microsoft.com/en-us/cpp/cpp/how-to-create-and-use-shared-ptr-instances?view=vs-2019
     m_refFrame = std::move( m_curFrame );
     std::cout << "counter ref: " << m_refFrame.use_count() << std::endl;
-    m_curFrame = std::make_shared< Frame >( *m_camera, newImg );
+    m_curFrame = std::make_shared< Frame >( m_camera, newImg );
     std::cout << "counter cur: " << m_curFrame.use_count() << std::endl;
 
     ImageAlignment match( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid, m_config->m_maxLevelImagePyramid, 6 );
     auto t1 = std::chrono::high_resolution_clock::now();
-    match.align( *m_refFrame, *m_curFrame );
+    match.align( m_refFrame, m_curFrame );
     auto t2 = std::chrono::high_resolution_clock::now();
     std::cout << "Elapsed time for alignment: " << std::chrono::duration_cast< std::chrono::microseconds >( t2 - t1 ).count()
               << " micro sec" << std::endl;
     {
         cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
         cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
-        visualization::featurePoints( refBGR, *m_refFrame, 11, "pink", visualization::drawingRectangle );
+        visualization::featurePoints( refBGR, m_refFrame, 11, "pink", visualization::drawingRectangle );
         // visualization::featurePointsInGrid(curBGR, curFrame, 50);
         // visualization::featurePoints(newBGR, newFrame);
         // visualization::project3DPoints(curBGR, curFrame);
-        visualization::projectPointsWithRelativePose( curBGR, *m_refFrame, *m_curFrame, 8, "orange", visualization::drawingCircle );
+        visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 8, "orange", visualization::drawingCircle );
         cv::Mat stickImg;
         visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
         cv::imshow( "both_image_1_2_optimization", stickImg );
@@ -144,7 +144,7 @@ void System::processNextFrame( const cv::Mat& newImg )
         const auto& curFeature                = m_curFrame->world2image( point );
         if ( m_curFrame->m_camera->isInFrame( curFeature, 5.0 ) == true )
         {
-            std::unique_ptr< Feature > newFeature = std::make_unique< Feature >( *m_curFrame, curFeature, 0.0 );
+            std::unique_ptr< Feature > newFeature = std::make_unique< Feature >( m_curFrame, curFeature, 0.0 );
             m_curFrame->addFeature(newFeature);
             m_curFrame->m_frameFeatures.back()->setPoint( refFeatures->m_point );
         }
