@@ -2,6 +2,7 @@
 #define __IMAGE_ALIGNMENT_HPP__
 
 #include <iostream>
+#include <memory>
 #include <vector>
 
 #include <Eigen/Core>

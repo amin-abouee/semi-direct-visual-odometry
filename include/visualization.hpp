@@ -12,8 +12,9 @@
 #ifndef __VISUALIZATION_H__
 #define __VISUALIZATION_H__
 
-#include <any>
 #include <iostream>
+#include <memory>
+#include <any>
 #include <string>
 #include <unordered_map>
 
@@ -22,21 +23,6 @@
 
 #include "frame.hpp"
 #include "matplotlibcpp.h"
-// class Visualization final
-// {
-// public:
-//     // C'tor
-//     explicit Visualization() = default;
-//     // Copy C'tor
-//     Visualization( const Visualization& rhs ) = default;
-//     // move C'tor
-//     Visualization( Visualization&& rhs ) = default;
-//     // Copy assignment operator
-//     Visualization& operator=( const Visualization& rhs ) = default;
-//     // move assignment operator
-//     Visualization& operator=( Visualization&& rhs ) = default;
-//     // D'tor
-//     ~Visualization() = default;
 
 namespace visualization
 {

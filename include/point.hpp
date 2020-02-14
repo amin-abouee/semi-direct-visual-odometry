@@ -2,6 +2,7 @@
 #define __POINT_HPP__
 
 #include <iostream>
+#include <memory>
 #include <vector>
 
 #include <Eigen/Core>
@@ -26,19 +27,19 @@ public:
     Eigen::Vector3d m_normal;
     Eigen::Matrix3d m_normalCov;
     bool isNormalEstimated;
-    std::vector< Feature* > m_features;
+    std::vector< std::shared_ptr<Feature> > m_features;
     uint32_t m_numSuccessProjection;
     PointType m_type;
 
     explicit Point(const Eigen::Vector3d& point3D);
-    explicit Point(const Eigen::Vector3d& point3D, Feature* feature);
+    explicit Point(const Eigen::Vector3d& point3D, const std::shared_ptr<Feature>&  feature);
     Point( const Point& rhs ) = delete;
     Point( Point&& rhs )      = delete;
     Point& operator=( const Point& rhs ) = delete;
     Point& operator=( Point&& rhs ) = delete;
     ~Point()                        = default;
 
-    void addFeature(Feature* feature);
+    void addFeature(const std::shared_ptr<Feature>& feature);
 
     void computeNormal();
 

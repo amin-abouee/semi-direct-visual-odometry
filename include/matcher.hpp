@@ -13,6 +13,8 @@
 #define __MATCHER_H__
 
 #include <iostream>
+#include <memory>
+
 #include "frame.hpp"
 
 // class Matcher final

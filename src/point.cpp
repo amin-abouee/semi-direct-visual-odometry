@@ -11,7 +11,7 @@ Point::Point( const Eigen::Vector3d& point3D )
 {
 }
 
-Point::Point(const Eigen::Vector3d& point3D, Feature* feature)
+Point::Point(const Eigen::Vector3d& point3D, const std::shared_ptr<Feature>& feature)
     : m_id( m_pointCounter++ )
     , m_position( point3D )
     , isNormalEstimated( false )
@@ -21,7 +21,7 @@ Point::Point(const Eigen::Vector3d& point3D, Feature* feature)
     m_features.push_back(feature);
 }
 
-void Point::addFeature(Feature* feature)
+void Point::addFeature(const std::shared_ptr<Feature>& feature)
 {
     m_features.push_back(feature);
     m_numSuccessProjection++;

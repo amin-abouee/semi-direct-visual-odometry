@@ -2,6 +2,7 @@
 #define __ALGORITHM_HPP__
 
 #include <iostream>
+#include <memory>
 
 #include <Eigen/Core>
 

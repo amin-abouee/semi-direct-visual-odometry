@@ -7,6 +7,8 @@
 #include "config.hpp"
 
 #include <iostream>
+#include <memory>
+#include <iomanip>
 #include <opencv2/core.hpp>
 #include <Eigen/Core>
 #include <nlohmann/json.hpp>
@@ -17,7 +19,6 @@ public:
     std::shared_ptr<PinholeCamera> m_camera;
     std::shared_ptr<Frame> m_refFrame;
     std::shared_ptr<Frame> m_curFrame;
-    // std::shared_ptr<Frame> m_newFrame;
     std::unique_ptr<FeatureSelection> m_featureSelection;
     std::vector < std::shared_ptr<Frame> > m_allKeyFrames;
 
