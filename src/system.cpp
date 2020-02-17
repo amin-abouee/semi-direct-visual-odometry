@@ -42,6 +42,7 @@ void System::processFirstFrame( const cv::Mat& firstImg )
     m_featureSelection->detectFeaturesInGrid( m_refFrame, m_config->m_gridPixelSize );
 
     m_refFrame->setKeyframe();
+    std::cout << "Number of Features: " << m_refFrame->numberObservation() << std::endl;
     m_allKeyFrames.emplace_back( m_refFrame );
 }
 
@@ -107,16 +108,17 @@ void System::processSecondFrame( const cv::Mat& secondImg )
     const double minDepth = newCurDepths.minCoeff();
     // std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
     m_curFrame->setKeyframe();
+    std::cout << "Number of Features: " << m_curFrame->numberObservation() << std::endl;
     m_allKeyFrames.emplace_back( m_curFrame );
 }
 
-void System::processFrame( const cv::Mat& newImg )
+void System::processNewFrame( const cv::Mat& newImg )
 {
     // https://docs.microsoft.com/en-us/cpp/cpp/how-to-create-and-use-shared-ptr-instances?view=vs-2019
     m_refFrame = std::move( m_curFrame );
-    std::cout << "counter ref: " << m_refFrame.use_count() << std::endl;
+    // std::cout << "counter ref: " << m_refFrame.use_count() << std::endl;
     m_curFrame = std::make_shared< Frame >( m_camera, newImg );
-    std::cout << "counter cur: " << m_curFrame.use_count() << std::endl;
+    // std::cout << "counter cur: " << m_curFrame.use_count() << std::endl;
 
     ImageAlignment match( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid, m_config->m_maxLevelImagePyramid, 6 );
     auto t1 = std::chrono::high_resolution_clock::now();
@@ -149,10 +151,8 @@ void System::processFrame( const cv::Mat& newImg )
             m_curFrame->m_frameFeatures.back()->setPoint( refFeatures->m_point );
         }
     }
-
+    std::cout << "Number of Features: " << m_curFrame->numberObservation() << std::endl;
     m_allKeyFrames.emplace_back( m_curFrame );
-    // for ( const auto& ptr : m_allKeyFrames )
-    //     std::cout << "idx: " << ptr->m_id << ", counter: " << ptr.use_count() << std::endl;
 }
 
 void System::reportSummaryFrames()
