@@ -6,6 +6,9 @@
 #include <any>
 #include <opencv2/core/eigen.hpp>
 
+#include "easylogging++.h"
+#define Optimizer_Log( LEVEL ) CLOG( LEVEL, "Optimizer" )
+
 Optimizer::Optimizer( const u_int32_t numUnknowns )
     : m_numUnknowns( numUnknowns )
     , m_hessian( numUnknowns, numUnknowns )
@@ -33,21 +36,6 @@ Optimizer::Optimizer( const u_int32_t numUnknowns )
     // m_timerCheck            = 0;
     // m_timerFor              = 0;
 }
-
-// double Optimizer::optimizeGN( Sophus::SE3d& pose,
-//                 const std::function< unsigned int( Sophus::SE3d& pose) >& lambdaResidualFunctor,
-//                 const std::size_t numObservations)
-// {
-//     return optimizeGN(pose, lambdaResidualFunctor, nullptr, numObservations, false);
-// }
-
-// double Optimizer::optimizeGN( Sophus::SE3d& pose,
-//                 const std::function< unsigned int( Sophus::SE3d& pose) >& lambdaResidualFunctor,
-//                 const std::function< unsigned int( Sophus::SE3d& pose ) >& lambdaJacobianFunctor,
-//                 const std::size_t numObservations)
-// {
-//     return optimizeGN(pose, lambdaResidualFunctor, lambdaJacobianFunctor, numObservations, true);
-// }
 
 Optimizer::OptimizerResult Optimizer::optimizeGN(
   Sophus::SE3d& pose,
@@ -287,7 +275,7 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
         // t1 = std::chrono::high_resolution_clock::now();
         m_dx.noalias() = m_hessian.ldlt().solve( m_gradient );
         // std::cout << "lambda: " << lambda << std::endl;
-        // std::cout << "dx: " << m_dx.transpose() << std::endl;
+        Optimizer_Log(DEBUG) << "dx: " << m_dx.transpose() << std::endl;
         // pose updated here
         lambdaUpdateFunctor( pose, m_dx );
         // m_timerSolve += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();

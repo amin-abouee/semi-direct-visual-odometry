@@ -7,8 +7,10 @@
 #include <opencv2/calib3d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/video/tracking.hpp>
-// #include <opencv2/highgui/highgui.hpp>
-// #include <opencv2/objdetect/objdetect.hpp>
+
+
+#include "easylogging++.h"
+#define Matcher_Log( LEVEL ) CLOG( LEVEL, "Matcher" )
 
 void Matcher::computeOpticalFlowSparse( std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame, const uint16_t patchSize )
 {

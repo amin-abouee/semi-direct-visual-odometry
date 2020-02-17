@@ -1,4 +1,7 @@
 #include "visualization.hpp"
+#include "algorithm.hpp"
+#include "feature.hpp"
+#include "utils.hpp"
 
 #include <unordered_map>
 
@@ -6,9 +9,9 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 
-#include "algorithm.hpp"
-#include "feature.hpp"
-#include "utils.hpp"
+
+#include "easylogging++.h"
+#define Visualization_Log( LEVEL ) CLOG( LEVEL, "Visualization" )
 
 void visualization::grayImage( const cv::Mat& img, const std::string& windowsName )
 {

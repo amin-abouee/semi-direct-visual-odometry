@@ -1,6 +1,5 @@
 #include "system.hpp"
 #include "algorithm.hpp"
-#include "image_alignment.hpp"
 #include "matcher.hpp"
 #include "utils.hpp"
 #include "visualization.hpp"
@@ -25,12 +24,14 @@ System::System( Config& config ) : m_config( &config )
     // const int32_t imgWidth  = cameraJson[ "img_width" ].get< int32_t >();
     // const int32_t imgHeight = cameraJson[ "img_height" ].get< int32_t >();
     // m_config = Config::getInstance();
-    std::cout << "calibration: " << m_config->m_cameraCalibrationPath;
+    // std::cout << "calibration: " << m_config->m_cameraCalibrationPath;
     const std::string calibrationFile = utils::findAbsoluteFilePath( m_config->m_cameraCalibrationPath );
     cv::Mat cameraMatrix;
     cv::Mat distortionCoeffs;
     loadCameraIntrinsics( calibrationFile, cameraMatrix, distortionCoeffs );
-    m_camera = std::make_shared< PinholeCamera >( m_config->m_imgWidth, m_config->m_imgHeight, cameraMatrix, distortionCoeffs );
+    m_camera  = std::make_shared< PinholeCamera >( m_config->m_imgWidth, m_config->m_imgHeight, cameraMatrix, distortionCoeffs );
+    m_alignment = std::make_shared< ImageAlignment >( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid,
+                                                    m_config->m_maxLevelImagePyramid, 6 );
 }
 
 void System::processFirstFrame( const cv::Mat& firstImg )
@@ -120,9 +121,9 @@ void System::processNewFrame( const cv::Mat& newImg )
     m_curFrame = std::make_shared< Frame >( m_camera, newImg );
     // std::cout << "counter cur: " << m_curFrame.use_count() << std::endl;
 
-    ImageAlignment match( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid, m_config->m_maxLevelImagePyramid, 6 );
+    // ImageAlignment match( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid, m_config->m_maxLevelImagePyramid, 6 );
     auto t1 = std::chrono::high_resolution_clock::now();
-    match.align( m_refFrame, m_curFrame );
+    m_alignment->align( m_refFrame, m_curFrame );
     auto t2 = std::chrono::high_resolution_clock::now();
     std::cout << "Elapsed time for alignment: " << std::chrono::duration_cast< std::chrono::microseconds >( t2 - t1 ).count()
               << " micro sec" << std::endl;
@@ -142,12 +143,12 @@ void System::processNewFrame( const cv::Mat& newImg )
 
     for ( const auto& refFeatures : m_refFrame->m_frameFeatures )
     {
-        const auto& point                     = refFeatures->m_point->m_position;
-        const auto& curFeature                = m_curFrame->world2image( point );
+        const auto& point      = refFeatures->m_point->m_position;
+        const auto& curFeature = m_curFrame->world2image( point );
         if ( m_curFrame->m_camera->isInFrame( curFeature, 5.0 ) == true )
         {
             std::unique_ptr< Feature > newFeature = std::make_unique< Feature >( m_curFrame, curFeature, 0.0 );
-            m_curFrame->addFeature(newFeature);
+            m_curFrame->addFeature( newFeature );
             m_curFrame->m_frameFeatures.back()->setPoint( refFeatures->m_point );
         }
     }
@@ -179,13 +180,13 @@ void System::reportSummaryFeatures()
     for ( const auto& frame : m_allKeyFrames )
     {
         std::cout << "|                                                                               |" << std::endl;
-        std::cout << " -------------------------------- Frame ID: " << frame->m_id<< " ---------------------------------- " << std::endl;
+        std::cout << " -------------------------------- Frame ID: " << frame->m_id << " ---------------------------------- " << std::endl;
         std::cout << "|                                                                               |" << std::endl;
-        for (const auto& feature : frame->m_frameFeatures)
+        for ( const auto& feature : frame->m_frameFeatures )
         {
-            std::cout << "| Feature ID: " << std::left << std::setw(12) << feature->m_id
-                    << "Point ID: " << std::left << std::setw(12) << feature->m_point->m_id
-                    << "Cnt Shared Pointer Point: " << std::left << std::setw(6) << feature->m_point.use_count() << "|" << std::endl;
+            std::cout << "| Feature ID: " << std::left << std::setw( 12 ) << feature->m_id << "Point ID: " << std::left << std::setw( 12 )
+                      << feature->m_point->m_id << "Cnt Shared Pointer Point: " << std::left << std::setw( 6 )
+                      << feature->m_point.use_count() << "|" << std::endl;
         }
         std::cout << " ------------------------------------------------------------------------------- " << std::endl;
     }

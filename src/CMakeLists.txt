@@ -35,7 +35,7 @@ find_package(nlohmann_json REQUIRED)
 
 # https://github.com/gabime/spdlog/blob/v1.x/example/CMakeLists.txt
 # find_package(spdlog)
-find_package(EASYLOGGINGPP REQUIRED)
+# find_package(EASYLOGGINGPP REQUIRED)
 find_package(Threads)
 
 # https://github.com/lava/matplotlib-cpp
@@ -64,7 +64,7 @@ option(COMPILE_WITH_OFAST "Compile with -Ofast optimization" OFF)
 set (LIBRARY_INCLUDE
     ${CMAKE_SOURCE_DIR}/include
     ${Sophus_INCLUDE_DIR}
-    ${EASYLOGGINGPP_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/3rd_party/easy_logging
     )
 
 set(LIBRARY_SOURCES
@@ -90,7 +90,7 @@ set(LIBRARY_SOURCES
 
 # Specify compile definitions to use when compiling a given <target>. 
 # The named <target> must have been created by a command such as add_executable() or add_library() and must not be an Imported Target.
-add_executable(visual_odometry ${LIBRARY_SOURCES})
+add_executable(visual_odometry ${LIBRARY_SOURCES} ${CMAKE_SOURCE_DIR}/3rd_party/easy_logging/easylogging++.cc)
 
 # https://clang.llvm.org/docs/CommandGuide/clang.html#code-generation-options
 # https://stackoverflow.com/questions/15548023/clang-optimization-levels/15548189#15548189
@@ -111,7 +111,7 @@ target_compile_options(visual_odometry PRIVATE "$<$<CONFIG:RELEASE>:-march=nativ
 target_compile_definitions(visual_odometry PRIVATE -DEIGEN_MAX_CPP_VER=17 )
 
 # https://stackoverflow.com/a/31969632/1804533
-target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE})
+# target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE})
 
 # add matplotlibcpp
 target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE} ${Python2_INCLUDE_DIRS} ${Python2_NumPy_INCLUDE_DIRS})

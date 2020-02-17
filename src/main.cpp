@@ -17,16 +17,16 @@
 #include "system.hpp"
 #include "utils.hpp"
 
+#include "easylogging++.h"
 // #include <spdlog/spdlog.h>
 // #include "spdlog/sinks/stdout_color_sinks.h"
 #include <nlohmann/json.hpp>
-#include <easylogging++.h>
+
 INITIALIZE_EASYLOGGINGPP
+#define Main_Log( LEVEL ) CLOG( LEVEL, "Main" )
 
-
-int main( int argc, char* argv[] )
+void checkEigenFlags()
 {
-
 #ifdef EIGEN_MALLOC_ALREADY_ALIGNED
     std::cout << "EIGEN_MALLOC_ALREADY_ALIGNED" << std::endl;
 #endif
@@ -49,28 +49,24 @@ int main( int argc, char* argv[] )
     std::cout << "EIGEN_HAS_CXX11_CONTAINERS: " << EIGEN_HAS_CXX11_CONTAINERS << std::endl;
     std::cout << "EIGEN_MAX_CPP_VER: " << EIGEN_MAX_CPP_VER << std::endl;
     std::cout << "EIGEN_HAS_CXX11_MATH: " << EIGEN_HAS_CXX11_MATH << std::endl;
+}
 
+void configLogger(const std::string& logFilePath)
+{
+    el::Loggers::configureFromGlobal( utils::findAbsoluteFilePath(logFilePath).c_str() );
     el::Loggers::addFlag( el::LoggingFlag::MultiLoggerSupport );
     el::Loggers::addFlag( el::LoggingFlag::ColoredTerminalOutput );
-    // el::Loggers::configureFromGlobal( logFileName.c_str() );
+    el::Loggers::getLogger( "Main" );  // Register new logger
     // el::Loggers::reconfigureAllLoggers(conf);
     // el::Logger* systemLogger = el::Loggers::getLogger("system"); // Register new logger
-    el::Loggers::getLogger( "Main" );  // Register new logger
-    #define SYSTEM_LOG( LEVEL ) CLOG( LEVEL, "Main" )
+    Main_Log( DEBUG ) << "Scale";
+}
+
+int main( int argc, char* argv[] )
+{
     // std::cout << "Number of Threads: " << Eigen::nbThreads( ) << std::endl;
     // Eigen::setNbThreads(4);
     // std::cout << "Number of Threads: " << Eigen::nbThreads( ) << std::endl;
-
-    // auto mainLogger = spdlog::stdout_color_mt( "main" );
-    // mainLogger->set_level( spdlog::level::debug );
-    // mainLogger->set_pattern( "[%Y-%m-%d %H:%M:%S] [%s:%#] [%n->%l] [thread:%t] %v" );
-    // spdlog::set_pattern("[%H:%M:%S %z] [%n] [%^---%L---%$] [thread %t] %v");
-    // mainLogger->info( "Info" );
-    // mainLogger->debug( "Debug" );
-    // mainLogger->warn( "Warn" );
-    // mainLogger->error( "Error" );
-    SYSTEM_LOG( INFO ) << "Scale";
-
     std::string configIOFile;
     if ( argc > 1 )
         configIOFile = argv[ 1 ];
@@ -81,6 +77,7 @@ int main( int argc, char* argv[] )
     // Config* config = Config::getInstance();
     Config config( utils::findAbsoluteFilePath( configIOFile ) );
     System system( config );
+    configLogger(config.m_logFilePath);
 
     const cv::Mat refImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000000.png" ), cv::IMREAD_GRAYSCALE );
     const cv::Mat curImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000001.png" ), cv::IMREAD_GRAYSCALE );

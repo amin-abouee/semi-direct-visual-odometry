@@ -1,6 +1,7 @@
 #include "config.hpp"
 #include <fstream>
 
+
 // std::unique_ptr< Config > Config::m_instance;
 // std::once_flag Config::m_onceFlag;
 
@@ -29,8 +30,10 @@ Config::Config( const std::string& configFile )
         std::cerr << "JSON Parser Error:" << e.what() << '\n';
     }
 
+    const nlohmann::json& filePathJson = m_configJson[ "file_paths" ];
+    m_logFilePath = filePathJson[ "log_file" ].get<std::string>();
+
     const nlohmann::json& cameraJson = m_configJson[ "camera" ];
-    m_logFilePath;
     m_cameraCalibrationPath = cameraJson[ "camera_calibration" ].get< std::string >();
     m_imgWidth              = cameraJson[ "img_width" ].get< int32_t >();
     m_imgHeight             = cameraJson[ "img_height" ].get< int32_t >();

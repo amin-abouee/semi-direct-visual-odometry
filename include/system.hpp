@@ -4,6 +4,7 @@
 #include "pinhole_camera.hpp"
 #include "frame.hpp"
 #include "feature_selection.hpp"
+#include "image_alignment.hpp"
 #include "config.hpp"
 
 #include <iostream>
@@ -40,6 +41,7 @@ public:
 private:
     bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs );
 
+    std::shared_ptr<ImageAlignment> m_alignment;
     Config* m_config;
 };
 

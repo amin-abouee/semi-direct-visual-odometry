@@ -1,12 +1,15 @@
-#include <algorithm>
-#include <vector>
-
 #include "algorithm.hpp"
 #include "feature.hpp"
 #include "utils.hpp"
 
+#include <algorithm>
+#include <vector>
+
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core/eigen.hpp>
+
+#include "easylogging++.h"
+#define Algorithm_Log( LEVEL ) CLOG( LEVEL, "Algorithm" )
 
 // http://stackoverflow.com/questions/10167534/how-to-find-out-what-type-of-a-mat-object-is-with-mattype-in-opencv
 // +--------+----+----+----+----+------+------+------+------+
@@ -364,6 +367,7 @@ double algorithm::computeSigma( const Eigen::VectorXd& input, const uint32_t num
 {
 
     const double mad = computeMAD(input, numValidPoints);
+    // Algorithm_Log(DEBUG) << "MAD: " << mad;
     return k * mad;
 }
 

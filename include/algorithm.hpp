@@ -7,6 +7,7 @@
 #include <Eigen/Core>
 
 #include "frame.hpp"
+// #define Algorithm_Log( LEVEL ) CLOG( LEVEL, "Algorithm" )
 
 namespace algorithm
 {

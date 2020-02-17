@@ -11,6 +11,9 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 
+#include "easylogging++.h"
+#define Alignment_Log( LEVEL ) CLOG( LEVEL, "Alignment" )
+
 ImageAlignment::ImageAlignment( uint32_t patchSize, int32_t minLevel, int32_t maxLevel, uint32_t numParameters )
     : m_patchSize( patchSize )
     , m_halfPatchSize( patchSize / 2 )
@@ -20,6 +23,7 @@ ImageAlignment::ImageAlignment( uint32_t patchSize, int32_t minLevel, int32_t ma
     , m_optimizer( numParameters )
 {
     // std::cout << "c'tor image alignment" << std::endl;
+    Alignment_Log(DEBUG) << "init Image Alignment";
 }
 
 double ImageAlignment::align( std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame )

@@ -11,6 +11,9 @@
 
 #include <Eigen/Core>
 
+#include "easylogging++.h"
+#define Feature_Log( LEVEL ) CLOG( LEVEL, "Feature" )
+
 // #include "spdlog/sinks/stdout_color_sinks.h"
 
 FeatureSelection::FeatureSelection(const cv::Mat& imgGray)
@@ -52,6 +55,8 @@ FeatureSelection::FeatureSelection(const cv::Mat& imgGray)
             //   << std::endl;
 
     // featureLogger->info("Elapsed time for gradient magnitude: {}", std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count());
+
+    Feature_Log(DEBUG) << "Init Feature Selection";
 }
 
 // FeatureSelection::FeatureSelection( const cv::Mat& imgGray )
