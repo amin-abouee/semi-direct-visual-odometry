@@ -367,7 +367,7 @@ double algorithm::computeSigma( const Eigen::VectorXd& input, const uint32_t num
 {
 
     const double mad = computeMAD(input, numValidPoints);
-    // Algorithm_Log(DEBUG) << "MAD: " << mad;
+    Algorithm_Log(DEBUG) << "MAD: " << mad;
     return k * mad;
 }
 

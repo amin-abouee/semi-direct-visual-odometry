@@ -63,8 +63,8 @@ void Matcher::computeOpticalFlowSparse( std::shared_ptr<Frame>& refFrame, std::s
       std::remove_if( refFrame->m_frameFeatures.begin(), refFrame->m_frameFeatures.end(), isNotValid ),
       refFrame->m_frameFeatures.end() );
 
-    // std::cout << "observation refFrame: " << refFrame.numberObservation() << std::endl;
-    // std::cout << "observation curFrame: " << curFrame.numberObservation() << std::endl;
+    Matcher_Log(DEBUG) << "observation refFrame: " << refFrame->numberObservation();
+    Matcher_Log(DEBUG) << "observation curFrame: " << curFrame->numberObservation();
 }
 
 void Matcher::computeEssentialMatrix( std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame, const double reproError, Eigen::Matrix3d& E )

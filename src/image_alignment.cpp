@@ -12,7 +12,7 @@
 #include <opencv2/imgproc.hpp>
 
 #include "easylogging++.h"
-#define Alignment_Log( LEVEL ) CLOG( LEVEL, "Alignment" )
+#define Alignment_Log( LEVEL ) CLOG( LEVEL, "Tracker" )
 
 ImageAlignment::ImageAlignment( uint32_t patchSize, int32_t minLevel, int32_t maxLevel, uint32_t numParameters )
     : m_patchSize( patchSize )
@@ -22,6 +22,7 @@ ImageAlignment::ImageAlignment( uint32_t patchSize, int32_t minLevel, int32_t ma
     , m_maxLevel( maxLevel )
     , m_optimizer( numParameters )
 {
+    el::Loggers::getLogger( "Tracker" );  // Register new logger
     // std::cout << "c'tor image alignment" << std::endl;
     Alignment_Log(DEBUG) << "init Image Alignment";
 }

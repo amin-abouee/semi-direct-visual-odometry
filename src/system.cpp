@@ -8,8 +8,12 @@
 #include <opencv2/calib3d.hpp>
 #include <opencv2/highgui.hpp>
 
+#include "easylogging++.h"
+#define System_Log( LEVEL ) CLOG( LEVEL, "System" )
+
 System::System( Config& config ) : m_config( &config )
 {
+    el::Loggers::getLogger( "System" );  // Register new logger
     // const nlohmann::json& cameraJson  = jsonConfig[ "camera" ];
     // const std::string calibrationFile = utils::findAbsoluteFilePath( cameraJson[ "camera_calibration" ].get< std::string >() );
     // cv::Mat cameraMatrix;
@@ -32,6 +36,7 @@ System::System( Config& config ) : m_config( &config )
     m_camera  = std::make_shared< PinholeCamera >( m_config->m_imgWidth, m_config->m_imgHeight, cameraMatrix, distortionCoeffs );
     m_alignment = std::make_shared< ImageAlignment >( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid,
                                                     m_config->m_maxLevelImagePyramid, 6 );
+    System_Log(DEBUG) << "Init System";
 }
 
 void System::processFirstFrame( const cv::Mat& firstImg )
@@ -137,7 +142,7 @@ void System::processNewFrame( const cv::Mat& newImg )
         visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 8, "orange", visualization::drawingCircle );
         cv::Mat stickImg;
         visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
-        cv::imshow( "both_image_1_2_optimization", stickImg );
+        // cv::imshow( "both_image_1_2_optimization", stickImg );
         // cv::imshow("relative_1_2", curBGR);
     }
 
