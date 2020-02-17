@@ -34,7 +34,8 @@ find_package(nlohmann_json REQUIRED)
 # find_package(OpenMP REQUIRED)
 
 # https://github.com/gabime/spdlog/blob/v1.x/example/CMakeLists.txt
-find_package(spdlog)
+# find_package(spdlog)
+find_package(EASYLOGGINGPP REQUIRED)
 find_package(Threads)
 
 # https://github.com/lava/matplotlib-cpp
@@ -63,6 +64,7 @@ option(COMPILE_WITH_OFAST "Compile with -Ofast optimization" OFF)
 set (LIBRARY_INCLUDE
     ${CMAKE_SOURCE_DIR}/include
     ${Sophus_INCLUDE_DIR}
+    ${EASYLOGGINGPP_INCLUDE_DIR}
     )
 
 set(LIBRARY_SOURCES
@@ -116,7 +118,7 @@ target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE} ${Python2_
 
 # target_link_libraries (visual_odometry visualizer source)
 # spdlog::spdlog
-target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads spdlog::spdlog)
+target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads)
 
 # http://www.brianlheim.com/2018/04/09/cmake-cheat-sheet.html
 # http://manpages.ubuntu.com/manpages/xenial/man7/cmake-generator-expressions.7.html
