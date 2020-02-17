@@ -13,22 +13,8 @@
 
 System::System( Config& config ) : m_config( &config )
 {
-    el::Loggers::getLogger( "System" );  // Register new logger
-    // const nlohmann::json& cameraJson  = jsonConfig[ "camera" ];
-    // const std::string calibrationFile = utils::findAbsoluteFilePath( cameraJson[ "camera_calibration" ].get< std::string >() );
-    // cv::Mat cameraMatrix;
-    // cv::Mat distortionCoeffs;
-    // bool result = loadCameraIntrinsics( calibrationFile, cameraMatrix, distortionCoeffs );
-    // if ( result == false )
-    // {
-    //     std::cout << "Failed to open the calibration file, check config.json file" << std::endl;
-    //     // return EXIT_FAILURE;
-    // }
+    // el::Loggers::getLogger( "System" );  // Register new logger
 
-    // const int32_t imgWidth  = cameraJson[ "img_width" ].get< int32_t >();
-    // const int32_t imgHeight = cameraJson[ "img_height" ].get< int32_t >();
-    // m_config = Config::getInstance();
-    // std::cout << "calibration: " << m_config->m_cameraCalibrationPath;
     const std::string calibrationFile = utils::findAbsoluteFilePath( m_config->m_cameraCalibrationPath );
     cv::Mat cameraMatrix;
     cv::Mat distortionCoeffs;
@@ -36,7 +22,7 @@ System::System( Config& config ) : m_config( &config )
     m_camera  = std::make_shared< PinholeCamera >( m_config->m_imgWidth, m_config->m_imgHeight, cameraMatrix, distortionCoeffs );
     m_alignment = std::make_shared< ImageAlignment >( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid,
                                                     m_config->m_maxLevelImagePyramid, 6 );
-    System_Log(DEBUG) << "Init System";
+    // System_Log(DEBUG) << "Number of Features";
 }
 
 void System::processFirstFrame( const cv::Mat& firstImg )
@@ -48,7 +34,7 @@ void System::processFirstFrame( const cv::Mat& firstImg )
     m_featureSelection->detectFeaturesInGrid( m_refFrame, m_config->m_gridPixelSize );
 
     m_refFrame->setKeyframe();
-    std::cout << "Number of Features: " << m_refFrame->numberObservation() << std::endl;
+    System_Log(DEBUG) << "Number of Features: " << m_refFrame->numberObservation();
     m_allKeyFrames.emplace_back( m_refFrame );
 }
 

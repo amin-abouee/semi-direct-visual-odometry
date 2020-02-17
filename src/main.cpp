@@ -56,7 +56,7 @@ void configLogger(const std::string& logFilePath)
     el::Loggers::configureFromGlobal( utils::findAbsoluteFilePath(logFilePath).c_str() );
     el::Loggers::addFlag( el::LoggingFlag::MultiLoggerSupport );
     el::Loggers::addFlag( el::LoggingFlag::ColoredTerminalOutput );
-    el::Loggers::getLogger( "Main" );  // Register new logger
+    // el::Loggers::getLogger( "Main" );  // Register new logger
     // el::Loggers::reconfigureAllLoggers(conf);
     // el::Logger* systemLogger = el::Loggers::getLogger("system"); // Register new logger
     Main_Log( DEBUG ) << "Scale";
