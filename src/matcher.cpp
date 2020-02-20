@@ -12,7 +12,7 @@
 #include "easylogging++.h"
 #define Matcher_Log( LEVEL ) CLOG( LEVEL, "Matcher" )
 
-void Matcher::computeOpticalFlowSparse( std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame, const uint16_t patchSize )
+void Matcher::computeOpticalFlowSparse( std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame, const uint32_t patchSize )
 {
     const cv::Mat& refImg = refFrame->m_imagePyramid.getBaseImage();
     const cv::Mat& curImg = curFrame->m_imagePyramid.getBaseImage();

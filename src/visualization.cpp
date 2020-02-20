@@ -13,7 +13,7 @@
 #include "easylogging++.h"
 #define Visualization_Log( LEVEL ) CLOG( LEVEL, "Visualization" )
 
-void visualization::grayImage( const cv::Mat& img, const std::string& windowsName )
+cv::Mat visualization::getGrayImage( const cv::Mat& img )
 {
     // double min, max;
     // cv::minMaxLoc( img, &min, &max );
@@ -32,10 +32,10 @@ void visualization::grayImage( const cv::Mat& img, const std::string& windowsNam
 
     cv::Mat normMag;
     cv::normalize( img, normMag, 0, 255, cv::NORM_MINMAX, CV_8UC1 );
-    cv::imshow( windowsName, normMag );
+    return normMag;
 }
 
-void visualization::HSVColoredImage( const cv::Mat& img, const std::string& windowsName )
+cv::Mat visualization::getHSVImage( const cv::Mat& img )
 {
     // https://realpython.com/python-opencv-color-spaces/
     // https://stackoverflow.com/questions/23001512/c-and-opencv-get-and-set-pixel-color-to-mat
@@ -66,9 +66,19 @@ void visualization::HSVColoredImage( const cv::Mat& img, const std::string& wind
             }
         }
     }
-    cv::Mat imgHSVNew;
-    cv::cvtColor( imgHSV, imgHSVNew, cv::COLOR_HSV2BGR );
-    cv::imshow( windowsName, imgHSVNew );
+    cv::Mat imgBGRofHSV;
+    cv::cvtColor( imgHSV, imgBGRofHSV, cv::COLOR_HSV2BGR );
+    return imgBGRofHSV;
+}
+
+cv::Mat visualization::getBGRImage( const cv::Mat& img )
+{
+    cv::Mat imgBGR;
+    if ( img.channels() == 1 )
+        cv::cvtColor( img, imgBGR, cv::COLOR_GRAY2BGR );
+    else
+        imgBGR = img.clone();
+    return imgBGR;
 }
 
 void visualization::templatePatches( const cv::Mat& patches,
@@ -165,16 +175,6 @@ cv::Scalar visualization::generateColor( const float min, const float max, const
 {
     uint8_t hue = static_cast< uint8_t >( ( 120.f / ( max - min ) ) * value );
     return cv::Scalar( hue, 100, 100 );
-}
-
-cv::Mat visualization::getBGRImage( const cv::Mat& img )
-{
-    cv::Mat imgBGR;
-    if ( img.channels() == 1 )
-        cv::cvtColor( img, imgBGR, cv::COLOR_GRAY2BGR );
-    else
-        imgBGR = img.clone();
-    return imgBGR;
 }
 
 void visualization::drawHistogram( std::map< std::string, std::any >& pack )

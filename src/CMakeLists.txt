@@ -154,7 +154,7 @@ endif()
 target_compile_options(visual_odometry
   PRIVATE
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
-        -Wall -Wextra -pedantic -Wconversion
+        -Wall -Wextra -pedantic
     >
     $<$<CXX_COMPILER_ID:MSVC>:
         W4

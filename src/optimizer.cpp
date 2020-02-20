@@ -435,7 +435,7 @@ double Optimizer::computeChiSquaredError()
     const auto numObservations = m_residuals.size();
     double chiSquaredError     = 0.0;
 
-    for ( std::size_t i( 0 ); i < numObservations; i++ )
+    for ( int64_t i( 0 ); i < numObservations; i++ )
     {
         if ( m_visiblePoints( i ) == true )
         {
@@ -452,8 +452,8 @@ void Optimizer::tukeyWeighting( const uint32_t numValidProjectedPoints )
         sigma = std::numeric_limits< double >::epsilon();
     const double c                    = 4.6851 * sigma;
     const double c2                   = c * c;
-    const std::size_t numObservations = m_visiblePoints.size();
-    for ( std::size_t i( 0 ); i < numObservations; i++ )
+    const auto numObservations = m_visiblePoints.size();
+    for ( int64_t i( 0 ); i < numObservations; i++ )
     {
         if ( m_visiblePoints( i ) == true )
         {
@@ -484,7 +484,7 @@ void Optimizer::visualize( const uint32_t numValidProjectedPoints )
     std::vector< double > residuals;
     double sum                 = 0.0;
     const auto numObservations = m_visiblePoints.size();
-    for ( std::size_t i( 0 ); i < numObservations; i++ )
+    for ( int64_t i( 0 ); i < numObservations; i++ )
     {
         if ( m_visiblePoints( i ) == true )
         {

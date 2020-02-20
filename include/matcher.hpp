@@ -34,7 +34,7 @@
 //     ~Matcher() = default;
 namespace Matcher
 {
-    void computeOpticalFlowSparse(std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame, const uint16_t patchSize);
+    void computeOpticalFlowSparse(std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame, const uint32_t patchSize);
 
     void computeEssentialMatrix(std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame, const double reproError, Eigen::Matrix3d& E);
 

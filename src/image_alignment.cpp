@@ -12,7 +12,7 @@
 #include <opencv2/imgproc.hpp>
 
 #include "easylogging++.h"
-#define Alignment_Log( LEVEL ) CLOG( LEVEL, "Tracker" )
+#define Alignment_Log( LEVEL ) CLOG( LEVEL, "Alignment" )
 
 ImageAlignment::ImageAlignment( uint32_t patchSize, int32_t minLevel, int32_t maxLevel, uint32_t numParameters )
     : m_patchSize( patchSize )
@@ -22,9 +22,8 @@ ImageAlignment::ImageAlignment( uint32_t patchSize, int32_t minLevel, int32_t ma
     , m_maxLevel( maxLevel )
     , m_optimizer( numParameters )
 {
-    el::Loggers::getLogger( "Tracker" );  // Register new logger
+    // el::Loggers::getLogger( "Tracker" );  // Register new logger
     // std::cout << "c'tor image alignment" << std::endl;
-    Alignment_Log(DEBUG) << "init Image Alignment";
 }
 
 double ImageAlignment::align( std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame )
@@ -94,6 +93,7 @@ double ImageAlignment::align( std::shared_ptr<Frame>& refFrame, std::shared_ptr<
     // std::cout << "m_timerFor: " << m_optimizer.m_timerFor << std::endl;
 
     curFrame->m_TransW2F = refFrame->m_TransW2F * relativePose;
+    Alignment_Log(DEBUG) << "Computed Pose: " << curFrame->m_TransW2F.params().transpose();
     return error;
 }
 

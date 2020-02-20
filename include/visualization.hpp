@@ -53,6 +53,12 @@ auto drawingLine = []( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen:
     cv::line( img, cv::Point2d( point1.x(), point1.y() ), cv::Point2d( point2.x(), point2.y() ), color );
 };
 
+cv::Mat getGrayImage( const cv::Mat& img );
+
+cv::Mat getHSVImage( const cv::Mat& img );
+
+cv::Mat getBGRImage( const cv::Mat& img );
+
 void templatePatches( const cv::Mat& patches,
                       const uint32_t numberPatches,
                       const uint32_t patchSize,
@@ -67,13 +73,7 @@ cv::Mat residualsPatches( const Eigen::VectorXd& residuals,
                           const uint32_t verticalMargin,
                           const uint32_t maxPatchInRow );
 
-void grayImage( const cv::Mat& img, const std::string& windowsName );
-
-void HSVColoredImage( const cv::Mat& img, const std::string& windowsName );
-
 cv::Scalar generateColor( const float min, const float max, const float value );
-
-cv::Mat getBGRImage( const cv::Mat& img );
 
 void drawHistogram( std::map< std::string, std::any >& pack );
 
