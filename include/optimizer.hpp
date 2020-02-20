@@ -67,15 +67,6 @@ public:
     Optimizer& operator=( Optimizer&& rhs );
     ~Optimizer()       = default;
 
-    // double optimizeGN( Sophus::SE3d& pose,
-    //             const std::function< unsigned int( Sophus::SE3d& pose) >& lambdaResidualFunctor,
-    //             const std::size_t numObservations);
-
-    // double optimizeGN( Sophus::SE3d& pose,
-    //             const std::function< unsigned int( Sophus::SE3d& pose) >& lambdaResidualFunctor,
-    //             const std::function< unsigned int( Sophus::SE3d& pose) >& lambdaJacobianFunctor,
-    //             const std::size_t numObservations);
-
     OptimizerResult optimizeGN( Sophus::SE3d& pose,
                        const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaResidualFunctor,
                        const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaJacobianFunctor,

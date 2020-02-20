@@ -69,12 +69,6 @@ private:
 
     cv::Mat m_dx;
     cv::Mat m_dy;
-
-    std::shared_ptr<spdlog::logger> featureLogger;
-
-    // std::shared_ptr< cv::Mat > m_imgGray;
-
-    // uint32_t m_numberFeatures;
 };
 
 #endif /* __FEATURE_SELECTION_H__ */

@@ -28,27 +28,27 @@ INITIALIZE_EASYLOGGINGPP
 void checkEigenFlags()
 {
 #ifdef EIGEN_MALLOC_ALREADY_ALIGNED
-    std::cout << "EIGEN_MALLOC_ALREADY_ALIGNED" << std::endl;
+    Main_Log(DEBUG) << "EIGEN_MALLOC_ALREADY_ALIGNED";
 #endif
 
 #ifdef EIGEN_FAST_MATH
-    std::cout << "EIGEN_FAST_MATH" << std::endl;
+    Main_Log(DEBUG) << "EIGEN_FAST_MATH";
 #endif
 
 #ifdef EIGEN_USE_MKL_ALL
-    std::cout << "EIGEN_USE_MKL_ALL" << std::endl;
+    Main_Log(DEBUG) << "EIGEN_USE_MKL_ALL";
 #endif
 
 #ifdef EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    std::cout << "EIGEN_MAKE_ALIGNED_OPERATOR_NEW" << std::endl;
+    Main_Log(DEBUG) << "EIGEN_MAKE_ALIGNED_OPERATOR_NEW";
 #endif
 
 #ifdef EIGEN_USE_BLAS
-    std::cout << "EIGEN_USE_BLAS" << std::endl;
+    Main_Log(DEBUG) << "EIGEN_USE_BLAS";
 #endif
-    std::cout << "EIGEN_HAS_CXX11_CONTAINERS: " << EIGEN_HAS_CXX11_CONTAINERS << std::endl;
-    std::cout << "EIGEN_MAX_CPP_VER: " << EIGEN_MAX_CPP_VER << std::endl;
-    std::cout << "EIGEN_HAS_CXX11_MATH: " << EIGEN_HAS_CXX11_MATH << std::endl;
+    Main_Log(DEBUG) << "EIGEN_HAS_CXX11_CONTAINERS: " << EIGEN_HAS_CXX11_CONTAINERS;
+    Main_Log(DEBUG) << "EIGEN_MAX_CPP_VER: " << EIGEN_MAX_CPP_VER;
+    Main_Log(DEBUG) << "EIGEN_HAS_CXX11_MATH: " << EIGEN_HAS_CXX11_MATH;
 }
 
 void configLogger(const std::string& logFilePath)
@@ -56,17 +56,13 @@ void configLogger(const std::string& logFilePath)
     el::Loggers::configureFromGlobal( utils::findAbsoluteFilePath(logFilePath).c_str() );
     el::Loggers::addFlag( el::LoggingFlag::MultiLoggerSupport );
     el::Loggers::addFlag( el::LoggingFlag::ColoredTerminalOutput );
-    // el::Loggers::getLogger( "Main" );  // Register new logger
-    // el::Loggers::reconfigureAllLoggers(conf);
-    // el::Logger* systemLogger = el::Loggers::getLogger("system"); // Register new logger
-    Main_Log( DEBUG ) << "Scale";
 }
 
 int main( int argc, char* argv[] )
 {
-    // std::cout << "Number of Threads: " << Eigen::nbThreads( ) << std::endl;
+    // Main_Log(DEBUG) << "Number of Threads: " << Eigen::nbThreads( );
     // Eigen::setNbThreads(4);
-    // std::cout << "Number of Threads: " << Eigen::nbThreads( ) << std::endl;
+    // Main_Log(DEBUG) << "Number of Threads: " << Eigen::nbThreads( );
     std::string configIOFile;
     if ( argc > 1 )
         configIOFile = argv[ 1 ];
@@ -87,8 +83,7 @@ int main( int argc, char* argv[] )
     auto t1 = std::chrono::high_resolution_clock::now();
     system.processSecondFrame( curImg );
     auto t2 = std::chrono::high_resolution_clock::now();
-    std::cout << "Elapsed time for matching: " << std::chrono::duration_cast< std::chrono::microseconds >( t2 - t1 ).count() << " micro sec"
-              << std::endl;
+    Main_Log(DEBUG) << "Elapsed time for matching: " << std::chrono::duration_cast< std::chrono::microseconds >( t2 - t1 ).count() << " micro sec";
 
     /*
         numObserves = refFrame.numberObservation();

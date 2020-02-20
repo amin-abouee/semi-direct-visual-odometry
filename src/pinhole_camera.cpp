@@ -45,29 +45,7 @@ PinholeCamera::PinholeCamera( const int32_t width,
     cv::initUndistortRectifyMap( m_cvK, m_cvDistortion, cv::Mat_< double >::eye( 3, 3 ), m_cvK,
                                  cv::Size( width, height ), CV_16SC2, undistortedMapX, undistortedMapY );
     m_applyDistortion = std::fabs( distro[0] ) > 1e-5 ? true : false;
-
-    // std::cout << "m_cvK: " << m_cvK << std::endl;
-    // std::cout << "m_cvDistortion: " << m_cvDistortion << std::endl;
-    // std::cout << "m_K: " << m_K << std::endl;
-    // std::cout << "m_invK: " << m_invK << std::endl;
-    // std::cout << "m_applyDistortion: " << m_applyDistortion << std::endl;
 }
-
-// PinholeCamera::PinholeCamera( const PinholeCamera& rhs )
-// {
-// }
-
-// PinholeCamera::PinholeCamera( PinholeCamera&& rhs )
-// {
-// }
-
-// PinholeCamera& PinholeCamera::operator=( const PinholeCamera& rhs )
-// {
-// }
-
-// PinholeCamera& PinholeCamera::operator=( PinholeCamera&& rhs )
-// {
-// }
 
 Eigen::Vector2d PinholeCamera::project2d( const double x, const double y, const double z ) const
 {
@@ -184,11 +162,6 @@ int32_t PinholeCamera::height() const
 
 bool PinholeCamera::isInFrame( const Eigen::Vector2d& imagePoint, const double boundary ) const
 {
-    // std::cout << "img width: " << width() << ", height: " << height() << ", boundary" << boundary << std::endl;
-    // std::cout << "imagePoint.x() >= boundary: " << (imagePoint.x() >= boundary) << std::endl;
-    // std::cout << "imagePoint.y() >= boundary: " << (imagePoint.y() >= boundary) << std::endl;
-    // std::cout << "imagePoint.x() < m_width - boundary: " << (imagePoint.x() < m_width - boundary) << std::endl;
-    // std::cout << "imagePoint.y() < m_height - boundary: " << (imagePoint.y() < m_height - boundary) << std::endl;
     if ( imagePoint.x() >= boundary && imagePoint.y() >= boundary && imagePoint.x() < m_width - boundary &&
          imagePoint.y() < m_height - boundary )
         return true;

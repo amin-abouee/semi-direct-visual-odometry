@@ -11,10 +11,10 @@
 #include "easylogging++.h"
 #define System_Log( LEVEL ) CLOG( LEVEL, "System" )
 
-System::System( Config& config ) : m_config( &config )
+// System::System( const Config& config )
+System::System( const Config& config ) : m_config( &config )
 {
     // el::Loggers::getLogger( "System" );  // Register new logger
-
     const std::string calibrationFile = utils::findAbsoluteFilePath( m_config->m_cameraCalibrationPath );
     cv::Mat cameraMatrix;
     cv::Mat distortionCoeffs;
@@ -22,7 +22,6 @@ System::System( Config& config ) : m_config( &config )
     m_camera  = std::make_shared< PinholeCamera >( m_config->m_imgWidth, m_config->m_imgHeight, cameraMatrix, distortionCoeffs );
     m_alignment = std::make_shared< ImageAlignment >( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid,
                                                     m_config->m_maxLevelImagePyramid, 6 );
-    // System_Log(DEBUG) << "Number of Features";
 }
 
 void System::processFirstFrame( const cv::Mat& firstImg )
