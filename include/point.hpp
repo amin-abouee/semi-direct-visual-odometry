@@ -5,6 +5,8 @@
 #include <memory>
 #include <vector>
 
+#include "frame.hpp"
+
 #include <Eigen/Core>
 
 class Feature;
@@ -40,9 +42,8 @@ public:
     ~Point()                        = default;
 
     void addFeature(const std::shared_ptr<Feature>& feature);
-
+    std::shared_ptr<Feature>& findFeature(std::shared_ptr<Frame>& frame);
     void computeNormal();
-
     std::size_t numberObservation() const;
 };
 

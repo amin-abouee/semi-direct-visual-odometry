@@ -73,6 +73,7 @@ set(LIBRARY_SOURCES
     image_pyramid.cpp
     feature.cpp
     point.cpp
+    map.cpp
     image_alignment.cpp
     optimizer.cpp
     estimator.cpp

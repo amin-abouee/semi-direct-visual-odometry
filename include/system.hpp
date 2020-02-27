@@ -21,7 +21,7 @@ public:
     std::shared_ptr< Frame > m_refFrame;
     std::shared_ptr< Frame > m_curFrame;
     std::unique_ptr< FeatureSelection > m_featureSelection;
-    std::vector< std::shared_ptr< Frame > > m_allKeyFrames;
+    std::vector< std::shared_ptr< Frame > > m_keyFrames;
 
     explicit System( const Config& config );
     System( const System& rhs ) = delete;

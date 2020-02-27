@@ -89,6 +89,8 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     /// compute position of camera in world cordinate C = -R^t * t
     Eigen::Vector3d cameraInWorld() const;
 
+    //TODO: reset frame
+
 private:
 };
 

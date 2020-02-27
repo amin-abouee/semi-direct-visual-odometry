@@ -34,7 +34,7 @@ void System::processFirstFrame( const cv::Mat& firstImg )
 
     m_refFrame->setKeyframe();
     System_Log(DEBUG) << "Number of Features: " << m_refFrame->numberObservation();
-    m_allKeyFrames.emplace_back( m_refFrame );
+    m_keyFrames.emplace_back( m_refFrame );
 }
 
 void System::processSecondFrame( const cv::Mat& secondImg )
@@ -100,7 +100,7 @@ void System::processSecondFrame( const cv::Mat& secondImg )
     // std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
     m_curFrame->setKeyframe();
     std::cout << "Number of Features: " << m_curFrame->numberObservation() << std::endl;
-    m_allKeyFrames.emplace_back( m_curFrame );
+    m_keyFrames.emplace_back( m_curFrame );
 }
 
 void System::processNewFrame( const cv::Mat& newImg )
@@ -143,7 +143,7 @@ void System::processNewFrame( const cv::Mat& newImg )
         }
     }
     std::cout << "Number of Features: " << m_curFrame->numberObservation() << std::endl;
-    m_allKeyFrames.emplace_back( m_curFrame );
+    m_keyFrames.emplace_back( m_curFrame );
 }
 
 void System::reportSummaryFrames()
@@ -154,7 +154,7 @@ void System::reportSummaryFrames()
 
     std::cout << " ----------------------------- Report Summary Frames -------------------------------- " << std::endl;
     std::cout << "|                                                                                    |" << std::endl;
-    for ( const auto& frame : m_allKeyFrames )
+    for ( const auto& frame : m_keyFrames )
     {
         std::cout << "| Frame ID: " << frame->m_id << "\t\t"
                   << "Num Feaures: " << frame->numberObservation() << "\t\t"
@@ -167,7 +167,7 @@ void System::reportSummaryFrames()
 void System::reportSummaryFeatures()
 {
     std::cout << " -------------------------- Report Summary Features ---------------------------- " << std::endl;
-    for ( const auto& frame : m_allKeyFrames )
+    for ( const auto& frame : m_keyFrames )
     {
         std::cout << "|                                                                               |" << std::endl;
         std::cout << " -------------------------------- Frame ID: " << frame->m_id << " ---------------------------------- " << std::endl;
