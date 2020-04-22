@@ -52,6 +52,8 @@ public:
 
     void detectFeaturesInGrid( std::shared_ptr<Frame>& frame, const uint32_t gridSize );
 
+    void detectFeaturesByValue( std::shared_ptr<Frame>& frame, const uint32_t value );
+
     // std::vector< Feature > m_features;
     cv::Mat m_gradientMagnitude;
     cv::Mat m_gradientOrientation;

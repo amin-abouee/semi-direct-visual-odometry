@@ -295,6 +295,28 @@ void FeatureSelection::detectFeaturesInGrid( std::shared_ptr<Frame>& frame, cons
     
 }
 
+void FeatureSelection::detectFeaturesByValue( std::shared_ptr<Frame>& frame, const uint32_t value )
+{
+    const uint32_t width  = frame->m_camera->width();
+    const uint32_t height = frame->m_camera->height();
+
+    for (uint32_t r(0); r < height; r++)
+    {
+        for (uint32_t c(0); c < width; c++)
+        {
+            if (m_gradientMagnitude.at< float >( r, c ) > value)
+            {
+                std::unique_ptr< Feature > feature = std::make_unique< Feature >(
+                        frame, Eigen::Vector2d( c, r ), 
+                        m_gradientMagnitude.at< float >( r, c ),  
+                        m_gradientOrientation.at< float >( r, c ), 0 );
+                frame->addFeature(feature);
+            }
+        }
+    }
+}
+
+
 // void FeatureSelection::computeGradient( const cv::Mat& currentTemplateImage,
 //                                             cv::Mat& templateGradientX,
 //                                             cv::Mat& templateGradientY )

@@ -1,7 +1,7 @@
 #ifndef __UTILS_HPP__
 #define __UTILS_HPP__
 
-#include <experimental/filesystem>
+#include <filesystem>
 #include <iostream>
 #include <string>
 
@@ -10,7 +10,7 @@
 
 namespace utils
 {
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
 Eigen::IOFormat eigenFormat();
 

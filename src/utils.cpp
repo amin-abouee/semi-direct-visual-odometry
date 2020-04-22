@@ -8,11 +8,11 @@ Eigen::IOFormat utils::eigenFormat()
 std::string utils::findAbsoluteFilePath( const std::string& relativeFilePath )
 {
     // https://stackoverflow.com/a/56645283/1804533
-    fs::path finalPath;
-    auto currentPath = fs::current_path();
+    std::filesystem::path finalPath;
+    auto currentPath = std::filesystem::current_path();
 
     // https://stackoverflow.com/a/24735243/1804533
-    for ( const auto& part : fs::path( currentPath ) )
+    for ( const auto& part : std::filesystem::path( currentPath ) )
     {
         if ( part.string() == "build" || part.string() == "bin" )
             break;

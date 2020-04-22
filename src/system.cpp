@@ -31,6 +31,19 @@ void System::processFirstFrame( const cv::Mat& firstImg )
     m_featureSelection = std::make_unique< FeatureSelection >( m_refFrame->m_imagePyramid.getBaseImage() );
     // FeatureSelection featureSelection( m_refFrame->m_imagePyramid.getBaseImage() );
     m_featureSelection->detectFeaturesInGrid( m_refFrame, m_config->m_gridPixelSize );
+    // m_featureSelection->detectFeaturesByValue( m_refFrame, 150 );
+    // m_featureSelection->detectFeaturesWithSSC(m_refFrame, 1000);
+
+    // {
+    //     cv::Mat gradient = m_featureSelection->m_gradientMagnitude.clone();
+    //     cv::normalize(gradient, gradient, 0, 255, cv::NORM_MINMAX, CV_8U);
+    //     cv::Mat refBGR = visualization::getBGRImage( gradient );
+    //     // cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
+    //     visualization::featurePoints( refBGR, m_refFrame, 5, "pink", visualization::drawingRectangle );
+    //     // visualization::imageGrid(refBGR, m_refFrame, m_config->m_gridPixelSize, "amber");
+    //     cv::imshow("ref", refBGR);
+    //     cv::waitKey(0);
+    // }
 
     m_refFrame->setKeyframe();
     System_Log(DEBUG) << "Number of Features: " << m_refFrame->numberObservation();
@@ -120,15 +133,16 @@ void System::processNewFrame( const cv::Mat& newImg )
     {
         cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
         cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
-        visualization::featurePoints( refBGR, m_refFrame, 11, "pink", visualization::drawingRectangle );
+        visualization::featurePoints( refBGR, m_refFrame, 8, "pink", visualization::drawingRectangle );
         // visualization::featurePointsInGrid(curBGR, curFrame, 50);
         // visualization::featurePoints(newBGR, newFrame);
         // visualization::project3DPoints(curBGR, curFrame);
         visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 8, "orange", visualization::drawingCircle );
         cv::Mat stickImg;
         visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
-        // cv::imshow( "both_image_1_2_optimization", stickImg );
+        cv::imshow( "both_image_1_2_optimization", stickImg );
         // cv::imshow("relative_1_2", curBGR);
+        cv::waitKey(0);
     }
 
     for ( const auto& refFeatures : m_refFrame->m_frameFeatures )
