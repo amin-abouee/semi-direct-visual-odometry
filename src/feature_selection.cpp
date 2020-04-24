@@ -35,7 +35,7 @@ FeatureSelection::FeatureSelection(const cv::Mat& imgGray)
     int borderType = cv::BORDER_DEFAULT;
 
     // const cv::Mat imgGray = frame.m_imagePyramid.getBaseImage();
-    auto t1 = std::chrono::high_resolution_clock::now();
+    // auto t1 = std::chrono::high_resolution_clock::now();
     // cv::Mat dx, absDx;
     cv::Sobel( imgGray, m_dx, ddepth, 1, 0, ksize, scale, delta, borderType );
     // cv::convertScaleAbs( dx, absDx );
@@ -50,7 +50,7 @@ FeatureSelection::FeatureSelection(const cv::Mat& imgGray)
 
     // cv::Mat mag, angle;
     cv::cartToPolar( m_dx, m_dy, m_gradientMagnitude, m_gradientOrientation, true );
-    auto t2 = std::chrono::high_resolution_clock::now();
+    // auto t2 = std::chrono::high_resolution_clock::now();
     // std::cout << "Elapsed time for gradient magnitude: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
             //   << std::endl;
 

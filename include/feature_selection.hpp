@@ -13,13 +13,11 @@
 #define __FEATURE_SELECTION_H__
 
 #include <iostream>
-#include <vector>
 #include <memory>
+#include <vector>
 
 #include <Eigen/Core>
 #include <opencv2/core.hpp>
-
-#include <spdlog/spdlog.h>
 
 #include "feature.hpp"
 
@@ -27,7 +25,7 @@ class FeatureSelection final
 {
 public:
     // C'tor
-    explicit FeatureSelection(const cv::Mat& imgGray);
+    explicit FeatureSelection( const cv::Mat& imgGray );
 
     // explicit FeatureSelection( const cv::Mat& imgGray );
 
@@ -48,11 +46,11 @@ public:
     // D'tor
     ~FeatureSelection() = default;
 
-    void detectFeaturesWithSSC( std::shared_ptr<Frame>& frame, const uint32_t numberCandidate );
+    void detectFeaturesWithSSC( std::shared_ptr< Frame >& frame, const uint32_t numberCandidate );
 
-    void detectFeaturesInGrid( std::shared_ptr<Frame>& frame, const uint32_t gridSize );
+    void detectFeaturesInGrid( std::shared_ptr< Frame >& frame, const uint32_t gridSize );
 
-    void detectFeaturesByValue( std::shared_ptr<Frame>& frame, const uint32_t value );
+    void detectFeaturesByValue( std::shared_ptr< Frame >& frame, const uint32_t value );
 
     // std::vector< Feature > m_features;
     cv::Mat m_gradientMagnitude;
@@ -60,7 +58,7 @@ public:
 
 private:
     // Efficient adaptive non-maximal suppression algorithms for homogeneous spatial keypoint distribution
-    void Ssc( std::shared_ptr<Frame>& frame,
+    void Ssc( std::shared_ptr< Frame >& frame,
               const std::vector< cv::KeyPoint >& keyPoints,
               const uint32_t numRetPoints,
               const float tolerance,
