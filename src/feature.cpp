@@ -39,4 +39,6 @@ void Feature::setPoint(std::shared_ptr<Point>& point)
 {
     // http://www.cplusplus.com/reference/memory/shared_ptr/operator=/
     m_point = point;
+    // https://stackoverflow.com/a/24130817/1804533
+    assert(m_point.get() == point.get());
 }

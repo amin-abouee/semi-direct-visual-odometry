@@ -9,6 +9,10 @@
 
 // https://github.com/uzh-rpg/rpg_vikit/blob/10871da6d84c8324212053c40f468c6ab4862ee0/vikit_common/include/vikit/abstract_camera.h
 // https://github.com/uzh-rpg/rpg_vikit/blob/10871da6d84c8324212053c40f468c6ab4862ee0/vikit_common/include/vikit/pinhole_camera.h
+/**
+ * @brief This class conatains the pinhole camera information: the camera calibration matrix, lens distortion, and inverse projection
+ * 
+ */
 class PinholeCamera final
 {
 public:
@@ -36,9 +40,11 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     PinholeCamera& operator=(PinholeCamera&& rhs) = default;
     ~PinholeCamera() = default;
 
+    /// project 3D points in camera coordinate to image coordinate
     Eigen::Vector2d project2d(const double x, const double y, const double z) const;
     Eigen::Vector2d project2d(const Eigen::Vector3d& pointImage) const;
 
+    /// inverse project a point in image to camera coordinate
     Eigen::Vector3d inverseProject2d(const Eigen::Vector2d& pointInCamera) const;
     Eigen::Vector3d inverseProject2d(const double x, const double y) const;
 
@@ -50,8 +56,10 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     double fy() const;
     double cx() const;
     double cy() const;
+
     Eigen::Vector2d focalLength() const;
-    Eigen::Vector2d principlePoint() const;
+    Eigen::Vector2d principalPoint() const;
+    
     int32_t width() const;
     int32_t height() const;
 

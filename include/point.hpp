@@ -30,7 +30,7 @@ public:
     Eigen::Matrix3d m_normalCov;
     bool isNormalEstimated;
     std::vector< std::shared_ptr<Feature> > m_features;
-    uint32_t m_numSuccessProjection;
+    // uint32_t m_numSuccessProjection;
     PointType m_type;
 
     explicit Point(const Eigen::Vector3d& point3D);

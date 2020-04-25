@@ -6,11 +6,13 @@
 #include "image_alignment.hpp"
 #include "pinhole_camera.hpp"
 #include "system.hpp"
+#include "depth_filter.hpp"
 
-#include <Eigen/Core>
 #include <iomanip>
 #include <iostream>
 #include <memory>
+
+#include <Eigen/Core>
 #include <nlohmann/json.hpp>
 #include <opencv2/core.hpp>
 
@@ -22,6 +24,7 @@ public:
     std::shared_ptr< Frame > m_curFrame;
     std::unique_ptr< FeatureSelection > m_featureSelection;
     std::vector< std::shared_ptr< Frame > > m_keyFrames;
+    std::shared_ptr< DepthFilter > m_depthFilter; 
 
     explicit System( const Config& config );
     System( const System& rhs ) = delete;

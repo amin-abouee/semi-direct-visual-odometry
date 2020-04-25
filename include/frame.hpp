@@ -22,8 +22,11 @@
 #include "pinhole_camera.hpp"
 
 class Feature;
-// class Point;
 
+/**
+ * @brief This class contains the RGB image informations, the absolute pose and its covariance and the camera geometry data
+ * 
+ */
 class Frame final
 {
 public:
@@ -39,7 +42,7 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     bool m_keyFrame;
 
     // C'tor
-    explicit Frame( const std::shared_ptr<PinholeCamera>& camera, const cv::Mat& img );
+    explicit Frame( const std::shared_ptr<PinholeCamera>& camera, const cv::Mat& img, const uint32_t maxImagePyramid );
     // Copy C'tor
     Frame( const Frame& rhs ) = delete;  // non construction-copyable
     // move C'tor
@@ -51,8 +54,8 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     // D'tor
     ~Frame() = default;
 
-    /// Initialize new frame and create image pyramid.
-    void initFrame( const cv::Mat& img );
+    /// Initialize new frame and create the image pyramid.
+    void initFrame( const cv::Mat& img, const uint32_t maxImagePyramid );
 
     /// Select this frame as keyframe.
     void setKeyframe();
@@ -60,12 +63,15 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     /// Add a feature to the image
     void addFeature( std::unique_ptr<Feature>& feature );
 
-    void removeKeyPoint( std::unique_ptr<Feature>& feature );
+    void removeFeature( std::unique_ptr<Feature>& feature );
 
+    /// number of features 
     std::size_t numberObservation() const;
 
+    /// if the point is in the front of camera (z>0) and can projectable into image
     bool isVisible( const Eigen::Vector3d& point3D ) const;
 
+    /// is this frame a keyframe
     bool isKeyframe() const;
 
     /// project from world to image pixel coordinate

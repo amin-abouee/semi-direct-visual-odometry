@@ -6,7 +6,7 @@ Point::Point( const Eigen::Vector3d& point3D )
     : m_id( m_pointCounter++ )
     , m_position( point3D )
     , isNormalEstimated( false )
-    , m_numSuccessProjection( 0 )
+    // , m_numSuccessProjection( 0 )
     , m_type( PointType::UNKNOWN )
 {
 }
@@ -15,7 +15,7 @@ Point::Point(const Eigen::Vector3d& point3D, const std::shared_ptr<Feature>& fea
     : m_id( m_pointCounter++ )
     , m_position( point3D )
     , isNormalEstimated( false )
-    , m_numSuccessProjection( 1 )
+    // , m_numSuccessProjection( 1 )
     , m_type( PointType::UNKNOWN )
 {
     m_features.push_back(feature);
@@ -24,7 +24,7 @@ Point::Point(const Eigen::Vector3d& point3D, const std::shared_ptr<Feature>& fea
 void Point::addFeature(const std::shared_ptr<Feature>& feature)
 {
     m_features.push_back(feature);
-    m_numSuccessProjection++;
+    // m_numSuccessProjection++;
 }
 
 void Point::computeNormal()
@@ -34,5 +34,6 @@ void Point::computeNormal()
 
 std::size_t Point::numberObservation() const
 {
-    return m_numSuccessProjection;
+    // return m_numSuccessProjection;
+    return m_features.size();
 }

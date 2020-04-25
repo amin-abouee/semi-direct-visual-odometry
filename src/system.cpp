@@ -26,7 +26,7 @@ System::System( const Config& config ) : m_config( &config )
 
 void System::processFirstFrame( const cv::Mat& firstImg )
 {
-    m_refFrame = std::make_shared< Frame >( m_camera, firstImg );
+    m_refFrame = std::make_shared< Frame >( m_camera, firstImg, m_config->m_maxLevelImagePyramid+1 );
     // Frame refFrame( camera, refImg );
     m_featureSelection = std::make_unique< FeatureSelection >( m_refFrame->m_imagePyramid.getBaseImage() );
     // FeatureSelection featureSelection( m_refFrame->m_imagePyramid.getBaseImage() );
@@ -52,7 +52,7 @@ void System::processFirstFrame( const cv::Mat& firstImg )
 
 void System::processSecondFrame( const cv::Mat& secondImg )
 {
-    m_curFrame = std::make_shared< Frame >( m_camera, secondImg );
+    m_curFrame = std::make_shared< Frame >( m_camera, secondImg, m_config->m_maxLevelImagePyramid+1 );
 
     Eigen::Matrix3d E;
     Eigen::Matrix3d F;
@@ -109,7 +109,7 @@ void System::processSecondFrame( const cv::Mat& secondImg )
     Eigen::VectorXd newCurDepths( numObserves );
     algorithm::depthCamera( m_curFrame, newCurDepths );
     medianDepth           = algorithm::computeMedian( newCurDepths );
-    const double minDepth = newCurDepths.minCoeff();
+    // const double minDepth = newCurDepths.minCoeff();
     // std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
     m_curFrame->setKeyframe();
     std::cout << "Number of Features: " << m_curFrame->numberObservation() << std::endl;
@@ -121,7 +121,7 @@ void System::processNewFrame( const cv::Mat& newImg )
     // https://docs.microsoft.com/en-us/cpp/cpp/how-to-create-and-use-shared-ptr-instances?view=vs-2019
     m_refFrame = std::move( m_curFrame );
     // std::cout << "counter ref: " << m_refFrame.use_count() << std::endl;
-    m_curFrame = std::make_shared< Frame >( m_camera, newImg );
+    m_curFrame = std::make_shared< Frame >( m_camera, newImg, m_config->m_maxLevelImagePyramid+1 );
     // std::cout << "counter cur: " << m_curFrame.use_count() << std::endl;
 
     // ImageAlignment match( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid, m_config->m_maxLevelImagePyramid, 6 );
@@ -171,7 +171,7 @@ void System::reportSummaryFrames()
     for ( const auto& frame : m_keyFrames )
     {
         std::cout << "| Frame ID: " << frame->m_id << "\t\t"
-                  << "Num Feaures: " << frame->numberObservation() << "\t\t"
+                  << "Num Features: " << frame->numberObservation() << "\t\t"
                   << "Active Shared Pointer: " << frame.use_count() << "     |" << std::endl;
     }
     std::cout << "|                                                                                    |" << std::endl;
