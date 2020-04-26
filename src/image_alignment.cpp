@@ -26,7 +26,7 @@ ImageAlignment::ImageAlignment( uint32_t patchSize, int32_t minLevel, int32_t ma
     // std::cout << "c'tor image alignment" << std::endl;
 }
 
-double ImageAlignment::align( std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame )
+double ImageAlignment::align( std::shared_ptr< Frame >& refFrame, std::shared_ptr< Frame >& curFrame )
 {
     if ( refFrame->numberObservation() == 0 )
         return 0;
@@ -37,7 +37,8 @@ double ImageAlignment::align( std::shared_ptr<Frame>& refFrame, std::shared_ptr<
     m_refPatches                   = cv::Mat( numFeatures, m_patchArea, CV_32F );
     m_optimizer.initParameters( numObservations );
     m_refVisibility.resize( numFeatures, false );
-    // std::cout << "Init: " << std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count() << std::endl;
+    // std::cout << "Init: " << std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1
+    // ).count() << std::endl;
 
     // m_curVisibility.resize( numFeatures, false );
 
@@ -66,38 +67,37 @@ double ImageAlignment::align( std::shared_ptr<Frame>& refFrame, std::shared_ptr<
     {
         // t1 = std::chrono::high_resolution_clock::now();
         computeJacobian( refFrame, level );
-        // timerJacobian += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
+        // timerJacobian += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1
+        // ).count();
 
         auto lambdaResidualFunctor = [this, &refFrame, &curFrame, &level]( Sophus::SE3d& pose ) -> uint32_t {
             return computeResiduals( refFrame, curFrame, level, pose );
         };
         // t1 = std::chrono::high_resolution_clock::now();
         std::tie( optimizationStatus, error ) = m_optimizer.optimizeLM( relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor );
-        // timeroptimize += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
+        // timeroptimize += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1
+        // ).count();
 
         // std::cout << "error at level " << level << " is: "<< error << " with status: " <<
         // static_cast<std::underlying_type<NLLS::Status>::type>(optimizationStatus) << std::endl; std::cout << "error at level " << level
         // << " is: "<< error << " with status: " << static_cast<uint32_t>(optimizationStatus) << std::endl;
     }
-    // std::cout << "total: " << std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t3 ).count() << std::endl;
-    // std::cout << "timerJacobian: " << timerJacobian << std::endl;
-    // std::cout << "timeroptimize: " << timeroptimize << std::endl;
-    // std::cout << "m_timerResiduals: " << m_optimizer.m_timerResiduals << std::endl;
-    // std::cout << "m_timerSolve: " << m_optimizer.m_timerSolve << std::endl;
-    // std::cout << "m_timerHessina: " << m_optimizer.m_timerHessian << std::endl;
-    // std::cout << "m_timerLambda: " << m_optimizer.m_timerLambda << std::endl;
-    // std::cout << "m_timerSwitch: " << m_optimizer.m_timerSwitch << std::endl;
-    // std::cout << "m_timerLambda: " << m_optimizer.m_timerLambda << std::endl;
-    // std::cout << "m_timerUpdateParameters: " << m_optimizer.m_timerUpdateParameters << std::endl;
-    // std::cout << "m_timerCheck: " << m_optimizer.m_timerCheck << std::endl;
-    // std::cout << "m_timerFor: " << m_optimizer.m_timerFor << std::endl;
+    // std::cout << "total: " << std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t3
+    // ).count() << std::endl; std::cout << "timerJacobian: " << timerJacobian << std::endl; std::cout << "timeroptimize: " << timeroptimize
+    // << std::endl; std::cout << "m_timerResiduals: " << m_optimizer.m_timerResiduals << std::endl; std::cout << "m_timerSolve: " <<
+    // m_optimizer.m_timerSolve << std::endl; std::cout << "m_timerHessina: " << m_optimizer.m_timerHessian << std::endl; std::cout <<
+    // "m_timerLambda: " << m_optimizer.m_timerLambda << std::endl; std::cout << "m_timerSwitch: " << m_optimizer.m_timerSwitch <<
+    // std::endl; std::cout << "m_timerLambda: " << m_optimizer.m_timerLambda << std::endl; std::cout << "m_timerUpdateParameters: " <<
+    // m_optimizer.m_timerUpdateParameters << std::endl; std::cout << "m_timerCheck: " << m_optimizer.m_timerCheck << std::endl; std::cout
+    // << "m_timerFor: " << m_optimizer.m_timerFor << std::endl;
 
-    curFrame->m_TransW2F = refFrame->m_TransW2F * relativePose;
-    Alignment_Log(DEBUG) << "Computed Pose: " << curFrame->m_TransW2F.params().transpose();
+    // curFrame->m_TransW2F = refFrame->m_TransW2F * relativePose;
+    curFrame->m_TransW2F = relativePose * refFrame->m_TransW2F;
+    Alignment_Log( DEBUG ) << "Computed Pose: " << curFrame->m_TransW2F.params().transpose();
     return error;
 }
 
-void ImageAlignment::computeJacobian( std::shared_ptr<Frame>& frame, uint32_t level )
+void ImageAlignment::computeJacobian( std::shared_ptr< Frame >& frame, uint32_t level )
 {
     resetParameters();
     const int32_t border    = m_halfPatchSize + 2;
@@ -169,7 +169,10 @@ void ImageAlignment::computeJacobian( std::shared_ptr<Frame>& frame, uint32_t le
 }
 
 // if we define the residual error as current image - reference image, we do not need to apply the negative for gradient
-uint32_t ImageAlignment::computeResiduals( std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame, uint32_t level, Sophus::SE3d& pose )
+uint32_t ImageAlignment::computeResiduals( std::shared_ptr< Frame >& refFrame,
+                                           std::shared_ptr< Frame >& curFrame,
+                                           uint32_t level,
+                                           Sophus::SE3d& pose )
 {
     const cv::Mat& curImage = curFrame->m_imagePyramid.getImageAtLevel( level );
     const algorithm::MapXRowConst curImageEigen( curImage.ptr< uint8_t >(), curImage.rows, curImage.cols );

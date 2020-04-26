@@ -28,32 +28,32 @@ INITIALIZE_EASYLOGGINGPP
 void checkEigenFlags()
 {
 #ifdef EIGEN_MALLOC_ALREADY_ALIGNED
-    Main_Log(DEBUG) << "EIGEN_MALLOC_ALREADY_ALIGNED";
+    Main_Log( DEBUG ) << "EIGEN_MALLOC_ALREADY_ALIGNED";
 #endif
 
 #ifdef EIGEN_FAST_MATH
-    Main_Log(DEBUG) << "EIGEN_FAST_MATH";
+    Main_Log( DEBUG ) << "EIGEN_FAST_MATH";
 #endif
 
 #ifdef EIGEN_USE_MKL_ALL
-    Main_Log(DEBUG) << "EIGEN_USE_MKL_ALL";
+    Main_Log( DEBUG ) << "EIGEN_USE_MKL_ALL";
 #endif
 
 #ifdef EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    Main_Log(DEBUG) << "EIGEN_MAKE_ALIGNED_OPERATOR_NEW";
+    Main_Log( DEBUG ) << "EIGEN_MAKE_ALIGNED_OPERATOR_NEW";
 #endif
 
 #ifdef EIGEN_USE_BLAS
-    Main_Log(DEBUG) << "EIGEN_USE_BLAS";
+    Main_Log( DEBUG ) << "EIGEN_USE_BLAS";
 #endif
-    Main_Log(DEBUG) << "EIGEN_HAS_CXX11_CONTAINERS: " << EIGEN_HAS_CXX11_CONTAINERS;
-    Main_Log(DEBUG) << "EIGEN_MAX_CPP_VER: " << EIGEN_MAX_CPP_VER;
-    Main_Log(DEBUG) << "EIGEN_HAS_CXX11_MATH: " << EIGEN_HAS_CXX11_MATH;
+    Main_Log( DEBUG ) << "EIGEN_HAS_CXX11_CONTAINERS: " << EIGEN_HAS_CXX11_CONTAINERS;
+    Main_Log( DEBUG ) << "EIGEN_MAX_CPP_VER: " << EIGEN_MAX_CPP_VER;
+    Main_Log( DEBUG ) << "EIGEN_HAS_CXX11_MATH: " << EIGEN_HAS_CXX11_MATH;
 }
 
-void configLogger(const std::string& logFilePath)
+void configLogger( const std::string& logFilePath )
 {
-    el::Loggers::configureFromGlobal( utils::findAbsoluteFilePath(logFilePath).c_str() );
+    el::Loggers::configureFromGlobal( utils::findAbsoluteFilePath( logFilePath ).c_str() );
     el::Loggers::addFlag( el::LoggingFlag::MultiLoggerSupport );
     el::Loggers::addFlag( el::LoggingFlag::ColoredTerminalOutput );
 }
@@ -73,7 +73,7 @@ int main( int argc, char* argv[] )
     // Config* config = Config::getInstance();
     Config config( utils::findAbsoluteFilePath( configIOFile ) );
     System system( config );
-    configLogger(config.m_logFilePath);
+    configLogger( config.m_logFilePath );
 
     const cv::Mat refImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000000.png" ), cv::IMREAD_GRAYSCALE );
     const cv::Mat curImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000001.png" ), cv::IMREAD_GRAYSCALE );
@@ -83,7 +83,8 @@ int main( int argc, char* argv[] )
     auto t1 = std::chrono::high_resolution_clock::now();
     system.processSecondFrame( curImg );
     auto t2 = std::chrono::high_resolution_clock::now();
-    Main_Log(DEBUG) << "Elapsed time for matching: " << std::chrono::duration_cast< std::chrono::microseconds >( t2 - t1 ).count() << " micro sec";
+    Main_Log( DEBUG ) << "Elapsed time for matching: " << std::chrono::duration_cast< std::chrono::microseconds >( t2 - t1 ).count()
+                      << " micro sec";
 
     /*
         numObserves = refFrame.numberObservation();
@@ -99,7 +100,7 @@ int main( int argc, char* argv[] )
     {
         std::stringstream ss;
         ss << "input/000000000" << i << ".png";
-        std::cout << "filename: " << ss.str() << std::endl;
+        Main_Log( INFO ) << "filename: " << ss.str();
         cv::Mat newImg = cv::imread( utils::findAbsoluteFilePath( ss.str() ), cv::IMREAD_GRAYSCALE );
         system.processNewFrame( newImg );
         cv::waitKey( 0 );

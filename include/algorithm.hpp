@@ -18,29 +18,33 @@ using MapXRowConst = Eigen::Map< const Eigen::Matrix< uint8_t, Eigen::Dynamic, E
 
 // void pointsCurCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsCurCamera );
 
-void points3DWorld( const std::shared_ptr<Frame>& refFrame, const std::shared_ptr<Frame>& curFrame, Eigen::MatrixXd& pointsWorld );
+void triangulate3DWorldPoints( const std::shared_ptr< Frame >& refFrame,
+                               const std::shared_ptr< Frame >& curFrame,
+                               Eigen::MatrixXd& pointsWorld );
 
-void transferPointsWorldToCam( const std::shared_ptr<Frame>& frame, const Eigen::MatrixXd& pointsWorld, Eigen::MatrixXd& pointsCamera );
+void transferPointsWorldToCam( const std::shared_ptr< Frame >& frame, const Eigen::MatrixXd& pointsWorld, Eigen::MatrixXd& pointsCamera );
 
-void transferPointsCamToWorld( const std::shared_ptr<Frame>& frame, const Eigen::MatrixXd& pointsCamera, Eigen::MatrixXd& pointsWorld );
+void transferPointsCamToWorld( const std::shared_ptr< Frame >& frame, const Eigen::MatrixXd& pointsCamera, Eigen::MatrixXd& pointsWorld );
 
-void normalizedDepthCamera( const std::shared_ptr<Frame>& frame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& normalizedDepthCamera );
+void normalizedDepthCamera( const std::shared_ptr< Frame >& frame,
+                            const Eigen::MatrixXd& pointsWorld,
+                            Eigen::VectorXd& normalizedDepthCamera );
 
-void normalizedDepthCamera( const std::shared_ptr<Frame>& frame, Eigen::VectorXd& normalizedDepthCamera );
+void normalizedDepthCamera( const std::shared_ptr< Frame >& frame, Eigen::VectorXd& normalizedDepthCamera );
 
-void depthCamera( const std::shared_ptr<Frame>& frame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& depthCamera );
+void depthCamera( const std::shared_ptr< Frame >& frame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& depthCamera );
 
-void depthCamera( const std::shared_ptr<Frame>& frame, Eigen::VectorXd& depthCamera );
+void depthCamera( const std::shared_ptr< Frame >& frame, Eigen::VectorXd& depthCamera );
 
-void triangulatePointHomogenousDLT( const std::shared_ptr<Frame>& refFrame,
-                                    const std::shared_ptr<Frame>& curFrame,
+void triangulatePointHomogenousDLT( const std::shared_ptr< Frame >& refFrame,
+                                    const std::shared_ptr< Frame >& curFrame,
                                     const Eigen::Vector2d& refFeature,
                                     const Eigen::Vector2d& curFeature,
                                     Eigen::Vector3d& point );
 
 // Guide to 3D Vision Computation, Procedure 4.1, Triangulation with known camera matrices, Eq. 4.3, Page 61
-void triangulatePointDLT( const std::shared_ptr<Frame>& refFrame,
-                          const std::shared_ptr<Frame>& curFrame,
+void triangulatePointDLT( const std::shared_ptr< Frame >& refFrame,
+                          const std::shared_ptr< Frame >& curFrame,
                           const Eigen::Vector2d& refFeature,
                           const Eigen::Vector2d& curFeature,
                           Eigen::Vector3d& point );
@@ -49,9 +53,13 @@ void triangulatePointDLT( const std::shared_ptr<Frame>& refFrame,
 // Multi view geometry, Result 9.19, page 259
 void decomposeEssentialMatrix( const Eigen::Matrix3d& E, Eigen::Matrix3d& R1, Eigen::Matrix3d& R2, Eigen::Vector3d& t );
 
-void recoverPose( const Eigen::Matrix3d& E, const std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame, Eigen::Matrix3d& R, Eigen::Vector3d& t );
+void recoverPose( const Eigen::Matrix3d& E,
+                  const std::shared_ptr< Frame >& refFrame,
+                  std::shared_ptr< Frame >& curFrame,
+                  Eigen::Matrix3d& R,
+                  Eigen::Vector3d& t );
 
-Sophus::SE3d computeRelativePose( const std::shared_ptr<Frame>& refFrame, const std::shared_ptr<Frame>& curFrame );
+Sophus::SE3d computeRelativePose( const std::shared_ptr< Frame >& refFrame, const std::shared_ptr< Frame >& curFrame );
 
 Eigen::Matrix3d hat( const Eigen::Vector3d& vec );
 
