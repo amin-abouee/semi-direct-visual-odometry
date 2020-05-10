@@ -25,16 +25,32 @@ public:
     Map& operator=( Map&& rhs ) = delete;
     ~Map()                      = default;
 
+    // Reset the map. Delete all keyframes and reset the frame and point counters.
     void reset();
+
+    // delete frame
     bool removeFrame( std::shared_ptr< Frame >& frame );
+
+    // delete point
     bool removePoint( std::shared_ptr< Point >& point );
+
+    //delete feature
     bool removeFeature( std::shared_ptr< Feature >& feature );
+
     void addKeyframe( std::shared_ptr< Frame >& frame );
     std::shared_ptr< Frame >& getCloseKeyframe (std::shared_ptr< Frame >& frame) const;
     void getCloseKeyframes (std::shared_ptr< Frame >& frame, std::vector<keyframeDistance>& closeKeyframes) const;
+
+    /// Transform the whole map with rotation R, translation t and scale s.
     void transform (const Eigen::Matrix3d& R, const Eigen::Vector3d& t, const double& s) const;
+
+    /// Empty trash bin of deleted keyframes and map points. We don't delete the
+    /// points immediately to ensure proper cleanup and to provide the visualizer
+    /// a list of objects which must be removed.
     void emptyTrash();
     std::shared_ptr< Frame >& lastKeyframes();
+
+    /// Return the number of keyframes in the map
     std::size_t sizeKeyframes () const;
 
 private:
