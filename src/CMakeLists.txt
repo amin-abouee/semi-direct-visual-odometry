@@ -74,7 +74,8 @@ set(LIBRARY_SOURCES
     feature.cpp
     point.cpp
     map.cpp
-    depth_filter.cpp
+    depth_estimator.cpp
+    mixed_gaussian_filter.cpp
     image_alignment.cpp
     optimizer.cpp
     estimator.cpp

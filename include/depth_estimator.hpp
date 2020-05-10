@@ -1,5 +1,5 @@
 /**
- * @file depth_filter.hpp
+ * @file depth_Estimator.hpp
  * @brief gaussian distribution representation for depth
  *
  * @date 22.04.2020
@@ -9,8 +9,8 @@
  *
  *
  */
-#ifndef __DEPTH_FILTER_H__
-#define __DEPTH_FILTER_H__
+#ifndef __DEPTH_ESTIMATOR_H__
+#define __DEPTH_ESTIMATOR_H__
 
 #include <condition_variable>
 #include <iostream>
@@ -20,11 +20,12 @@
 #include <thread>
 
 #include "frame.hpp"
+#include "mixed_gaussian_filter.hpp"
 
 #include <Eigen/Core>
 #include <sophus/se3.hpp>
 
-class DepthFilter final
+class DepthEstimator final
 {
 public:
     std::unique_ptr< std::thread > m_thread;
@@ -43,17 +44,17 @@ public:
     double m_newKeyframeMeanDepth;
 
     // C'tor
-    explicit DepthFilter();
+    explicit DepthEstimator();
     // Copy C'tor
-    DepthFilter( const DepthFilter& rhs ) = delete;
+    DepthEstimator( const DepthEstimator& rhs ) = delete;
     // move C'tor
-    DepthFilter( DepthFilter&& rhs ) = delete;
+    DepthEstimator( DepthEstimator&& rhs ) = delete;
     // Copy assignment operator
-    DepthFilter& operator=( const DepthFilter& rhs ) = delete;
+    DepthEstimator& operator=( const DepthEstimator& rhs ) = delete;
     // move assignment operator
-    DepthFilter& operator=( DepthFilter&& rhs ) = delete;
+    DepthEstimator& operator=( DepthEstimator&& rhs ) = delete;
     // D'tor
-    ~DepthFilter();
+    ~DepthEstimator();
 
     /// Add frame to the queue to be processed.
     void addFrame( std::shared_ptr< Frame >& frame );
@@ -69,6 +70,9 @@ public:
     /// If the map is reset, call this function such that we don't have pointers
     /// to old frames.
     void reset();
+
+    /// Bayes update of the seed, x is the measurement, tau2 the measurement uncertainty
+    void updateSeed( const float x, const float tau2, MixedGaussianFilter* seed);
 
     /// Compute the uncertainty of the measurement.
     double computeTau( const Sophus::SE3d& T_ref_cur, const Eigen::Vector3d& f, const double z, const double px_error_angle );
@@ -88,4 +92,4 @@ public:
 private:
 };
 
-#endif /* __DEPTH_FILTER_H__ */
+#endif /* __DEPTH_ESTIMATOR_H__ */

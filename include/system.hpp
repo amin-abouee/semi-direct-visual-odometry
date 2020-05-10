@@ -6,7 +6,7 @@
 #include "image_alignment.hpp"
 #include "pinhole_camera.hpp"
 #include "system.hpp"
-#include "depth_filter.hpp"
+#include "depth_estimator.hpp"
 
 #include <iomanip>
 #include <iostream>
@@ -24,7 +24,7 @@ public:
     std::shared_ptr< Frame > m_curFrame;
     std::unique_ptr< FeatureSelection > m_featureSelection;
     std::vector< std::shared_ptr< Frame > > m_keyFrames;
-    std::shared_ptr< DepthFilter > m_depthFilter; 
+    std::shared_ptr< DepthEstimator > m_depthEstimator; 
 
     explicit System( const Config& config );
     System( const System& rhs ) = delete;

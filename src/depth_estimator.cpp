@@ -1,18 +1,18 @@
-#include "depth_filter.hpp"
+#include "depth_estimator.hpp"
 
 #include "easylogging++.h"
-#define Map_Log( LEVEL ) CLOG( LEVEL, "DepthFilter" )
+#define Map_Log( LEVEL ) CLOG( LEVEL, "DepthEstimator" )
 
-DepthFilter::DepthFilter()
+DepthEstimator::DepthEstimator()
     : m_haltUpdatingSeed( false ), m_activeThread( false ), m_newKeyframeMinDepth( 0.0 ), m_newKeyframeMeanDepth( 0.0 )
 {
     // https://stackoverflow.com/a/18376082/1804533
     // https://thispointer.com/c-11-multithreading-part-1-three-different-ways-to-create-threads/
     // new std::thread(std::bind(&ThreadExample::run, this)));
-    m_thread = std::make_unique< std::thread >( &DepthFilter::updateSeedsLoop, this );
+    m_thread = std::make_unique< std::thread >( &DepthEstimator::updateSeedsLoop, this );
 }
 
-DepthFilter::~DepthFilter()
+DepthEstimator::~DepthEstimator()
 {
     if ( m_thread != nullptr && m_thread->joinable() )
     {
@@ -25,7 +25,7 @@ DepthFilter::~DepthFilter()
     }
 }
 
-void DepthFilter::addFrame( std::shared_ptr< Frame >& frame )
+void DepthEstimator::addFrame( std::shared_ptr< Frame >& frame )
 {
     if ( m_thread != nullptr )
     {
@@ -42,7 +42,7 @@ void DepthFilter::addFrame( std::shared_ptr< Frame >& frame )
     }
 }
 
-void DepthFilter::addKeyframe( std::shared_ptr< Frame >& frame, double depthMean, double depthMin )
+void DepthEstimator::addKeyframe( std::shared_ptr< Frame >& frame, double depthMean, double depthMin )
 {
     m_newKeyframeMinDepth = depthMin;
     m_newKeyframeMinDepth = depthMin;
@@ -59,7 +59,7 @@ void DepthFilter::addKeyframe( std::shared_ptr< Frame >& frame, double depthMean
     }
 }
 
-void DepthFilter::removeKeyframe( std::shared_ptr< Frame >& frame )
+void DepthEstimator::removeKeyframe( std::shared_ptr< Frame >& frame )
 {
     m_haltUpdatingSeed = true;
     std::unique_lock< std::mutex > threadLocker(m_mutexSeed); 
@@ -78,7 +78,7 @@ void DepthFilter::removeKeyframe( std::shared_ptr< Frame >& frame )
     m_haltUpdatingSeed = false;
 }
 
-void DepthFilter::reset()
+void DepthEstimator::reset()
 {
     m_haltUpdatingSeed = true;
     std::unique_lock< std::mutex > threadLocker(m_mutexSeed); 
@@ -90,11 +90,16 @@ void DepthFilter::reset()
     m_haltUpdatingSeed = false;
 }
 
-double DepthFilter::computeTau( const Sophus::SE3d& T_ref_cur, const Eigen::Vector3d& f, const double z, const double px_error_angle )
+void DepthEstimator::updateSeed( const float x, const float tau2, MixedGaussianFilter* seed)
+{
+    
+}
+
+double DepthEstimator::computeTau( const Sophus::SE3d& T_ref_cur, const Eigen::Vector3d& f, const double z, const double px_error_angle )
 {
 }
 
-void DepthFilter::initializeSeeds( std::shared_ptr< Frame >& frame )
+void DepthEstimator::initializeSeeds( std::shared_ptr< Frame >& frame )
 {
     // detect new feature
 
@@ -115,11 +120,11 @@ void DepthFilter::initializeSeeds( std::shared_ptr< Frame >& frame )
     m_haltUpdatingSeed = false;
 }
 
-void DepthFilter::updateSeeds( std::shared_ptr< Frame >& frame )
+void DepthEstimator::updateSeeds( std::shared_ptr< Frame >& frame )
 {
 }
 
-void DepthFilter::clearFrameQueue()
+void DepthEstimator::clearFrameQueue()
 {
     // while(!m_queueFrames.empty())
     // {
@@ -131,7 +136,7 @@ void DepthFilter::clearFrameQueue()
     std::swap( m_queueFrames, empty );
 }
 
-void DepthFilter::updateSeedsLoop()
+void DepthEstimator::updateSeedsLoop()
 {
     while ( m_activeThread == true )
     {
