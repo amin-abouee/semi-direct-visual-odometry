@@ -159,7 +159,7 @@ void FeatureSelection::Ssc( std::shared_ptr<Frame>& frame,
     for ( unsigned int i = 0; i < ResultVec.size(); i++ )
     {
         const auto& kp = keyPoints[ ResultVec[ i ] ];
-        std::unique_ptr< Feature > feature = std::make_unique< Feature >(
+        std::shared_ptr< Feature > feature = std::make_shared< Feature >(
           frame, Eigen::Vector2d( kp.pt.x, kp.pt.y ), kp.response, kp.angle, 0 );
         frame->addFeature(feature);
     }
@@ -284,7 +284,7 @@ void FeatureSelection::detectFeaturesInGrid( std::shared_ptr<Frame>& frame, cons
             // std::cout << "row id: " << rowIdx << ", col id: " << colIdx << ", max: " <<  max << std::endl;
             if (max > 0.0)
             {
-                std::unique_ptr< Feature > feature = std::make_unique< Feature >(
+                std::shared_ptr< Feature > feature = std::make_shared< Feature >(
                         frame, Eigen::Vector2d( colIdx, rowIdx ), 
                         m_gradientMagnitude.at< float >( rowIdx, colIdx ),  
                         m_gradientOrientation.at< float >( rowIdx, colIdx ), 0 );
@@ -306,7 +306,7 @@ void FeatureSelection::detectFeaturesByValue( std::shared_ptr<Frame>& frame, con
         {
             if (m_gradientMagnitude.at< float >( r, c ) > value)
             {
-                std::unique_ptr< Feature > feature = std::make_unique< Feature >(
+                std::shared_ptr< Feature > feature = std::make_shared< Feature >(
                         frame, Eigen::Vector2d( c, r ), 
                         m_gradientMagnitude.at< float >( r, c ),  
                         m_gradientOrientation.at< float >( r, c ), 0 );

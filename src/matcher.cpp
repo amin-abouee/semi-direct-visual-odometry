@@ -43,7 +43,7 @@ void Matcher::computeOpticalFlowSparse( std::shared_ptr<Frame>& refFrame, std::s
     {
         if ( status[ i ] )
         {
-            std::unique_ptr< Feature > newFeature = std::make_unique< Feature >(
+            std::shared_ptr< Feature > newFeature = std::make_shared< Feature >(
               curFrame, Eigen::Vector2d( curPoints[ i ].x, curPoints[ i ].y ), 0.0, 0.0, 0 );
             curFrame->addFeature( newFeature );
         }
@@ -170,7 +170,7 @@ void Matcher::templateMatching( const std::shared_ptr<Frame>& refFrame,
             Eigen::Vector2d newLoc;
             newLoc.x()                            = static_cast< double >( px.x() + offset + minLoc.x );
             newLoc.y()                            = static_cast< double >( px.y() + offset + minLoc.y );
-            std::unique_ptr< Feature > newFeature = std::make_unique< Feature >( curFrame, newLoc, 0.0, 0.0, 0 );
+            std::shared_ptr< Feature > newFeature = std::make_shared< Feature >( curFrame, newLoc, 0.0, 0.0, 0 );
             curFrame->addFeature( newFeature );
         }
     }

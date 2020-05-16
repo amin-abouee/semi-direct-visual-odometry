@@ -75,6 +75,8 @@ float bilinearInterpolation( const MapXRow& image, const double x, const double 
 
 float bilinearInterpolation( const MapXRowConst& image, const double x, const double y );
 
+double computeNormalDistribution (const double mu, const double sigma, const double x);
+
 // double computeMedianInplace( const Eigen::VectorXd& vec );
 
 }  // namespace algorithm

@@ -161,7 +161,7 @@ void System::processNewFrame( const cv::Mat& newImg )
         const auto& curFeature = m_curFrame->world2image( point );
         if ( m_curFrame->m_camera->isInFrame( curFeature, 5.0 ) == true )
         {
-            std::unique_ptr< Feature > newFeature = std::make_unique< Feature >( m_curFrame, curFeature, 0.0 );
+            std::shared_ptr< Feature > newFeature = std::make_shared< Feature >( m_curFrame, curFeature, 0.0 );
             m_curFrame->addFeature( newFeature );
             m_curFrame->m_frameFeatures.back()->setPoint( refFeatures->m_point );
         }

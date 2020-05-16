@@ -38,7 +38,7 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Sophus::SE3d m_TransW2F;
     Eigen::Matrix< double, 6, 6 > m_covPose;
     ImagePyramid m_imagePyramid;
-    std::vector< std::unique_ptr<Feature> > m_frameFeatures;
+    std::vector< std::shared_ptr<Feature> > m_frameFeatures;
     bool m_keyFrame;
 
     // C'tor
@@ -61,9 +61,9 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     void setKeyframe();
 
     /// Add a feature to the image
-    void addFeature( std::unique_ptr<Feature>& feature );
+    void addFeature( std::shared_ptr<Feature>& feature );
 
-    void removeFeature( std::unique_ptr<Feature>& feature );
+    void removeFeature( std::shared_ptr<Feature>& feature );
 
     /// number of features 
     std::size_t numberObservation() const;

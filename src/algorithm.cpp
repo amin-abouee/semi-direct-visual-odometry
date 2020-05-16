@@ -412,6 +412,12 @@ float algorithm::bilinearInterpolation( const MapXRowConst& image, const double 
     return ( ( y2 - y ) * a + ( y - y1 ) * b );
 }
 
+double computeNormalDistribution (const double mu, const double sigma, const double x)
+{
+    const double p = (x - mu) / sigma;
+    return utils::constants::inv_sqrt_2_pi / sigma * std::exp(-0.5 * p * p);
+}
+
 // double computeMedianInplace( const Eigen::VectorXd& vec )
 // {
 //     const auto middleSize = vec.size() / 2;

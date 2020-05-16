@@ -37,7 +37,9 @@ public:
     std::shared_ptr< Frame > m_newKeyframe;
     std::queue< std::shared_ptr< Frame > > m_queueFrames;
 
-    bool m_haltUpdatingSeed;
+    std::vector< MixedGaussianFilter > m_depthFilters;
+
+    bool m_haltUpdatingDepthFilter;
     bool m_newKeyframeAdded;
     bool m_activeThread;
     double m_newKeyframeMinDepth;
@@ -72,10 +74,11 @@ public:
     void reset();
 
     /// Bayes update of the seed, x is the measurement, tau2 the measurement uncertainty
-    void updateSeed( const float x, const float tau2, MixedGaussianFilter* seed);
+    /// Reference: Video-based, real-time multi-view stereo. Supplementary matterial
+    void updateSeed( const double x, const double tau2, MixedGaussianFilter& depthFilter );
 
     /// Compute the uncertainty of the measurement.
-    double computeTau( const Sophus::SE3d& T_ref_cur, const Eigen::Vector3d& f, const double z, const double px_error_angle );
+    double computeTau( const Sophus::SE3d& relativePose, const Eigen::Vector3d& bearing, const double z, const double px_error_angle );
 
     /// Initialize new seeds from a frame.
     void initializeSeeds( std::shared_ptr< Frame >& frame );

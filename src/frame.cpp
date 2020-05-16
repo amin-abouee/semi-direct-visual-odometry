@@ -25,14 +25,14 @@ void Frame::setKeyframe()
     m_keyFrame = true;
 }
 
-void Frame::addFeature( std::unique_ptr< Feature >& feature )
+void Frame::addFeature( std::shared_ptr< Feature >& feature )
 {
-    m_frameFeatures.emplace_back( std::move( feature ) );
+    m_frameFeatures.emplace_back( feature );
 }
 
-void Frame::removeFeature( std::unique_ptr< Feature >& feature )
+void Frame::removeFeature( std::shared_ptr< Feature >& feature )
 {
-    auto find = [&feature]( std::unique_ptr< Feature >& f ) -> bool {
+    auto find = [&feature]( std::shared_ptr< Feature >& f ) -> bool {
         //TODO: check with get() and raw pointer
         if ( f == feature )
             return true;
