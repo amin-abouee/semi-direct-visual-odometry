@@ -13,7 +13,7 @@ DepthEstimator::DepthEstimator()
     // https://stackoverflow.com/a/18376082/1804533
     // https://thispointer.com/c-11-multithreading-part-1-three-different-ways-to-create-threads/
     // new std::thread(std::bind(&ThreadExample::run, this)));
-    m_thread = std::make_unique< std::thread >( &DepthEstimator::updateSeedsLoop, this );
+    m_thread = std::make_unique< std::thread >( &DepthEstimator::updateFiltersLoop, this );
 }
 
 DepthEstimator::~DepthEstimator()
@@ -42,7 +42,7 @@ void DepthEstimator::addFrame( std::shared_ptr< Frame >& frame )
     }
     else
     {
-        updateSeeds( frame );
+        updateFilters( frame );
     }
 }
 
@@ -59,7 +59,7 @@ void DepthEstimator::addKeyframe( std::shared_ptr< Frame >& frame, double depthM
     }
     else
     {
-        initializeSeeds( frame );
+        initializeFilters( frame );
     }
 }
 
@@ -94,7 +94,7 @@ void DepthEstimator::reset()
     m_haltUpdatingDepthFilter = false;
 }
 
-void DepthEstimator::initializeSeeds( std::shared_ptr< Frame >& frame )
+void DepthEstimator::initializeFilters( std::shared_ptr< Frame >& frame )
 {
     // detect new feature
 
@@ -120,7 +120,7 @@ void DepthEstimator::initializeSeeds( std::shared_ptr< Frame >& frame )
     m_haltUpdatingDepthFilter = false;
 }
 
-void DepthEstimator::updateSeeds( std::shared_ptr< Frame >& frame )
+void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
 {
     //     // update only a limited number of seeds, because we don't have time to do it
     //     // for all the seeds in every frame!
@@ -169,7 +169,7 @@ void DepthEstimator::updateSeeds( std::shared_ptr< Frame >& frame )
         const double tau_inverse = 0.5 * ( 1.0 / std::max( 1e-7, depth - tau ) - 1.0 / ( depth + tau ) );
 
         // update the estimate
-        updateSeed( 1. / depth, tau_inverse * tau_inverse, depthFilter );
+        updateFilter( 1. / depth, tau_inverse * tau_inverse, depthFilter );
 
         // if the seed has converged, we initialize a new candidate point and remove the seed
         if ( sqrt( depthFilter.m_var ) < depthFilter.m_maxDepth / 10.0 )
@@ -203,7 +203,7 @@ void DepthEstimator::updateSeeds( std::shared_ptr< Frame >& frame )
     }
 }
 
-void DepthEstimator::updateSeed( const double x, const double tau2, MixedGaussianFilter& depthFilter )
+void DepthEstimator::updateFilter( const double x, const double tau2, MixedGaussianFilter& depthFilter )
 {
     const double norm_scale = sqrt( depthFilter.m_var + tau2 );
     if ( std::isnan( norm_scale ) )
@@ -262,7 +262,7 @@ void DepthEstimator::clearFrameQueue()
     std::swap( m_queueFrames, empty );
 }
 
-void DepthEstimator::updateSeedsLoop()
+void DepthEstimator::updateFiltersLoop()
 {
     while ( m_activeThread == true )
     {
@@ -283,8 +283,8 @@ void DepthEstimator::updateSeedsLoop()
             m_queueFrames.pop();
         }
 
-        updateSeeds( frame );
+        updateFilters( frame );
         if ( frame->isKeyframe() )
-            initializeSeeds( frame );
+            initializeFilters( frame );
     }
 }

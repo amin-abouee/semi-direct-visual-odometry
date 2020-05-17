@@ -75,22 +75,22 @@ public:
 
     /// Bayes update of the seed, x is the measurement, tau2 the measurement uncertainty
     /// Reference: Video-based, real-time multi-view stereo. Supplementary matterial
-    void updateSeed( const double x, const double tau2, MixedGaussianFilter& depthFilter );
+    void updateFilter( const double x, const double tau2, MixedGaussianFilter& depthFilter );
 
     /// Compute the uncertainty of the measurement.
     double computeTau( const Sophus::SE3d& relativePose, const Eigen::Vector3d& bearing, const double z, const double px_error_angle );
 
-    /// Initialize new seeds from a frame.
-    void initializeSeeds( std::shared_ptr< Frame >& frame );
+    /// Initialize new Filters from a frame.
+    void initializeFilters( std::shared_ptr< Frame >& frame );
 
-    /// Update all seeds with a new measurement frame.
-    void updateSeeds( std::shared_ptr< Frame >& frame );
+    /// Update all Filters with a new measurement frame.
+    void updateFilters( std::shared_ptr< Frame >& frame );
 
     /// When a new keyframe arrives, the frame queue should be cleared.
     void clearFrameQueue();
 
     /// A thread that is continuously updating the seeds.
-    void updateSeedsLoop();
+    void updateFiltersLoop();
 
 private:
 };
