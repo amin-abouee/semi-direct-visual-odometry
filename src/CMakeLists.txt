@@ -65,6 +65,7 @@ set (LIBRARY_INCLUDE
     ${CMAKE_SOURCE_DIR}/include
     ${Sophus_INCLUDE_DIR}
     ${CMAKE_SOURCE_DIR}/3rd_party/easy_logging
+    ${CMAKE_SOURCE_DIR}/3rd_party/matplotlib_cpp
     )
 
 set(LIBRARY_SOURCES
