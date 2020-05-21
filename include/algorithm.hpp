@@ -18,6 +18,26 @@ using MapXRowConst = Eigen::Map< const Eigen::Matrix< uint8_t, Eigen::Dynamic, E
 
 // void pointsCurCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsCurCamera );
 
+void computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame, std::shared_ptr< Frame >& curFrame, const uint32_t patchSize );
+
+void computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
+                             std::shared_ptr< Frame >& curFrame,
+                             const double reproError,
+                             Eigen::Matrix3d& E );
+
+void templateMatching( const std::shared_ptr< Frame >& refFrame,
+                       std::shared_ptr< Frame >& curFrame,
+                       const uint16_t patchSzRef,
+                       const uint16_t patchSzCur );
+
+bool matchEpipolarConstraint( const std::shared_ptr< Frame >& refFrame,
+                              const std::shared_ptr< Frame >& curFrame,
+                              std::shared_ptr< Feature > feature,
+                              const double initialDepth,
+                              const double minDepth,
+                              const double maxDepth,
+                              double estimatedDepth );
+
 void triangulate3DWorldPoints( const std::shared_ptr< Frame >& refFrame,
                                const std::shared_ptr< Frame >& curFrame,
                                Eigen::MatrixXd& pointsWorld );

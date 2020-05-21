@@ -225,7 +225,7 @@ void DepthEstimator::updateFilter( const double x, const double tau2, MixedGauss
                      C2 * depthFilter.m_a * ( depthFilter.m_a + 1.0f ) /
                        ( ( depthFilter.m_a + depthFilter.m_b + 1.0f ) * ( depthFilter.m_a + depthFilter.m_b + 2.0f ) );
 
-    // update parameterss
+    // update parameters
     const double mu_new = C1 * m + C2 * depthFilter.m_mu;
     depthFilter.m_var   = C1 * ( s2 + m * m ) + C2 * ( depthFilter.m_var + depthFilter.m_mu * depthFilter.m_mu ) - mu_new * mu_new;
     depthFilter.m_mu    = mu_new;

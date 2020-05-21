@@ -1,6 +1,5 @@
 #include "system.hpp"
 #include "algorithm.hpp"
-#include "matcher.hpp"
 #include "utils.hpp"
 #include "visualization.hpp"
 
@@ -58,8 +57,8 @@ void System::processSecondFrame( const cv::Mat& secondImg )
     Eigen::Matrix3d R;
     Eigen::Vector3d t;
 
-    Matcher::computeOpticalFlowSparse( m_refFrame, m_curFrame, m_config->m_patchSizeOpticalFlow );
-    Matcher::computeEssentialMatrix( m_refFrame, m_curFrame, 1.0, E );
+    algorithm::computeOpticalFlowSparse( m_refFrame, m_curFrame, m_config->m_patchSizeOpticalFlow );
+    algorithm::computeEssentialMatrix( m_refFrame, m_curFrame, 1.0, E );
     // F = m_curFrame->m_camera->invK().transpose() * E * m_refFrame->m_camera->invK();
 
     // decompose essential matrix to R and t and set the absolute pose of reference frame

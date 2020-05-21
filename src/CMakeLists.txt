@@ -80,7 +80,7 @@ set(LIBRARY_SOURCES
     image_alignment.cpp
     optimizer.cpp
     estimator.cpp
-    matcher.cpp
+    # matcher.cpp
     feature_selection.cpp
     algorithm.cpp
     visualization.cpp
