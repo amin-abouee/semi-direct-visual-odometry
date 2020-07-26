@@ -89,7 +89,7 @@ void visualization::templatePatches( const cv::Mat& patches,
 {
     const uint32_t numberNecessaryCols = numberPatches > maxPatchInRow ? maxPatchInRow : numberPatches;
     const uint32_t numberNecessaryRows = static_cast< uint32_t >( std::ceil( numberPatches / static_cast< float >( maxPatchInRow ) ) );
-    const uint32_t patchArea           = patchSize * patchSize;
+    // const uint32_t patchArea           = patchSize * patchSize;
     const uint32_t rows                = numberNecessaryRows * ( horizontalMargin + patchSize + 1 );
     const uint32_t cols                = numberNecessaryCols * ( verticalMargin + patchSize + 1 );
 
@@ -224,7 +224,7 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
 
         std::vector< double > yRugPlot( residuals.size(), -1.0 );
 
-        for ( int i( 0 ); i < numberSample; i++ )
+        for ( uint32_t i( 0 ); i < numberSample; i++ )
         {
             y.push_back( ( maxBins / numberSample ) * i );
         }

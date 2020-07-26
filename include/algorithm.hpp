@@ -30,9 +30,26 @@ void templateMatching( const std::shared_ptr< Frame >& refFrame,
                        const uint16_t patchSzRef,
                        const uint16_t patchSzCur );
 
+void getAffineWarp( const std::shared_ptr< Frame >& refFrame,
+                    const std::shared_ptr< Frame >& curFrame,
+                    const std::shared_ptr< Feature >& feature,
+                    const Sophus::SE3d& relativePose,
+                    const double depth,
+                    // const int level,
+                    Eigen::Matrix2d& affineWarp );
+
+void applyAffineWarp( const std::shared_ptr< Frame >& frame,
+                      const Eigen::Vector2d& point,
+                      const uint32_t halfPatchSize,
+                      const Eigen::Matrix2d& affineWarp,
+                      Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& data );
+
+double computeScore(const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& refPatchIntensity,
+                    const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& curPatchIntensity);
+
 bool matchEpipolarConstraint( const std::shared_ptr< Frame >& refFrame,
                               const std::shared_ptr< Frame >& curFrame,
-                              std::shared_ptr< Feature > feature,
+                              std::shared_ptr< Feature >& feature,
                               const double initialDepth,
                               const double minDepth,
                               const double maxDepth,
@@ -69,6 +86,11 @@ void triangulatePointDLT( const std::shared_ptr< Frame >& refFrame,
                           const Eigen::Vector2d& curFeature,
                           Eigen::Vector3d& point );
 
+bool depthFromTriangulation(const Sophus::SE3d& relativePose,
+                            const Eigen::Vector3d& refBearingVec,
+                            const Eigen::Vector3d& curBearingVec,
+                            double depth);
+
 // https://paperpile.com/app/p/5bafd339-43e6-0f8e-b976-951e527f7a45
 // Multi view geometry, Result 9.19, page 259
 void decomposeEssentialMatrix( const Eigen::Matrix3d& E, Eigen::Matrix3d& R1, Eigen::Matrix3d& R2, Eigen::Vector3d& t );
@@ -95,7 +117,7 @@ float bilinearInterpolation( const MapXRow& image, const double x, const double 
 
 float bilinearInterpolation( const MapXRowConst& image, const double x, const double y );
 
-double computeNormalDistribution (const double mu, const double sigma, const double x);
+double computeNormalDistribution( const double mu, const double sigma, const double x );
 
 // double computeMedianInplace( const Eigen::VectorXd& vec );
 

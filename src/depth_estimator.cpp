@@ -209,28 +209,28 @@ void DepthEstimator::updateFilter( const double x, const double tau2, MixedGauss
     if ( std::isnan( norm_scale ) )
         return;
     // std::normal_distribution< double > normalDist( depthFilter.m_mu, norm_scale );
-    const double s2 = 1. / ( 1. / depthFilter.m_var + 1. / tau2 );
+    const double s2 = 1.0 / ( 1.0 / depthFilter.m_var + 1.0 / tau2 );
     const double m  = s2 * ( depthFilter.m_mu / depthFilter.m_var + x / tau2 );
     // https://stackoverflow.com/questions/10847007/using-the-gaussian-probability-density-function-in-c
     double C1 =
       depthFilter.m_a / ( depthFilter.m_a + depthFilter.m_b ) * algorithm::computeNormalDistribution( depthFilter.m_mu, norm_scale, x );
-    double C2                           = depthFilter.m_b / ( depthFilter.m_a + depthFilter.m_b ) * 1. / depthFilter.m_maxDepth;
+    double C2                           = depthFilter.m_b / ( depthFilter.m_a + depthFilter.m_b ) * 1.00 / depthFilter.m_maxDepth;
     const double normalization_constant = C1 + C2;
     C1 /= normalization_constant;
     C2 /= normalization_constant;
-    const double f = C1 * ( depthFilter.m_a + 1. ) / ( depthFilter.m_a + depthFilter.m_b + 1. ) +
-                     C2 * depthFilter.m_a / ( depthFilter.m_a + depthFilter.m_b + 1. );
-    const double e = C1 * ( depthFilter.m_a + 1. ) * ( depthFilter.m_a + 2. ) /
-                       ( ( depthFilter.m_a + depthFilter.m_b + 1. ) * ( depthFilter.m_a + depthFilter.m_b + 2. ) ) +
-                     C2 * depthFilter.m_a * ( depthFilter.m_a + 1.0f ) /
-                       ( ( depthFilter.m_a + depthFilter.m_b + 1.0f ) * ( depthFilter.m_a + depthFilter.m_b + 2.0f ) );
+    const double f = C1 * ( depthFilter.m_a + 1.0 ) / ( depthFilter.m_a + depthFilter.m_b + 1.0 ) +
+                     C2 * depthFilter.m_a / ( depthFilter.m_a + depthFilter.m_b + 1.0 );
+    const double e = C1 * ( depthFilter.m_a + 1.0 ) * ( depthFilter.m_a + 2.0 ) /
+                       ( ( depthFilter.m_a + depthFilter.m_b + 1.0 ) * ( depthFilter.m_a + depthFilter.m_b + 2.0 ) ) +
+                     C2 * depthFilter.m_a * ( depthFilter.m_a + 1.0 ) /
+                       ( ( depthFilter.m_a + depthFilter.m_b + 1.0 ) * ( depthFilter.m_a + depthFilter.m_b + 2.0 ) );
 
     // update parameters
     const double mu_new = C1 * m + C2 * depthFilter.m_mu;
     depthFilter.m_var   = C1 * ( s2 + m * m ) + C2 * ( depthFilter.m_var + depthFilter.m_mu * depthFilter.m_mu ) - mu_new * mu_new;
     depthFilter.m_mu    = mu_new;
     depthFilter.m_a     = ( e - f ) / ( f - e / f );
-    depthFilter.m_b     = depthFilter.m_a * ( 1.0f - f ) / f;
+    depthFilter.m_b     = depthFilter.m_a * ( 1.0 - f ) / f;
 }
 
 double DepthEstimator::computeTau( const Sophus::SE3d& relativePose,
