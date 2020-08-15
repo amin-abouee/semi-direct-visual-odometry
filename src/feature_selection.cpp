@@ -14,8 +14,6 @@
 #include "easylogging++.h"
 #define Feature_Log( LEVEL ) CLOG( LEVEL, "Feature" )
 
-// #include "spdlog/sinks/stdout_color_sinks.h"
-
 FeatureSelection::FeatureSelection(const cv::Mat& imgGray)
 {
     // featureLogger = spdlog::stdout_color_mt( "FeatureSelection" );

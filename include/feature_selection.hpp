@@ -19,8 +19,6 @@
 #include <Eigen/Core>
 #include <opencv2/core.hpp>
 
-#include <spdlog/spdlog.h>
-
 #include "feature.hpp"
 
 class FeatureSelection final
