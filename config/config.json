@@ -1,7 +1,7 @@
 {
     "file_paths": 
     {
-        "log_file" : "config/log.conf"
+        "log_file" : "./config/log.conf"
     },
     "camera":
     {

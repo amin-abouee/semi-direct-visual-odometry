@@ -20,6 +20,7 @@ System::System( const Config& config ) : m_config( &config )
     m_camera    = std::make_shared< PinholeCamera >( m_config->m_imgWidth, m_config->m_imgHeight, cameraMatrix, distortionCoeffs );
     m_alignment = std::make_shared< ImageAlignment >( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid,
                                                       m_config->m_maxLevelImagePyramid, 6 );
+    // m_depthEstimator = std::make_unique <DepthEstimator> ();
 }
 
 void System::processFirstFrame( const cv::Mat& firstImg )
@@ -46,6 +47,9 @@ void System::processFirstFrame( const cv::Mat& firstImg )
     m_refFrame->setKeyframe();
     System_Log( DEBUG ) << "Number of Features: " << m_refFrame->numberObservation();
     m_keyFrames.emplace_back( m_refFrame );
+
+    //TODO:add it to the map
+    // m_map.addKeyFrame(m_refFrame);
 }
 
 void System::processSecondFrame( const cv::Mat& secondImg )
@@ -73,7 +77,11 @@ void System::processSecondFrame( const cv::Mat& secondImg )
     algorithm::transferPointsWorldToCam( m_curFrame, pointsWorld, pointsCurCamera );
     algorithm::depthCamera( m_curFrame, pointsWorld, depthCurFrame );
     double medianDepth = algorithm::computeMedian( depthCurFrame );
-    System_Log( DEBUG ) << "Median depth in current frame: " << medianDepth;
+    // System_Log( DEBUG ) << "Median depth in current frame: " << medianDepth;
+    {
+       const double minDepth = depthCurFrame.minCoeff();
+       System_Log( INFO ) << "Before SCALE, Median Depth: " << medianDepth << ", minDepth: " << minDepth;
+    }
     const double scale = 1.0 / medianDepth;
 
     // t = -RC
@@ -118,11 +126,16 @@ void System::processSecondFrame( const cv::Mat& secondImg )
     Eigen::VectorXd newCurDepths( numObserves );
     algorithm::depthCamera( m_curFrame, newCurDepths );
     medianDepth = algorithm::computeMedian( newCurDepths );
-    // const double minDepth = newCurDepths.minCoeff();
+    const double minDepth = newCurDepths.minCoeff();
+    {
+        System_Log( INFO ) << "After Scale, Median Depth: " << medianDepth << ", minDepth: " << minDepth;
+    }
+
     // std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
     m_curFrame->setKeyframe();
     System_Log( INFO ) << "Number of Features: " << m_curFrame->numberObservation();
     m_keyFrames.emplace_back( m_curFrame );
+    // m_depthEstimator->addKeyframe(m_curFrame, medianDepth, 0.5 * minDepth);
 }
 
 void System::processNewFrame( const cv::Mat& newImg )

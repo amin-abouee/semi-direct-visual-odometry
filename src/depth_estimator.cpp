@@ -5,15 +5,17 @@
 #include <random>
 
 #include "easylogging++.h"
-#define Map_Log( LEVEL ) CLOG( LEVEL, "DepthEstimator" )
+#define Depth_Log( LEVEL ) CLOG( LEVEL, "Depth" )
 
 DepthEstimator::DepthEstimator()
-    : m_haltUpdatingDepthFilter( false ), m_activeThread( false ), m_newKeyframeMinDepth( 0.0 ), m_newKeyframeMeanDepth( 0.0 )
+    : m_haltUpdatingDepthFilter( false ), m_activeThread( true ), m_newKeyframeMinDepth( 0.0 ), m_newKeyframeMeanDepth( 0.0 )
 {
     // https://stackoverflow.com/a/18376082/1804533
     // https://thispointer.com/c-11-multithreading-part-1-three-different-ways-to-create-threads/
+    // https://stackoverflow.com/a/10673671
     // new std::thread(std::bind(&ThreadExample::run, this)));
     m_thread = std::make_unique< std::thread >( &DepthEstimator::updateFiltersLoop, this );
+    // Depth_Log( DEBUG ) << "thread initiliazed";
 }
 
 DepthEstimator::~DepthEstimator()
@@ -48,8 +50,11 @@ void DepthEstimator::addFrame( std::shared_ptr< Frame >& frame )
 
 void DepthEstimator::addKeyframe( std::shared_ptr< Frame >& frame, double depthMean, double depthMin )
 {
+    m_newKeyframeMinDepth = depthMean;
     m_newKeyframeMinDepth = depthMin;
-    m_newKeyframeMinDepth = depthMin;
+
+    Depth_Log( DEBUG ) << "newKeyframeMinDepth: " << m_newKeyframeMinDepth << ", newKeyframeMinDepth: " << m_newKeyframeMinDepth;
+
     if ( m_thread != nullptr )
     {
         m_newKeyframe             = frame;
@@ -107,15 +112,11 @@ void DepthEstimator::initializeFilters( std::shared_ptr< Frame >& frame )
 
     m_haltUpdatingDepthFilter = true;
     std::unique_lock< std::mutex > threadLocker( m_mutexSeed );  // by locking the updateSeeds function stops
-    // ++Seed::batch_counter;
-    //   std::for_each(new_features.begin(), new_features.end(), [&](Feature* ftr){
-    //     seeds_.push_back(Seed(ftr, new_keyframe_mean_depth_, new_keyframe_min_depth_));
-    //   });
-
     for ( const auto& feature : frame->m_frameFeatures )
     {
         m_depthFilters.emplace_back( MixedGaussianFilter( feature, m_newKeyframeMeanDepth, m_newKeyframeMinDepth ) );
     }
+    Depth_Log (DEBUG) << "size depthFilters: " << m_depthFilters.size() << std::endl;
 
     m_haltUpdatingDepthFilter = false;
 }
@@ -133,6 +134,7 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
     const double px_noise       = 1.0;
     const double px_error_angle = atan( px_noise / ( 2.0 * focal_length ) ) * 2.0;  // law of chord (sehnensatz)
 
+    Depth_Log (DEBUG) << "size depthFilters: " << m_depthFilters.size() << std::endl;
     for ( auto& depthFilter : m_depthFilters )
     {
         if ( m_haltUpdatingDepthFilter == false )
@@ -284,6 +286,7 @@ void DepthEstimator::updateFiltersLoop()
         }
 
         updateFilters( frame );
+        Depth_Log( INFO ) << "frame id  " << frame->m_id << "updated.";
         if ( frame->isKeyframe() )
             initializeFilters( frame );
     }

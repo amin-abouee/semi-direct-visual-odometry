@@ -10,13 +10,12 @@
 
 class Map final
 {
-
-using keyframeDistance = std::pair<std::shared_ptr< Frame >&, double>;
+    using keyframeDistance = std::pair< const std::shared_ptr< Frame >&, double >;
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     std::vector< std::shared_ptr< Frame > > m_keyFrames;
-    std::vector< std::shared_ptr< Point > > m_trashPoints;
+    // std::vector< std::shared_ptr< Point > > m_trashPoints;
 
     explicit Map();
     Map( const Map& rhs ) = delete;
@@ -29,29 +28,34 @@ public:
     void reset();
 
     // delete frame
-    bool removeFrame( std::shared_ptr< Frame >& frame );
+    void removeFrame( std::shared_ptr< Frame >& frame );
 
     // delete point
-    bool removePoint( std::shared_ptr< Point >& point );
+    void removePoint( std::shared_ptr< Point >& point );
 
-    //delete feature
-    bool removeFeature( std::shared_ptr< Feature >& feature );
+    // delete feature
+    void removeFeature( std::shared_ptr< Feature >& feature );
 
     void addKeyframe( std::shared_ptr< Frame >& frame );
-    std::shared_ptr< Frame >& getCloseKeyframe (std::shared_ptr< Frame >& frame) const;
-    void getCloseKeyframes (std::shared_ptr< Frame >& frame, std::vector<keyframeDistance>& closeKeyframes) const;
+
+    std::shared_ptr< Frame >& getCloseKeyframe( std::shared_ptr< Frame >& frame ) const;
+
+    void getCloseKeyframes( const std::shared_ptr< Frame >& frame, std::vector< keyframeDistance >& closeKeyframes ) const;
 
     /// Transform the whole map with rotation R, translation t and scale s.
-    void transform (const Eigen::Matrix3d& R, const Eigen::Vector3d& t, const double& s) const;
+    void transform( const Eigen::Matrix3d& R, const Eigen::Vector3d& t, const double& s ) const;
 
     /// Empty trash bin of deleted keyframes and map points. We don't delete the
     /// points immediately to ensure proper cleanup and to provide the visualizer
     /// a list of objects which must be removed.
-    void emptyTrash();
-    std::shared_ptr< Frame >& lastKeyframes();
+    // void emptyTrash();
+
+    std::shared_ptr< Frame >& getFurthestKeyframe( const Eigen::Vector3d& pos );
+
+    bool getFrameById( const uint64_t id, const std::shared_ptr< Frame >& frame ) const;
 
     /// Return the number of keyframes in the map
-    std::size_t sizeKeyframes () const;
+    std::size_t sizeKeyframes() const;
 
 private:
 };

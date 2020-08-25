@@ -25,24 +25,24 @@ class Feature;
 
 /**
  * @brief This class contains the RGB image informations, the absolute pose and its covariance and the camera geometry data
- * 
+ *
  */
 class Frame final
 {
 public:
-EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     static uint64_t m_frameCounter;
     uint64_t m_id;
-    const std::shared_ptr<PinholeCamera> m_camera;
+    const std::shared_ptr< PinholeCamera > m_camera;
     // std::reference_wrapper<PinholeCamera> m_camera;
     Sophus::SE3d m_TransW2F;
     Eigen::Matrix< double, 6, 6 > m_covPose;
     ImagePyramid m_imagePyramid;
-    std::vector< std::shared_ptr<Feature> > m_frameFeatures;
+    std::vector< std::shared_ptr< Feature > > m_frameFeatures;
     bool m_keyFrame;
 
     // C'tor
-    explicit Frame( const std::shared_ptr<PinholeCamera>& camera, const cv::Mat& img, const uint32_t maxImagePyramid );
+    explicit Frame( const std::shared_ptr< PinholeCamera >& camera, const cv::Mat& img, const uint32_t maxImagePyramid );
     // Copy C'tor
     Frame( const Frame& rhs ) = delete;  // non construction-copyable
     // move C'tor
@@ -61,11 +61,11 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     void setKeyframe();
 
     /// Add a feature to the image
-    void addFeature( std::shared_ptr<Feature>& feature );
+    void addFeature( std::shared_ptr< Feature >& feature );
 
-    void removeFeature( std::shared_ptr<Feature>& feature );
+    void removeFeature( std::shared_ptr< Feature >& feature );
 
-    /// number of features 
+    /// number of features
     std::size_t numberObservation() const;
 
     /// if the point is in the front of camera (z>0) and can projectable into image
@@ -95,7 +95,7 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     /// compute position of camera in world cordinate C = -R^t * t
     Eigen::Vector3d cameraInWorld() const;
 
-    //TODO: reset frame
+    // TODO: reset frame
 
 private:
 };
