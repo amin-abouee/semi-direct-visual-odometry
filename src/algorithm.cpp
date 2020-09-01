@@ -218,7 +218,7 @@ void algorithm::getAffineWarp( const std::shared_ptr< Frame >& refFrame,
                                const std::shared_ptr< Feature >& feature,
                                const Sophus::SE3d& relativePose,
                                const double depth,
-                            //    const int level,
+                               //    const int level,
                                Eigen::Matrix2d& affineWarp )
 {
     const uint32_t halfpatchSize = 5;
@@ -277,6 +277,35 @@ double computeScore( const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& refPatch
     return sum;
 }
 
+bool matchDirect( const std::shared_ptr< Point >& point, const std::shared_ptr< Frame >& curFrame, Eigen::Vector2d& featurePose )
+{
+    const uint32_t patchSize     = 7;
+    const uint32_t halfPatchSize = patchSize / 2;
+    const uint32_t patchArea     = patchSize * patchSize;
+    std::shared_ptr< Feature > feature;
+
+    if ( point->getCloseViewObservation( curFrame->cameraInWorld(), feature ) == false )
+        return false;
+    
+    if (feature->m_frame->m_camera->isInFrame(feature->m_feature, halfPatchSize) == false)
+        return false;
+
+    const Sophus::SE3d relativePose = algorithm::computeRelativePose( feature->m_frame, curFrame );
+    const double depth = (feature->m_frame->cameraInWorld() - point->m_position).norm();
+    Eigen::Matrix2d affineWarp;
+    algorithm::getAffineWarp( feature->m_frame, curFrame, feature, relativePose, depth, affineWarp );
+
+    Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 > refPatchIntensities( patchArea );
+    algorithm::applyAffineWarp( feature->m_frame, feature->m_feature, halfPatchSize, Eigen::Matrix2d::Identity(), refPatchIntensities );
+    
+    // TODO: optimize the pose
+    // if (i = 0)
+    // {
+        return true;
+    // }
+    return false;
+}
+
 bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFrame,
                                          const std::shared_ptr< Frame >& curFrame,
                                          std::shared_ptr< Feature >& feature,
@@ -285,9 +314,9 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
                                          const double maxDepth,
                                          double estimatedDepth )
 {
-    const uint32_t patchSize        = 7;
-    const uint32_t halfPatchSize    = patchSize / 2;
-    const uint32_t patchArea = patchSize * patchSize;
+    const uint32_t patchSize     = 7;
+    const uint32_t halfPatchSize = patchSize / 2;
+    const uint32_t patchArea     = patchSize * patchSize;
 
     const Sophus::SE3d relativePose = algorithm::computeRelativePose( refFrame, curFrame );
     const uint32_t thresholdZSSD    = 5 * 5 * 0.5;

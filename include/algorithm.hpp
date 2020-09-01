@@ -7,6 +7,7 @@
 #include <Eigen/Core>
 
 #include "frame.hpp"
+#include "point.hpp"
 // #define Algorithm_Log( LEVEL ) CLOG( LEVEL, "Algorithm" )
 
 namespace algorithm
@@ -44,8 +45,10 @@ void applyAffineWarp( const std::shared_ptr< Frame >& frame,
                       const Eigen::Matrix2d& affineWarp,
                       Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& data );
 
-double computeScore(const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& refPatchIntensity,
-                    const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& curPatchIntensity);
+double computeScore( const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& refPatchIntensity,
+                     const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& curPatchIntensity );
+
+bool matchDirect( const std::shared_ptr< Point >& point, const std::shared_ptr< Frame >& curFrame, Eigen::Vector2d& feature );
 
 bool matchEpipolarConstraint( const std::shared_ptr< Frame >& refFrame,
                               const std::shared_ptr< Frame >& curFrame,
@@ -86,10 +89,10 @@ void triangulatePointDLT( const std::shared_ptr< Frame >& refFrame,
                           const Eigen::Vector2d& curFeature,
                           Eigen::Vector3d& point );
 
-bool depthFromTriangulation(const Sophus::SE3d& relativePose,
-                            const Eigen::Vector3d& refBearingVec,
-                            const Eigen::Vector3d& curBearingVec,
-                            double depth);
+bool depthFromTriangulation( const Sophus::SE3d& relativePose,
+                             const Eigen::Vector3d& refBearingVec,
+                             const Eigen::Vector3d& curBearingVec,
+                             double depth );
 
 // https://paperpile.com/app/p/5bafd339-43e6-0f8e-b976-951e527f7a45
 // Multi view geometry, Result 9.19, page 259

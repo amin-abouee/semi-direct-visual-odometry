@@ -29,8 +29,12 @@ public:
     Eigen::Matrix3d m_normalCov;
     bool isNormalEstimated;
     std::vector< std::shared_ptr< Feature > > m_features;
-    // uint32_t m_numSuccessProjection;
     PointType m_type;
+    uint32_t m_lastPublishedTS;      //!< Timestamp of last publishing.
+    int32_t m_lastProjectedKFId;     //!< Flag for the reprojection: don't reproject a pt twice.
+    uint32_t m_failedProjection;     //!< Number of failed reprojections. Used to assess the quality of the point.
+    uint32_t m_succeededProjection;  //!< Number of succeeded reprojections. Used to assess the quality of the point.
+    uint32_t m_lastOptimizedTime;    //!< Timestamp of last point optimization
 
     explicit Point( const Eigen::Vector3d& point3D );
     explicit Point( const Eigen::Vector3d& point3D, const std::shared_ptr< Feature >& feature );
@@ -41,10 +45,11 @@ public:
     ~Point()                        = default;
 
     void addFeature( const std::shared_ptr< Feature >& feature );
-    void removeFrame (std::shared_ptr< Frame >& frame);
+    void removeFrame( std::shared_ptr< Frame >& frame );
     std::shared_ptr< Feature >& findFeature( std::shared_ptr< Frame >& frame );
     void computeNormal();
     std::size_t numberObservation() const;
+    bool getCloseViewObservation( const Eigen::Vector3d& poseInWorld, std::shared_ptr< Feature >& feature ) const;
 };
 
 #endif /* __POINT_HPP__ */
