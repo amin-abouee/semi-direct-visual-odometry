@@ -5,7 +5,6 @@
 #include <iostream>
 
 #include <Eigen/Core>
-#include <sophus/se3.hpp>
 
 #include "estimator.hpp"
 
@@ -67,15 +66,17 @@ public:
     Optimizer& operator=( Optimizer&& rhs );
     ~Optimizer()       = default;
 
-    OptimizerResult optimizeGN( Sophus::SE3d& pose,
-                       const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaResidualFunctor,
-                       const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaJacobianFunctor,
-                       const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
+    template<typename T>
+    OptimizerResult optimizeGN( T& pose,
+                       const std::function< uint32_t( T& pose ) >& lambdaResidualFunctor,
+                       const std::function< uint32_t( T& pose ) >& lambdaJacobianFunctor,
+                       const std::function< void( T& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
 
-    OptimizerResult optimizeLM( Sophus::SE3d& pose,
-                       const std::function< uint32_t( Sophus::SE3d& ) >& lambdaResidualFunctor,
-                       const std::function< uint32_t( Sophus::SE3d& ) >& lambdaJacobianFunctor,
-                       const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
+    template<typename T>
+    OptimizerResult optimizeLM( T& pose,
+                       const std::function< uint32_t( T& ) >& lambdaResidualFunctor,
+                       const std::function< uint32_t( T& ) >& lambdaJacobianFunctor,
+                       const std::function< void( T& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
 
     void initParameters( const std::size_t numObservations );
 

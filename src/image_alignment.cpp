@@ -74,7 +74,7 @@ double ImageAlignment::align( std::shared_ptr< Frame >& refFrame, std::shared_pt
             return computeResiduals( refFrame, curFrame, level, pose );
         };
         // t1 = std::chrono::high_resolution_clock::now();
-        std::tie( optimizationStatus, error ) = m_optimizer.optimizeLM( relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor );
+        std::tie( optimizationStatus, error ) = m_optimizer.optimizeLM<Sophus::SE3d>( relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor );
         // timeroptimize += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1
         // ).count();
 

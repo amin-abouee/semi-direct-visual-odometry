@@ -36,12 +36,12 @@ Optimizer::Optimizer( const u_int32_t numUnknowns )
     // m_timerCheck            = 0;
     // m_timerFor              = 0;
 }
-
+template<typename T>
 Optimizer::OptimizerResult Optimizer::optimizeGN(
-  Sophus::SE3d& pose,
-  const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaResidualFunctor,
-  const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaJacobianFunctor,
-  const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor )
+  T& pose,
+  const std::function< uint32_t( T& pose ) >& lambdaResidualFunctor,
+  const std::function< uint32_t( T& pose ) >& lambdaJacobianFunctor,
+  const std::function< void( T& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor )
 {
     // const uint32_t numUnknowns     = 6;
     const auto numObservations = m_residuals.size();
@@ -144,11 +144,12 @@ Optimizer::OptimizerResult Optimizer::optimizeGN(
     return std::make_pair( optimizeStatus, rmse );
 }
 
+template<typename T>
 Optimizer::OptimizerResult Optimizer::optimizeLM(
-  Sophus::SE3d& pose,
-  const std::function< uint32_t( Sophus::SE3d& ) >& lambdaResidualFunctor,
-  const std::function< uint32_t( Sophus::SE3d& ) >& lambdaJacobianFunctor,
-  const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor )
+  T& pose,
+  const std::function< uint32_t( T& ) >& lambdaResidualFunctor,
+  const std::function< uint32_t( T& ) >& lambdaJacobianFunctor,
+  const std::function< void( T& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor )
 {
     // auto t3 = std::chrono::high_resolution_clock::now();
     // const uint32_t numUnknowns     = 6;
@@ -253,7 +254,7 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
         // m_timerHessian += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
 
         // t1 = std::chrono::high_resolution_clock::now();
-        const Eigen::Matrix< double, 1, 6 > jwj = ( m_hessian ).diagonal();
+        const auto jwj = ( m_hessian ).diagonal();
 
         if ( m_levenbergMethod == LevenbergMethod::Marquardt )
         {
