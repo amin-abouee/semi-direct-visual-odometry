@@ -8,9 +8,6 @@
 #include <Eigen/Core>
 #include <opencv2/core.hpp>
 
-#include <sophus/se2.hpp>
-
-
 #include "frame.hpp"
 #include "optimizer.hpp"
 

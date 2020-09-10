@@ -35,6 +35,27 @@ public:
 
     using OptimizerResult = std::pair < Status, double>;
 
+    explicit Optimizer( const uint32_t numUnknowns );
+    Optimizer( const Optimizer& rhs );
+    Optimizer( Optimizer&& rhs );
+    Optimizer& operator=( const Optimizer& rhs );
+    Optimizer& operator=( Optimizer&& rhs );
+    ~Optimizer()       = default;
+
+    template<typename T>
+    OptimizerResult optimizeGN( T& pose,
+                       const std::function< uint32_t( T& pose ) >& lambdaResidualFunctor,
+                       const std::function< uint32_t( T& pose ) >& lambdaJacobianFunctor,
+                       const std::function< void( T& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
+
+    template<typename T>
+    OptimizerResult optimizeLM( T& pose,
+                       const std::function< uint32_t( T& ) >& lambdaResidualFunctor,
+                       const std::function< uint32_t( T& ) >& lambdaJacobianFunctor,
+                       const std::function< void( T& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
+
+    void initParameters( const std::size_t numObservations );
+
     uint32_t m_numUnknowns;
     Eigen::MatrixXd m_hessian;
     Eigen::MatrixXd m_jacobian;
@@ -58,27 +79,6 @@ public:
     double m_qualityFit;
     Eigen::Matrix< double, 6, 6 > m_covarianceMatrixParameters;
     Eigen::Matrix< double, 6, 1 > m_asymptoticStandardUncertaintyParameter;
-
-    explicit Optimizer( const uint32_t numUnknowns );
-    Optimizer( const Optimizer& rhs );
-    Optimizer( Optimizer&& rhs );
-    Optimizer& operator=( const Optimizer& rhs );
-    Optimizer& operator=( Optimizer&& rhs );
-    ~Optimizer()       = default;
-
-    template<typename T>
-    OptimizerResult optimizeGN( T& pose,
-                       const std::function< uint32_t( T& pose ) >& lambdaResidualFunctor,
-                       const std::function< uint32_t( T& pose ) >& lambdaJacobianFunctor,
-                       const std::function< void( T& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
-
-    template<typename T>
-    OptimizerResult optimizeLM( T& pose,
-                       const std::function< uint32_t( T& ) >& lambdaResidualFunctor,
-                       const std::function< uint32_t( T& ) >& lambdaJacobianFunctor,
-                       const std::function< void( T& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
-
-    void initParameters( const std::size_t numObservations );
 
     uint64_t m_timerResiduals;
     uint64_t m_timerSolve;

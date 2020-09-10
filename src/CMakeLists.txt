@@ -81,6 +81,7 @@ set(LIBRARY_SOURCES
     optimizer.cpp
     estimator.cpp
     feature_alignment.cpp
+    bundle_adjustment.cpp
     feature_selection.cpp
     algorithm.cpp
     visualization.cpp

@@ -48,19 +48,6 @@ double FeatureAlignment::align( const std::shared_ptr< Feature >& refFeature,
     };
     // t1 = std::chrono::high_resolution_clock::now();
     std::tie( optimizationStatus, error ) = m_optimizer.optimizeGN<Sophus::SE2d>( relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor );
-
-    // std::cout << "total: " << std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t3
-    // ).count() << std::endl; std::cout << "timerJacobian: " << timerJacobian << std::endl; std::cout << "timeroptimize: " << timeroptimize
-    // << std::endl; std::cout << "m_timerResiduals: " << m_optimizer.m_timerResiduals << std::endl; std::cout << "m_timerSolve: " <<
-    // m_optimizer.m_timerSolve << std::endl; std::cout << "m_timerHessina: " << m_optimizer.m_timerHessian << std::endl; std::cout <<
-    // "m_timerLambda: " << m_optimizer.m_timerLambda << std::endl; std::cout << "m_timerSwitch: " << m_optimizer.m_timerSwitch <<
-    // std::endl; std::cout << "m_timerLambda: " << m_optimizer.m_timerLambda << std::endl; std::cout << "m_timerUpdateParameters: " <<
-    // m_optimizer.m_timerUpdateParameters << std::endl; std::cout << "m_timerCheck: " << m_optimizer.m_timerCheck << std::endl; std::cout
-    // << "m_timerFor: " << m_optimizer.m_timerFor << std::endl;
-
-    // curFrame->m_TransW2F = refFrame->m_TransW2F * relativePose;
-    // curFrame->m_TransW2F = relativePose * refFrame->m_TransW2F;
-    // Alignment_Log( DEBUG ) << "Computed Pose: " << curFrame->m_TransW2F.params().transpose();
     pixelPos = relativePose * refFeature->m_feature;
     return error;
 }
