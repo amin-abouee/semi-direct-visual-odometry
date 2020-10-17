@@ -10,6 +10,7 @@
 #include <sophus/se3.hpp>
 
 #include "frame.hpp"
+#include "point.hpp"
 #include "optimizer.hpp"
 
 class BundleAdjustment
@@ -23,6 +24,7 @@ public:
     ~BundleAdjustment()       = default;
 
     double optimizePose( std::shared_ptr< Frame >& frame );
+    double optimizeStructure( std::shared_ptr< Frame >& frame, const uint32_t maxNumberPoints );
 
 private:
     uint32_t m_currentLevel;
@@ -31,10 +33,20 @@ private:
     Optimizer m_optimizer;
     std::vector< bool > m_refVisibility;
 
-    void computeJacobianPose( std::shared_ptr< Frame >& frame );
-    uint32_t computeResidualsPose( std::shared_ptr< Frame >& frame, Sophus::SE3d& pose );
-    void computeImageJac( Eigen::Matrix< double, 2, 6 >& imageJac, const Eigen::Vector3d& point, const double fx, const double fy );
+    void computeJacobianPose( const std::shared_ptr< Frame >& frame );
+    void computeImageJacPose( Eigen::Matrix< double, 2, 6 >& imageJac, const Eigen::Vector3d& point, const double fx, const double fy );
+    uint32_t computeResidualsPose( const std::shared_ptr< Frame >& frame, const Sophus::SE3d& pose );
     void updatePose( Sophus::SE3d& pose, const Eigen::VectorXd& dx );
+
+    void computeJacobianStructure( const std::shared_ptr< Point >& point );
+    void computeImageJacStructure( Eigen::Matrix< double, 2, 3 >& imageJac,
+                                   const Eigen::Vector3d& point,
+                                   const Eigen::Matrix3d& rotation,
+                                   const double fx,
+                                   const double fy );
+    uint32_t computeResidualsStructure( const std::shared_ptr< Point >& point );
+    void updateStructure( const std::shared_ptr< Point >& point, const Eigen::Vector3d& dx );
+
     void resetParameters();
 };
 

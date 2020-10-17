@@ -43,16 +43,16 @@ public:
     ~Optimizer()       = default;
 
     template<typename T>
-    OptimizerResult optimizeGN( T& pose,
-                       const std::function< uint32_t( T& pose ) >& lambdaResidualFunctor,
-                       const std::function< uint32_t( T& pose ) >& lambdaJacobianFunctor,
-                       const std::function< void( T& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
+    OptimizerResult optimizeGN( T& params,
+                       const std::function< uint32_t( T& params ) >& lambdaResidualFunctor,
+                       const std::function< uint32_t( T& params ) >& lambdaJacobianFunctor,
+                       const std::function< void( T& params, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
 
     template<typename T>
-    OptimizerResult optimizeLM( T& pose,
-                       const std::function< uint32_t( T& ) >& lambdaResidualFunctor,
-                       const std::function< uint32_t( T& ) >& lambdaJacobianFunctor,
-                       const std::function< void( T& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
+    OptimizerResult optimizeLM( T& params,
+                       const std::function< uint32_t( T& params ) >& lambdaResidualFunctor,
+                       const std::function< uint32_t( T& params ) >& lambdaJacobianFunctor,
+                       const std::function< void( T& params, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
 
     void initParameters( const std::size_t numObservations );
 

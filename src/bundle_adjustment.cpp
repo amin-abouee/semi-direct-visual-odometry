@@ -5,6 +5,7 @@
 #include "visualization.hpp"
 
 #include <algorithm>
+#include <deque>
 
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
@@ -24,37 +25,17 @@ double BundleAdjustment::optimizePose( std::shared_ptr< Frame >& frame )
         return 0;
 
     // auto t1 = std::chrono::high_resolution_clock::now();
-    const std::size_t numFeatures  = frame->numberObservation();
-    const uint32_t numObservations = numFeatures;
+    const std::size_t numFeatures = frame->numberObservation();
+    // const uint32_t numObservations = numFeatures;
     // m_refPatches                   = cv::Mat( numFeatures, m_patchArea, CV_32F );
-    m_optimizer.initParameters( numObservations * 2 );
+    m_optimizer.initParameters( numFeatures * 2 );
     m_refVisibility.resize( numFeatures, false );
-    // std::cout << "Init: " << std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1
-    // ).count() << std::endl;
-
-    // m_curVisibility.resize( numFeatures, false );
-
-    // std::cout << "jacobian size: " << m_optimizer.m_jacobian.rows() << " , " << m_optimizer.m_jacobian.cols() << std::endl;
-    // std::cout << "residuals size: " << m_optimizer.m_residuals.rows() << " , " << m_optimizer.m_residuals.cols() << std::endl;
-    // std::cout << "reference Patch size: " << m_refPatches.size << std::endl;
-    // std::cout << "number Observation: " << numObservations << std::endl;
 
     Sophus::SE3d absolutePose = frame->m_TransW2F;
-
-    // auto lambdaJacobianFunctor = [&refFrame, level](
-    //                                 Sophus::SE3d& pose ) -> void {
-    //     return computeJacobian( refFrame, level );
-    // };
 
     auto lambdaUpdateFunctor = [ this ]( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) -> void { updatePose( pose, dx ); };
     double error             = 0.0;
     Optimizer::Status optimizationStatus;
-
-    // uint64_t timerJacobian = 0;
-    // uint64_t timeroptimize = 0;
-
-    // auto t3 = std::chrono::high_resolution_clock::now();
-    // when we wanna compare a uint32 with an int32, the c++ can not compare -1 with 0
 
     // t1 = std::chrono::high_resolution_clock::now();
     computeJacobianPose( frame );
@@ -69,10 +50,56 @@ double BundleAdjustment::optimizePose( std::shared_ptr< Frame >& frame )
     // curFrame->m_TransW2F = refFrame->m_TransW2F * relativePose;
     frame->m_TransW2F = absolutePose;
     Adjustment_Log( DEBUG ) << "Computed Pose: " << frame->m_TransW2F.params().transpose();
+
     return error;
 }
 
-void BundleAdjustment::computeJacobianPose( std::shared_ptr< Frame >& frame )
+double BundleAdjustment::optimizeStructure( std::shared_ptr< Frame >& frame, const uint32_t maxNumberPoints )
+{
+    if ( frame->numberObservation() == 0 )
+        return 0;
+
+    std::vector< std::shared_ptr< Point > > points;
+    for ( const auto& feature : frame->m_frameFeatures )
+    {
+        if ( feature->m_point == nullptr )
+        {
+            points.push_back( feature->m_point );
+        }
+    }
+    uint32_t setMaxNumerPoints = maxNumberPoints < points.size() ? maxNumberPoints : points.size();
+    std::nth_element( points.begin(), points.begin() + maxNumberPoints, points.end(),
+                      []( const std::shared_ptr< Point >& lhs, const std::shared_ptr< Point >& rhs ) -> bool {
+                          return lhs->m_lastOptimizedTime < rhs->m_lastOptimizedTime;
+                      } );
+
+    m_optimizer.m_numUnknowns = 3;
+    for ( uint32_t i( 0 ); i < setMaxNumerPoints; i++ )
+    {
+        auto& point                   = points[ i ];
+        const std::size_t numFeatures = point->m_features.size();
+        m_optimizer.initParameters( numFeatures * 2 );
+        m_refVisibility.resize( numFeatures, false );
+
+        Sophus::SE3d absolutePose = frame->m_TransW2F;
+
+        auto lambdaUpdateFunctor = [ this ]( std::shared_ptr< Point >& point, const Eigen::Vector3d& dx ) -> void {
+            updateStructure( point, dx );
+        };
+        double error = 0.0;
+        Optimizer::Status optimizationStatus;
+
+        // t1 = std::chrono::high_resolution_clock::now();
+        computeJacobianStructure( point );
+
+        auto lambdaResidualFunctor = [ this ]( std::shared_ptr< Point >& point ) -> uint32_t { return computeResidualsStructure( point ); };
+        // t1 = std::chrono::high_resolution_clock::now();
+        std::tie( optimizationStatus, error ) =
+          m_optimizer.optimizeGN< std::shared_ptr< Point > >( point, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor );
+    }
+}
+
+void BundleAdjustment::computeJacobianPose( const std::shared_ptr< Frame >& frame )
 {
     resetParameters();
     const double fx     = frame->m_camera->fx();
@@ -90,7 +117,7 @@ void BundleAdjustment::computeJacobianPose( std::shared_ptr< Frame >& frame )
         const Eigen::Vector3d point   = feature->m_point->m_position;
 
         Eigen::Matrix< double, 2, 6 > imageJac;
-        computeImageJac( imageJac, point, fx, fy );
+        computeImageJacPose( imageJac, point, fx, fy );
 
         m_optimizer.m_jacobian.block( 2 * cntPoints, 0, 2, 6 ) = imageJac;
         cntPoints++;
@@ -100,7 +127,7 @@ void BundleAdjustment::computeJacobianPose( std::shared_ptr< Frame >& frame )
 }
 
 // if we define the residual error as current image - reference image, we do not need to apply the negative for gradient
-uint32_t BundleAdjustment::computeResidualsPose( std::shared_ptr< Frame >& frame, Sophus::SE3d& pose )
+uint32_t BundleAdjustment::computeResidualsPose( const std::shared_ptr< Frame >& frame, const Sophus::SE3d& pose )
 {
     uint32_t cntFeature              = 0;
     uint32_t cntTotalProjectedPixels = 0;
@@ -112,7 +139,7 @@ uint32_t BundleAdjustment::computeResidualsPose( std::shared_ptr< Frame >& frame
             continue;
         }
 
-        const Eigen::Vector2d error = frame->camera2image(pose * feature->m_point->m_position) - feature->m_feature;
+        const Eigen::Vector2d error = frame->camera2image( pose * feature->m_point->m_position ) - feature->m_feature;
         // ****
         // IF we compute the error of inverse compositional as r = T(x) - I(W), then we should solve (delta p) = -(JtWT).inverse() *
         // JtWr BUt if we take r = I(W) - T(x) a residual error, then (delta p) = (JtWT).inverse() * JtWr
@@ -129,10 +156,10 @@ uint32_t BundleAdjustment::computeResidualsPose( std::shared_ptr< Frame >& frame
     return cntTotalProjectedPixels;
 }
 
-void BundleAdjustment::computeImageJac( Eigen::Matrix< double, 2, 6 >& imageJac,
-                                        const Eigen::Vector3d& point,
-                                        const double fx,
-                                        const double fy )
+void BundleAdjustment::computeImageJacPose( Eigen::Matrix< double, 2, 6 >& imageJac,
+                                            const Eigen::Vector3d& point,
+                                            const double fx,
+                                            const double fy )
 {
     // Image Gradient-based Joint Direct Visual Odometry for Stereo Camera, Eq. 12
     // Taking a Deeper Look at the Inverse Compositional Algorithm, Eq. 28
@@ -188,6 +215,80 @@ void BundleAdjustment::computeImageJac( Eigen::Matrix< double, 2, 6 >& imageJac,
 void BundleAdjustment::updatePose( Sophus::SE3d& pose, const Eigen::VectorXd& dx )
 {
     pose = pose * Sophus::SE3d::exp( -dx );
+}
+
+void BundleAdjustment::computeJacobianStructure( const std::shared_ptr< Point >& point )
+{
+    uint32_t cntFeature = 0;
+    for ( const auto& feature : point->m_features )
+    {
+        const auto& pos                      = point->m_position;
+        const Eigen::Vector2d projectedPoint = feature->m_frame->world2image( pos );
+        const auto& camera                   = feature->m_frame->m_camera;
+        Eigen::Matrix< double, 2, 3 > imageJac;
+        computeImageJacStructure( imageJac, pos, feature->m_frame->m_TransW2F.rotationMatrix(), camera->fx(), camera->fy() );
+        m_optimizer.m_jacobian.block( 2 * cntFeature, 0, 2, 3 ) = imageJac;
+        cntFeature++;
+    }
+}
+
+void BundleAdjustment::computeImageJacStructure(
+  Eigen::Matrix< double, 2, 3 >& imageJac, const Eigen::Vector3d& point, const Eigen::Matrix3d& rotation, const double fx, const double fy )
+{
+    // Image Gradient-based Joint Direct Visual Odometry for Stereo Camera, Eq. 12
+    // Taking a Deeper Look at the Inverse Compositional Algorithm, Eq. 28
+    // https://github.com/uzh-rpg/rpg_svo/blob/master/svo/include/svo/frame.h, jacobian_xyz2uv function but the negative
+    // one
+
+    //                              ⎡fx        -fx⋅x ⎤
+    //                              ⎢──   0.0  ──────⎥
+    //                              ⎢z           z₂  ⎥
+    // dx / dX =                    ⎢                ⎥
+    //                              ⎢     fy   -fy⋅y ⎥
+    //                              ⎢0.0  ──   ──────⎥
+    //                              ⎣     z      z₂  ⎦
+
+    const double x  = point.x();
+    const double y  = point.y();
+    const double z  = point.z();
+    const double z2 = z * z;
+
+    imageJac( 0, 0 ) = fx / z;
+    imageJac( 0, 1 ) = 0.0;
+    imageJac( 0, 2 ) = -( fx * x ) / z2;
+
+    imageJac( 1, 0 ) = 0.0;
+    imageJac( 1, 1 ) = fy / z;
+    imageJac( 1, 2 ) = -( fy * y ) / z2;
+    imageJac         = imageJac * rotation;
+}
+
+uint32_t BundleAdjustment::computeResidualsStructure( const std::shared_ptr< Point >& point )
+{
+    uint32_t cntFeature = 0;
+    for ( const auto& feature : point->m_features )
+    {
+        const auto& pos                      = point->m_position;
+        const Eigen::Vector2d projectedPoint = feature->m_frame->world2image( pos );
+        const Eigen::Vector2d error          = projectedPoint - feature->m_feature;
+        // ****
+        // IF we compute the error of inverse compositional as r = T(x) - I(W), then we should solve (delta p) = -(JtWT).inverse() *
+        // JtWr BUt if we take r = I(W) - T(x) a residual error, then (delta p) = (JtWT).inverse() * JtWr
+        // ***
+
+        m_optimizer.m_residuals( cntFeature++ ) = static_cast< double >( error.x() );
+        m_optimizer.m_residuals( cntFeature )   = static_cast< double >( error.y() );
+        // m_optimizer.m_residuals( cntFeature * m_patchArea + cntPixel ) = static_cast< double >( *pixelPtr - curPixelValue);
+        m_optimizer.m_visiblePoints( cntFeature ) = true;
+
+        cntFeature++;
+    }
+    return cntFeature;
+}
+
+void BundleAdjustment::updateStructure( const std::shared_ptr< Point >& point, const Eigen::Vector3d& dx )
+{
+    point->m_position = point->m_position + dx;
 }
 
 void BundleAdjustment::resetParameters()

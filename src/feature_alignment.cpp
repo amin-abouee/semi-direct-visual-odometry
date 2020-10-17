@@ -39,12 +39,12 @@ double FeatureAlignment::align( const std::shared_ptr< Feature >& refFeature,
     Sophus::SE2d relativePose;
 
     // t1 = std::chrono::high_resolution_clock::now();
-    computeJacobian( refFeature, 0 );
+    computeJacobian( refFeature );
     // timerJacobian += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1
     // ).count();
 
     auto lambdaResidualFunctor = [ this, &refFeature, &curFrame ]( Sophus::SE2d& pose ) -> uint32_t {
-        return computeResiduals( refFeature, curFrame, 0, pose );
+        return computeResiduals( refFeature, curFrame, pose );
     };
     // t1 = std::chrono::high_resolution_clock::now();
     std::tie( optimizationStatus, error ) = m_optimizer.optimizeGN<Sophus::SE2d>( relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor );
@@ -52,11 +52,11 @@ double FeatureAlignment::align( const std::shared_ptr< Feature >& refFeature,
     return error;
 }
 
-void FeatureAlignment::computeJacobian( const std::shared_ptr< Feature >& refFeature, const uint32_t level )
+void FeatureAlignment::computeJacobian( const std::shared_ptr< Feature >& refFeature )
 {
     resetParameters();
     const int32_t border = m_halfPatchSize + 2;
-    const cv::Mat& refImage = refFeature->m_frame->m_imagePyramid.getImageAtLevel( level );
+    const cv::Mat& refImage = refFeature->m_frame->m_imagePyramid.getImageAtLevel( m_level );
     const algorithm::MapXRowConst refImageEigen( refImage.ptr< uint8_t >(), refImage.rows, refImage.cols );
     const Eigen::Vector2d pixelPos = refFeature->m_feature;
 
@@ -95,11 +95,10 @@ void FeatureAlignment::computeJacobian( const std::shared_ptr< Feature >& refFea
 // if we define the residual error as current image - reference image, we do not need to apply the negative for gradient
 uint32_t FeatureAlignment::computeResiduals( const std::shared_ptr< Feature >& refFeature,
                                              const std::shared_ptr< Frame >& curFrame,
-                                             const uint32_t level,
                                              Sophus::SE2d& pose )
 {
     const int32_t border = m_halfPatchSize + 2;
-    const cv::Mat& curImage = curFrame->m_imagePyramid.getImageAtLevel( level );
+    const cv::Mat& curImage = curFrame->m_imagePyramid.getImageAtLevel( m_level );
     const algorithm::MapXRowConst curImageEigen( curImage.ptr< uint8_t >(), curImage.rows, curImage.cols );
     const Eigen::Vector2d pixelPos = refFeature->m_feature;
     // const uint32_t stride            = curImage.cols;

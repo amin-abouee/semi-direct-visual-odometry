@@ -35,10 +35,9 @@ private:
     cv::Mat m_refPatches;
     std::vector< bool > m_refVisibility;
 
-    void computeJacobian( const std::shared_ptr< Feature >& refFeature, const uint32_t level );
+    void computeJacobian( const std::shared_ptr< Feature >& refFeature);
     uint32_t computeResiduals( const std::shared_ptr< Feature >& refFeature,
                                const std::shared_ptr< Frame >& curFrame,
-                               const uint32_t level,
                                Sophus::SE2d& pose );
     void computeImageJac( Eigen::Matrix< double, 2, 3 >& imageJac, const Eigen::Vector2d& pixelPos );
     void update( Sophus::SE2d& pose, const Eigen::Vector3d& dx );
