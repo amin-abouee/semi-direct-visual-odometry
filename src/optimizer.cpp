@@ -36,12 +36,12 @@ Optimizer::Optimizer( const u_int32_t numUnknowns )
     // m_timerCheck            = 0;
     // m_timerFor              = 0;
 }
-
+template<typename T>
 Optimizer::OptimizerResult Optimizer::optimizeGN(
-  Sophus::SE3d& pose,
-  const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaResidualFunctor,
-  const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaJacobianFunctor,
-  const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor )
+  T& params,
+  const std::function< uint32_t( T& params ) >& lambdaResidualFunctor,
+  const std::function< uint32_t( T& params ) >& lambdaJacobianFunctor,
+  const std::function< void( T& params, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor )
 {
     // const uint32_t numUnknowns     = 6;
     const auto numObservations = m_residuals.size();
@@ -62,19 +62,19 @@ Optimizer::OptimizerResult Optimizer::optimizeGN(
     uint32_t cntTotalProjectedPixels = 0;
 
     double preChiSquaredError = std::numeric_limits< double >::max();
-    Sophus::SE3d prePose      = pose;
+    T preParams     = params;
 
     // while ( curIteration < m_maxIteration && !stop )
     while ( curIteration < m_maxIteration )
     {
-        // std::cout << "pose: " << pose.params().format(utils::eigenFormat()) << std::endl;
+        // std::cout << "params: " << params.params().format(utils::eigenFormat()) << std::endl;
         resetAllParameters( computeJacobian );
-        cntTotalProjectedPixels = lambdaResidualFunctor( pose );
+        cntTotalProjectedPixels = lambdaResidualFunctor( params );
         tukeyWeighting( cntTotalProjectedPixels );
         // const uint32_t validpatches = std::count( curVisibility.begin(), curVisibility.end(), true );
         // std::cout << "projected points: " << cntTotalProjectedPixels << std::endl;
         if ( computeJacobian == true )
-            lambdaJacobianFunctor( pose );
+            lambdaJacobianFunctor( params );
 
         // for ( std::size_t i( 0 ); i < numObservations; i++ )
         // {
@@ -110,21 +110,30 @@ Optimizer::OptimizerResult Optimizer::optimizeGN(
         if ( chiSquaredError > preChiSquaredError )
         {
             optimizeStatus = Status::Increase_Chi_Squred_Error;
-            pose           = prePose;  // rollback to previous pose
+            params           = preParams;  // rollback to previous pose
             break;
         }
 
-        prePose            = pose;
+        preParams            = params;
         preChiSquaredError = chiSquaredError;
         std::cout << "chi error: " << chiSquaredError << std::endl;
 
         stepSize     = m_dx.transpose() * m_dx;
-        normDiffPose = ( m_dx ).norm() / ( pose.log() ).norm();
+
+        if (std::is_same_v<T, Sophus::SE3d>)
+        {
+            normDiffPose = ( m_dx ).norm() / ( params.log() ).norm();
+        }
+        else
+        {
+            normDiffPose = ( m_dx ).norm() / ( params ).norm();
+        }
+        
 
         if ( stepSize < m_stepSize || normDiffPose < m_normInfDiff || chiSquaredError < m_minChiSquaredError )
         {
             // stop = true;
-            lambdaUpdateFunctor( pose, m_dx );
+            lambdaUpdateFunctor( params, m_dx );
 
             optimizeStatus = stepSize < m_stepSize ? Status::Small_Step_Size : optimizeStatus;
             optimizeStatus = normDiffPose < m_normInfDiff ? Status::Norm_Inf_Diff : optimizeStatus;
@@ -133,7 +142,7 @@ Optimizer::OptimizerResult Optimizer::optimizeGN(
         }
         else
         {
-            lambdaUpdateFunctor( pose, m_dx );
+            lambdaUpdateFunctor( params, m_dx );
             optimizeStatus = Status::Success;
         }
 
@@ -144,11 +153,12 @@ Optimizer::OptimizerResult Optimizer::optimizeGN(
     return std::make_pair( optimizeStatus, rmse );
 }
 
+template<typename T>
 Optimizer::OptimizerResult Optimizer::optimizeLM(
-  Sophus::SE3d& pose,
-  const std::function< uint32_t( Sophus::SE3d& ) >& lambdaResidualFunctor,
-  const std::function< uint32_t( Sophus::SE3d& ) >& lambdaJacobianFunctor,
-  const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor )
+  T& pose,
+  const std::function< uint32_t( T& ) >& lambdaResidualFunctor,
+  const std::function< uint32_t( T& ) >& lambdaJacobianFunctor,
+  const std::function< void( T& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor )
 {
     // auto t3 = std::chrono::high_resolution_clock::now();
     // const uint32_t numUnknowns     = 6;
@@ -253,7 +263,7 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
         // m_timerHessian += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
 
         // t1 = std::chrono::high_resolution_clock::now();
-        const Eigen::Matrix< double, 1, 6 > jwj = ( m_hessian ).diagonal();
+        const auto jwj = ( m_hessian ).diagonal();
 
         if ( m_levenbergMethod == LevenbergMethod::Marquardt )
         {

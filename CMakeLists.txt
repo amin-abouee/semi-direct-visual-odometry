@@ -1,7 +1,7 @@
 # https://github.com/onqtam/awesome-cmake
 # https://cgold.readthedocs.io/en/latest/
 cmake_minimum_required(VERSION 3.0.0)
-project(semi-direct-visual-odometry VERSION 0.1.0)
+project(semi-direct-visual-odometry VERSION 0.4.0)
 
 # if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 #     message(STATUS "GCC or Clang detected, adding compile flags")

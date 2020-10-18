@@ -6,11 +6,14 @@
 #include "image_alignment.hpp"
 #include "pinhole_camera.hpp"
 #include "system.hpp"
+#include "depth_estimator.hpp"
+#include "map.hpp"
 
-#include <Eigen/Core>
 #include <iomanip>
 #include <iostream>
 #include <memory>
+
+#include <Eigen/Core>
 #include <nlohmann/json.hpp>
 #include <opencv2/core.hpp>
 
@@ -22,6 +25,8 @@ public:
     std::shared_ptr< Frame > m_curFrame;
     std::unique_ptr< FeatureSelection > m_featureSelection;
     std::vector< std::shared_ptr< Frame > > m_keyFrames;
+    std::unique_ptr< DepthEstimator > m_depthEstimator;
+    std::unique_ptr< Map > m_map;
 
     explicit System( const Config& config );
     System( const System& rhs ) = delete;
@@ -40,6 +45,8 @@ public:
 
 private:
     bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs );
+    bool needKeyframe(const double sceneDepthMean);
+    void makeKeyframe(std::shared_ptr< Frame >& frame, const double& depthMean, const double& depthMin);
 
     std::shared_ptr< ImageAlignment > m_alignment;
     const Config* m_config;

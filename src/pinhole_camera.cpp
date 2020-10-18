@@ -145,7 +145,7 @@ Eigen::Vector2d PinholeCamera::focalLength() const
     return Eigen::Vector2d( fx(), fy() );
 }
 
-Eigen::Vector2d PinholeCamera::principlePoint() const
+Eigen::Vector2d PinholeCamera::principalPoint() const
 {
     return Eigen::Vector2d( cx(), cy() );
 }

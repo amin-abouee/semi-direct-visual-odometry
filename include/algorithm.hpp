@@ -7,6 +7,7 @@
 #include <Eigen/Core>
 
 #include "frame.hpp"
+#include "point.hpp"
 // #define Algorithm_Log( LEVEL ) CLOG( LEVEL, "Algorithm" )
 
 namespace algorithm
@@ -18,40 +19,92 @@ using MapXRowConst = Eigen::Map< const Eigen::Matrix< uint8_t, Eigen::Dynamic, E
 
 // void pointsCurCamera( const Frame& refFrame, const Frame& curFrame, Eigen::MatrixXd& pointsCurCamera );
 
-void points3DWorld( const std::shared_ptr<Frame>& refFrame, const std::shared_ptr<Frame>& curFrame, Eigen::MatrixXd& pointsWorld );
+void computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame, std::shared_ptr< Frame >& curFrame, const uint32_t patchSize );
 
-void transferPointsWorldToCam( const std::shared_ptr<Frame>& frame, const Eigen::MatrixXd& pointsWorld, Eigen::MatrixXd& pointsCamera );
+void computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
+                             std::shared_ptr< Frame >& curFrame,
+                             const double reproError,
+                             Eigen::Matrix3d& E );
 
-void transferPointsCamToWorld( const std::shared_ptr<Frame>& frame, const Eigen::MatrixXd& pointsCamera, Eigen::MatrixXd& pointsWorld );
+void templateMatching( const std::shared_ptr< Frame >& refFrame,
+                       std::shared_ptr< Frame >& curFrame,
+                       const uint16_t patchSzRef,
+                       const uint16_t patchSzCur );
 
-void normalizedDepthCamera( const std::shared_ptr<Frame>& frame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& normalizedDepthCamera );
+void getAffineWarp( const std::shared_ptr< Frame >& refFrame,
+                    const std::shared_ptr< Frame >& curFrame,
+                    const std::shared_ptr< Feature >& feature,
+                    const Sophus::SE3d& relativePose,
+                    const double depth,
+                    // const int level,
+                    Eigen::Matrix2d& affineWarp );
 
-void normalizedDepthCamera( const std::shared_ptr<Frame>& frame, Eigen::VectorXd& normalizedDepthCamera );
+void applyAffineWarp( const std::shared_ptr< Frame >& frame,
+                      const Eigen::Vector2d& point,
+                      const uint32_t halfPatchSize,
+                      const Eigen::Matrix2d& affineWarp,
+                      Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& data );
 
-void depthCamera( const std::shared_ptr<Frame>& frame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& depthCamera );
+double computeScore( const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& refPatchIntensity,
+                     const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& curPatchIntensity );
 
-void depthCamera( const std::shared_ptr<Frame>& frame, Eigen::VectorXd& depthCamera );
+bool matchDirect( const std::shared_ptr< Point >& point, const std::shared_ptr< Frame >& curFrame, Eigen::Vector2d& feature );
 
-void triangulatePointHomogenousDLT( const std::shared_ptr<Frame>& refFrame,
-                                    const std::shared_ptr<Frame>& curFrame,
+bool matchEpipolarConstraint( const std::shared_ptr< Frame >& refFrame,
+                              const std::shared_ptr< Frame >& curFrame,
+                              std::shared_ptr< Feature >& feature,
+                              const double initialDepth,
+                              const double minDepth,
+                              const double maxDepth,
+                              double estimatedDepth );
+
+void triangulate3DWorldPoints( const std::shared_ptr< Frame >& refFrame,
+                               const std::shared_ptr< Frame >& curFrame,
+                               Eigen::MatrixXd& pointsWorld );
+
+void transferPointsWorldToCam( const std::shared_ptr< Frame >& frame, const Eigen::MatrixXd& pointsWorld, Eigen::MatrixXd& pointsCamera );
+
+void transferPointsCamToWorld( const std::shared_ptr< Frame >& frame, const Eigen::MatrixXd& pointsCamera, Eigen::MatrixXd& pointsWorld );
+
+void normalizedDepthCamera( const std::shared_ptr< Frame >& frame,
+                            const Eigen::MatrixXd& pointsWorld,
+                            Eigen::VectorXd& normalizedDepthCamera );
+
+void normalizedDepthCamera( const std::shared_ptr< Frame >& frame, Eigen::VectorXd& normalizedDepthCamera );
+
+void depthCamera( const std::shared_ptr< Frame >& frame, const Eigen::MatrixXd& pointsWorld, Eigen::VectorXd& depthCamera );
+
+void depthCamera( const std::shared_ptr< Frame >& frame, Eigen::VectorXd& depthCamera );
+
+void triangulatePointHomogenousDLT( const std::shared_ptr< Frame >& refFrame,
+                                    const std::shared_ptr< Frame >& curFrame,
                                     const Eigen::Vector2d& refFeature,
                                     const Eigen::Vector2d& curFeature,
                                     Eigen::Vector3d& point );
 
 // Guide to 3D Vision Computation, Procedure 4.1, Triangulation with known camera matrices, Eq. 4.3, Page 61
-void triangulatePointDLT( const std::shared_ptr<Frame>& refFrame,
-                          const std::shared_ptr<Frame>& curFrame,
+void triangulatePointDLT( const std::shared_ptr< Frame >& refFrame,
+                          const std::shared_ptr< Frame >& curFrame,
                           const Eigen::Vector2d& refFeature,
                           const Eigen::Vector2d& curFeature,
                           Eigen::Vector3d& point );
+
+bool depthFromTriangulation( const Sophus::SE3d& relativePose,
+                             const Eigen::Vector3d& refBearingVec,
+                             const Eigen::Vector3d& curBearingVec,
+                             double depth );
 
 // https://paperpile.com/app/p/5bafd339-43e6-0f8e-b976-951e527f7a45
 // Multi view geometry, Result 9.19, page 259
 void decomposeEssentialMatrix( const Eigen::Matrix3d& E, Eigen::Matrix3d& R1, Eigen::Matrix3d& R2, Eigen::Vector3d& t );
 
-void recoverPose( const Eigen::Matrix3d& E, const std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame, Eigen::Matrix3d& R, Eigen::Vector3d& t );
+void recoverPose( const Eigen::Matrix3d& E,
+                  const std::shared_ptr< Frame >& refFrame,
+                  std::shared_ptr< Frame >& curFrame,
+                  Eigen::Matrix3d& R,
+                  Eigen::Vector3d& t );
 
-Sophus::SE3d computeRelativePose( const std::shared_ptr<Frame>& refFrame, const std::shared_ptr<Frame>& curFrame );
+Sophus::SE3d computeRelativePose( const std::shared_ptr< Frame >& refFrame, const std::shared_ptr< Frame >& curFrame );
 
 Eigen::Matrix3d hat( const Eigen::Vector3d& vec );
 
@@ -66,6 +119,8 @@ double computeSigma( const Eigen::VectorXd& input, const uint32_t numValidPoints
 float bilinearInterpolation( const MapXRow& image, const double x, const double y );
 
 float bilinearInterpolation( const MapXRowConst& image, const double x, const double y );
+
+double computeNormalDistribution( const double mu, const double sigma, const double x );
 
 // double computeMedianInplace( const Eigen::VectorXd& vec );
 

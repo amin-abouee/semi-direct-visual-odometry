@@ -65,6 +65,7 @@ set (LIBRARY_INCLUDE
     ${CMAKE_SOURCE_DIR}/include
     ${Sophus_INCLUDE_DIR}
     ${CMAKE_SOURCE_DIR}/3rd_party/easy_logging
+    ${CMAKE_SOURCE_DIR}/3rd_party/matplotlib_cpp
     )
 
 set(LIBRARY_SOURCES
@@ -74,10 +75,13 @@ set(LIBRARY_SOURCES
     feature.cpp
     point.cpp
     map.cpp
+    depth_estimator.cpp
+    mixed_gaussian_filter.cpp
     image_alignment.cpp
     optimizer.cpp
     estimator.cpp
-    matcher.cpp
+    feature_alignment.cpp
+    bundle_adjustment.cpp
     feature_selection.cpp
     algorithm.cpp
     visualization.cpp

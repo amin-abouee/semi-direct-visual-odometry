@@ -5,7 +5,6 @@
 #include <iostream>
 
 #include <Eigen/Core>
-#include <sophus/se3.hpp>
 
 #include "estimator.hpp"
 
@@ -36,6 +35,27 @@ public:
 
     using OptimizerResult = std::pair < Status, double>;
 
+    explicit Optimizer( const uint32_t numUnknowns );
+    Optimizer( const Optimizer& rhs );
+    Optimizer( Optimizer&& rhs );
+    Optimizer& operator=( const Optimizer& rhs );
+    Optimizer& operator=( Optimizer&& rhs );
+    ~Optimizer()       = default;
+
+    template<typename T>
+    OptimizerResult optimizeGN( T& params,
+                       const std::function< uint32_t( T& params ) >& lambdaResidualFunctor,
+                       const std::function< uint32_t( T& params ) >& lambdaJacobianFunctor,
+                       const std::function< void( T& params, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
+
+    template<typename T>
+    OptimizerResult optimizeLM( T& params,
+                       const std::function< uint32_t( T& params ) >& lambdaResidualFunctor,
+                       const std::function< uint32_t( T& params ) >& lambdaJacobianFunctor,
+                       const std::function< void( T& params, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
+
+    void initParameters( const std::size_t numObservations );
+
     uint32_t m_numUnknowns;
     Eigen::MatrixXd m_hessian;
     Eigen::MatrixXd m_jacobian;
@@ -59,25 +79,6 @@ public:
     double m_qualityFit;
     Eigen::Matrix< double, 6, 6 > m_covarianceMatrixParameters;
     Eigen::Matrix< double, 6, 1 > m_asymptoticStandardUncertaintyParameter;
-
-    explicit Optimizer( const uint32_t numUnknowns );
-    Optimizer( const Optimizer& rhs );
-    Optimizer( Optimizer&& rhs );
-    Optimizer& operator=( const Optimizer& rhs );
-    Optimizer& operator=( Optimizer&& rhs );
-    ~Optimizer()       = default;
-
-    OptimizerResult optimizeGN( Sophus::SE3d& pose,
-                       const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaResidualFunctor,
-                       const std::function< uint32_t( Sophus::SE3d& pose ) >& lambdaJacobianFunctor,
-                       const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
-
-    OptimizerResult optimizeLM( Sophus::SE3d& pose,
-                       const std::function< uint32_t( Sophus::SE3d& ) >& lambdaResidualFunctor,
-                       const std::function< uint32_t( Sophus::SE3d& ) >& lambdaJacobianFunctor,
-                       const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
-
-    void initParameters( const std::size_t numObservations );
 
     uint64_t m_timerResiduals;
     uint64_t m_timerSolve;
