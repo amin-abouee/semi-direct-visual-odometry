@@ -21,6 +21,7 @@ System::System( const Config& config ) : m_config( &config )
     m_alignment = std::make_shared< ImageAlignment >( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid,
                                                       m_config->m_maxLevelImagePyramid, 6 );
     // m_depthEstimator = std::make_unique <DepthEstimator> ();
+    m_map = std::make_unique< Map >( m_camera, 32 );
 }
 
 void System::processFirstFrame( const cv::Mat& firstImg )
@@ -48,8 +49,8 @@ void System::processFirstFrame( const cv::Mat& firstImg )
     System_Log( DEBUG ) << "Number of Features: " << m_refFrame->numberObservation();
     m_keyFrames.emplace_back( m_refFrame );
 
-    //TODO:add it to the map
-    // m_map.addKeyFrame(m_refFrame);
+    // TODO:add it to the map
+    m_map->addKeyframe( m_refFrame );
 }
 
 void System::processSecondFrame( const cv::Mat& secondImg )
@@ -79,8 +80,8 @@ void System::processSecondFrame( const cv::Mat& secondImg )
     double medianDepth = algorithm::computeMedian( depthCurFrame );
     // System_Log( DEBUG ) << "Median depth in current frame: " << medianDepth;
     {
-       const double minDepth = depthCurFrame.minCoeff();
-       System_Log( INFO ) << "Before SCALE, Median Depth: " << medianDepth << ", minDepth: " << minDepth;
+        const double minDepth = depthCurFrame.minCoeff();
+        System_Log( INFO ) << "Before SCALE, Median Depth: " << medianDepth << ", minDepth: " << minDepth;
     }
     const double scale = 1.0 / medianDepth;
 
@@ -122,10 +123,10 @@ void System::processSecondFrame( const cv::Mat& secondImg )
     System_Log( INFO ) << "Points: " << pointsWorld.cols() << " cnt: " << cnt << " num ref observes: " << m_refFrame->numberObservation()
                        << " num cur observes: " << m_curFrame->numberObservation();
 
-    numObserves = m_refFrame->numberObservation();
+    numObserves = m_curFrame->numberObservation();
     Eigen::VectorXd newCurDepths( numObserves );
     algorithm::depthCamera( m_curFrame, newCurDepths );
-    medianDepth = algorithm::computeMedian( newCurDepths );
+    medianDepth           = algorithm::computeMedian( newCurDepths );
     const double minDepth = newCurDepths.minCoeff();
     {
         System_Log( INFO ) << "After Scale, Median Depth: " << medianDepth << ", minDepth: " << minDepth;
@@ -136,6 +137,7 @@ void System::processSecondFrame( const cv::Mat& secondImg )
     System_Log( INFO ) << "Number of Features: " << m_curFrame->numberObservation();
     m_keyFrames.emplace_back( m_curFrame );
     // m_depthEstimator->addKeyframe(m_curFrame, medianDepth, 0.5 * minDepth);
+    m_map->addKeyframe( m_curFrame );
 }
 
 void System::processNewFrame( const cv::Mat& newImg )
@@ -180,6 +182,26 @@ void System::processNewFrame( const cv::Mat& newImg )
     }
     System_Log( INFO ) << "Number of Features: " << m_curFrame->numberObservation();
     m_keyFrames.emplace_back( m_curFrame );
+
+    // select keyframe
+    // core_kfs_.insert(new_frame_);
+    // setTrackingQuality(sfba_n_edges_final);
+    // if(tracking_quality_ == TRACKING_INSUFFICIENT)
+    // {
+    //     new_frame_->T_f_w_ = last_frame_->T_f_w_; // reset to avoid crazy pose jumps
+    //     return RESULT_FAILURE;
+    // }
+    const uint32_t numObserves = m_curFrame->numberObservation();
+    Eigen::VectorXd newCurDepths( numObserves );
+    algorithm::depthCamera( m_curFrame, newCurDepths );
+    const double depthMean = algorithm::computeMedian( newCurDepths );
+    const double depthMin  = newCurDepths.minCoeff();
+    // frame_utils::getSceneDepth(*new_frame_, depth_mean, depth_min);
+    // if(!needNewKf(depth_mean) || tracking_quality_ == TRACKING_BAD)
+    // {
+    // depth_filter_->addFrame(new_frame_);
+    // return RESULT_NO_KEYFRAME;
+    // }
 }
 
 void System::reportSummaryFrames()
@@ -220,6 +242,59 @@ void System::reportSummaryFeatures()
 
 void System::reportSummaryPoints()
 {
+}
+
+void System::makeKeyframe( std::shared_ptr< Frame >& frame, const double& depthMean, const double& depthMin )
+{
+    frame->setKeyframe();
+    //     for(Features::iterator it=new_frame_->fts_.begin(); it!=new_frame_->fts_.end(); ++it)
+    //     if((*it)->point != NULL)
+    //       (*it)->point->addFrameRef(*it);
+    //   map_.point_candidates_.addCandidatePointToFrame(new_frame_);
+    for ( const auto& feature : frame->m_frameFeatures )
+    {
+        if ( feature->m_point != nullptr )
+        {
+            // feature->m_point->
+        }
+    }
+
+    // #ifdef USE_BUNDLE_ADJUSTMENT
+    // if(Config::lobaNumIter() > 0)
+    // {
+    //     SVO_START_TIMER("local_ba");
+    //     setCoreKfs(Config::coreNKfs());
+    //     size_t loba_n_erredges_init, loba_n_erredges_fin;
+    //     double loba_err_init, loba_err_fin;
+    //     ba::localBA(new_frame_.get(), &core_kfs_, &map_,
+    //                 loba_n_erredges_init, loba_n_erredges_fin,
+    //                 loba_err_init, loba_err_fin);
+    //     SVO_STOP_TIMER("local_ba");
+    //     SVO_LOG4(loba_n_erredges_init, loba_n_erredges_fin, loba_err_init, loba_err_fin);
+    //     SVO_DEBUG_STREAM("Local BA:\t RemovedEdges {"<<loba_n_erredges_init<<", "<<loba_n_erredges_fin<<"} \t "
+    //                         "Error {"<<loba_err_init<<", "<<loba_err_fin<<"}");
+    // }
+    // #endif
+
+    // init new depth-filters
+    // depth_filter_->addKeyframe(new_frame_, depth_mean, 0.5*depth_min);
+    // m_depthEstimator->addKeyframe( frame, depthMean, 0.5 * depthMin );
+
+    // if limited number of keyframes, remove the one furthest apart
+    if ( 10 > 2 && m_map->m_keyFrames.size() >= 10 )
+    {
+        auto futhrestFrame = m_map->getFurthestKeyframe( frame->cameraInWorld() );
+        // depth_filter_->removeKeyframe(futhrestFrame); // TODO this interrupts the mapper thread, maybe we can solve this better
+        m_map->removeFrame( futhrestFrame );
+    }
+
+    // add keyframe to map
+    m_map->addKeyframe( frame );
+}
+
+bool System::needKeyframe( const double sceneDepthMean )
+{
+    return true;
 }
 
 bool System::loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs )

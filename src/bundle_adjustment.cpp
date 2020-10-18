@@ -294,5 +294,4 @@ void BundleAdjustment::updateStructure( const std::shared_ptr< Point >& point, c
 void BundleAdjustment::resetParameters()
 {
     std::fill( m_refVisibility.begin(), m_refVisibility.end(), false );
-    // m_refPatches = cv::Scalar( 0.0 );
 }
