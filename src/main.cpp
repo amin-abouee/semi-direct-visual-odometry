@@ -17,8 +17,8 @@
 #include "system.hpp"
 #include "utils.hpp"
 
-#include "easylogging++.h"
 #include <nlohmann/json.hpp>
+#include "easylogging++.h"
 
 INITIALIZE_EASYLOGGINGPP
 #define Main_Log( LEVEL ) CLOG( LEVEL, "Main" )
@@ -73,16 +73,12 @@ int main( int argc, char* argv[] )
     System system( config );
     configLogger( config.m_logFilePath );
 
-    const cv::Mat refImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000000.png" ), cv::IMREAD_GRAYSCALE );
-    const cv::Mat curImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000001.png" ), cv::IMREAD_GRAYSCALE );
+    // const cv::Mat refImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000000.png" ), cv::IMREAD_GRAYSCALE );
+    // const cv::Mat curImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000001.png" ), cv::IMREAD_GRAYSCALE );
 
-    system.processFirstFrame( refImg );
+    // system.processFirstFrame( refImg );
 
-    auto t1 = std::chrono::high_resolution_clock::now();
-    system.processSecondFrame( curImg );
-    auto t2 = std::chrono::high_resolution_clock::now();
-    Main_Log( DEBUG ) << "Elapsed time for matching: " << std::chrono::duration_cast< std::chrono::microseconds >( t2 - t1 ).count()
-                      << " micro sec";
+    // system.processSecondFrame( curImg );
 
     /*
         numObserves = refFrame.numberObservation();
@@ -94,13 +90,17 @@ int main( int argc, char* argv[] )
         curFrame.setKeyframe();
     */
 
-    for ( int i( 2 ); i < 10; i++ )
+    for ( int i( 0 ); i < 10; i++ )
     {
         std::stringstream ss;
         ss << "input/000000000" << i << ".png";
         Main_Log( INFO ) << "filename: " << ss.str();
         cv::Mat newImg = cv::imread( utils::findAbsoluteFilePath( ss.str() ), cv::IMREAD_GRAYSCALE );
-        system.processNewFrame( newImg );
+        auto t1        = std::chrono::high_resolution_clock::now();
+        system.addImage( newImg, i );
+        auto t2 = std::chrono::high_resolution_clock::now();
+        Main_Log( DEBUG ) << "Elapsed time for matching: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
+                          << " milli sec";
         cv::waitKey( 0 );
     }
     // system.reportSummaryFrames();

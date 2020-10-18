@@ -1,13 +1,13 @@
 #ifndef __SYSTEM_HPP__
 #define __SYSTEM_HPP__
 #include "config.hpp"
+#include "depth_estimator.hpp"
 #include "feature_selection.hpp"
 #include "frame.hpp"
 #include "image_alignment.hpp"
+#include "map.hpp"
 #include "pinhole_camera.hpp"
 #include "system.hpp"
-#include "depth_estimator.hpp"
-#include "map.hpp"
 
 #include <iomanip>
 #include <iostream>
@@ -19,6 +19,16 @@
 
 class System final
 {
+    enum class Status : uint8_t
+    {
+        Process_First_Frame    = 0,
+        Process_Second_Frame   = 1,
+        Procese_New_Frame      = 2,
+        Process_Relocalozation = 3,
+        Process_Default        = 4,
+        Process_Paused         = 5
+    };
+
 public:
     std::shared_ptr< PinholeCamera > m_camera;
     std::shared_ptr< Frame > m_refFrame;
@@ -27,6 +37,7 @@ public:
     std::vector< std::shared_ptr< Frame > > m_keyFrames;
     std::unique_ptr< DepthEstimator > m_depthEstimator;
     std::unique_ptr< Map > m_map;
+    Status m_systemStatus;
 
     explicit System( const Config& config );
     System( const System& rhs ) = delete;
@@ -35,9 +46,11 @@ public:
     System& operator=( System&& rhs ) = delete;
     ~System()                         = default;
 
-    void processFirstFrame( const cv::Mat& firstImg );
-    void processSecondFrame( const cv::Mat& secondImg );
-    void processNewFrame( const cv::Mat& newImg );
+    void addImage( const cv::Mat& img, const double timestamp );
+
+    void processFirstFrame( );
+    void processSecondFrame( );
+    void processNewFrame( );
 
     void reportSummaryFrames();
     void reportSummaryFeatures();
@@ -45,8 +58,8 @@ public:
 
 private:
     bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs );
-    bool needKeyframe(const double sceneDepthMean);
-    void makeKeyframe(std::shared_ptr< Frame >& frame, const double& depthMean, const double& depthMin);
+    bool needKeyframe( const double sceneDepthMean );
+    void makeKeyframe( std::shared_ptr< Frame >& frame, const double& depthMean, const double& depthMin );
 
     std::shared_ptr< ImageAlignment > m_alignment;
     const Config* m_config;

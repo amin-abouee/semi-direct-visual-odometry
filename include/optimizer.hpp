@@ -11,7 +11,6 @@
 class Optimizer
 {
 public:
-
     enum class LevenbergMethod : uint8_t
     {
         Marquardt = 0,
@@ -21,19 +20,19 @@ public:
 
     enum class Status : uint8_t
     {
-        Success = 0,
-        Max_Coff_Dx = 1,
-        Non_In_Dx = 2,
-        Small_Step_Size = 3,
-        Lambda_Value = 4,
-        Norm_Inf_Diff = 5,
-        Non_Suff_Points = 6,
+        Success                   = 0,
+        Max_Coff_Dx               = 1,
+        Non_In_Dx                 = 2,
+        Small_Step_Size           = 3,
+        Lambda_Value              = 4,
+        Norm_Inf_Diff             = 5,
+        Non_Suff_Points           = 6,
         Increase_Chi_Squred_Error = 7,
-        Small_Chi_Squred_Error = 8,
-        Failed = 9
+        Small_Chi_Squred_Error    = 8,
+        Failed                    = 9
     };
 
-    using OptimizerResult = std::pair < Status, double>;
+    using OptimizerResult = std::pair< Status, double >;
 
     explicit Optimizer( const uint32_t numUnknowns );
     Optimizer( const Optimizer& rhs );
@@ -42,17 +41,17 @@ public:
     Optimizer& operator=( Optimizer&& rhs );
     ~Optimizer()       = default;
 
-    template<typename T>
+    template < typename T >
     OptimizerResult optimizeGN( T& params,
-                       const std::function< uint32_t( T& params ) >& lambdaResidualFunctor,
-                       const std::function< uint32_t( T& params ) >& lambdaJacobianFunctor,
-                       const std::function< void( T& params, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
+                                const std::function< uint32_t( T& params ) >& lambdaResidualFunctor,
+                                const std::function< uint32_t( T& params ) >& lambdaJacobianFunctor,
+                                const std::function< void( T& params, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
 
-    template<typename T>
-    OptimizerResult optimizeLM( T& params,
-                       const std::function< uint32_t( T& params ) >& lambdaResidualFunctor,
-                       const std::function< uint32_t( T& params ) >& lambdaJacobianFunctor,
-                       const std::function< void( T& params, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
+    template < typename T >
+    OptimizerResult optimizeLM( T& pose,
+                                const std::function< uint32_t( T& ) >& lambdaResidualFunctor,
+                                const std::function< uint32_t( T& ) >& lambdaJacobianFunctor,
+                                const std::function< void( T& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
 
     void initParameters( const std::size_t numObservations );
 
@@ -94,10 +93,7 @@ private:
 
     void resetResidualParameters();
 
-    bool updateParameters( const double preSquaredError,
-                           const double curSquaredError,
-                           double& lambda,
-                           double& nu );
+    bool updateParameters( const double preSquaredError, const double curSquaredError, double& lambda, double& nu );
 
     double computeChiSquaredError();
 

@@ -40,9 +40,10 @@ public:
     ImagePyramid m_imagePyramid;
     std::vector< std::shared_ptr< Feature > > m_frameFeatures;
     bool m_keyFrame;
+    double m_timestamp;
 
     // C'tor
-    explicit Frame( const std::shared_ptr< PinholeCamera >& camera, const cv::Mat& img, const uint32_t maxImagePyramid );
+    explicit Frame( const std::shared_ptr< PinholeCamera >& camera, const cv::Mat& img, const uint32_t maxImagePyramid, const double timestamp );
     // Copy C'tor
     Frame( const Frame& rhs ) = delete;  // non construction-copyable
     // move C'tor

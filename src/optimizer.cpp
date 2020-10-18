@@ -120,23 +120,24 @@ Optimizer::OptimizerResult Optimizer::optimizeGN(
 
         stepSize     = m_dx.transpose() * m_dx;
 
-        if (std::is_same_v<T, Sophus::SE3d>)
-        {
-            normDiffPose = ( m_dx ).norm() / ( params.log() ).norm();
-        }
-        else
-        {
-            normDiffPose = ( m_dx ).norm() / ( params ).norm();
-        }
+        // if (std::is_same_v<T, Sophus::SE3d>)
+        // {
+            // normDiffPose = m_dx.norm() / ( params.log() ).norm();
+        // }
+        // else
+        // {
+        //     normDiffPose = m_dx.norm() / params.norm();
+        // }
         
 
-        if ( stepSize < m_stepSize || normDiffPose < m_normInfDiff || chiSquaredError < m_minChiSquaredError )
+        // if ( stepSize < m_stepSize || normDiffPose < m_normInfDiff || chiSquaredError < m_minChiSquaredError )
+        if ( stepSize < m_stepSize || chiSquaredError < m_minChiSquaredError )
         {
             // stop = true;
             lambdaUpdateFunctor( params, m_dx );
 
             optimizeStatus = stepSize < m_stepSize ? Status::Small_Step_Size : optimizeStatus;
-            optimizeStatus = normDiffPose < m_normInfDiff ? Status::Norm_Inf_Diff : optimizeStatus;
+            // optimizeStatus = normDiffPose < m_normInfDiff ? Status::Norm_Inf_Diff : optimizeStatus;
             optimizeStatus = chiSquaredError < m_minChiSquaredError ? Status::Small_Chi_Squred_Error : optimizeStatus;
             break;
         }
@@ -570,3 +571,19 @@ void Optimizer::visualize( const uint32_t numValidProjectedPoints )
     // std::vector< std::string > windowNames{"residuals", "weights", "patches", "jacobian"};
     visualization::drawHistogram( pack );
 }
+
+
+template Optimizer::OptimizerResult Optimizer::optimizeGN( Sophus::SE3d& params,
+                                const std::function< uint32_t( Sophus::SE3d& params ) >& lambdaResidualFunctor,
+                                const std::function< uint32_t( Sophus::SE3d& params ) >& lambdaJacobianFunctor,
+                                const std::function< void( Sophus::SE3d& params, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
+
+template Optimizer::OptimizerResult Optimizer::optimizeGN( Eigen::Vector3d& params,
+                                const std::function< uint32_t( Eigen::Vector3d& params ) >& lambdaResidualFunctor,
+                                const std::function< uint32_t( Eigen::Vector3d& params ) >& lambdaJacobianFunctor,
+                                const std::function< void( Eigen::Vector3d& params, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
+
+template Optimizer::OptimizerResult Optimizer::optimizeLM( Sophus::SE3d& pose,
+                                const std::function< uint32_t( Sophus::SE3d& ) >& lambdaResidualFunctor,
+                                const std::function< uint32_t( Sophus::SE3d& ) >& lambdaJacobianFunctor,
+                                const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );

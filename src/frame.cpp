@@ -3,12 +3,13 @@
 
 uint64_t Frame::m_frameCounter;
 
-Frame::Frame( const std::shared_ptr<PinholeCamera>& camera, const cv::Mat& img, const uint32_t maxImagePyramid )
+Frame::Frame( const std::shared_ptr<PinholeCamera>& camera, const cv::Mat& img, const uint32_t maxImagePyramid, const double timestamp )
     : m_id( m_frameCounter++ )
     , m_camera( camera )
     , m_TransW2F( Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero() )
     , m_imagePyramid( img, maxImagePyramid )
     , m_keyFrame( false )
+    , m_timestamp ( timestamp )
 {
 }
 
