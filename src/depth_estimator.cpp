@@ -8,19 +8,24 @@
 #define Depth_Log( LEVEL ) CLOG( LEVEL, "Depth" )
 
 DepthEstimator::DepthEstimator()
-    : m_haltUpdatingDepthFilter( false ), m_activeThread( true ), m_newKeyframeMinDepth( 0.0 ), m_newKeyframeMeanDepth( 0.0 )
+    : m_haltUpdatingDepthFilter( false ), m_newKeyframeAdded (false), m_activeThread( true ), m_newKeyframeMinDepth( 0.0 ), m_newKeyframeMeanDepth( 0.0 ), m_terminateThread (false)
 {
     // https://stackoverflow.com/a/18376082/1804533
     // https://thispointer.com/c-11-multithreading-part-1-three-different-ways-to-create-threads/
     // https://stackoverflow.com/a/10673671
     // new std::thread(std::bind(&ThreadExample::run, this)));
+    // https://www.youtube.com/watch?v=hCvc9y39RDw&list=PLk6CEY9XxSIAeK-EAh3hB4fgNvYkYmghp&index=2
     m_thread = std::make_unique< std::thread >( &DepthEstimator::updateFiltersLoop, this );
     // Depth_Log( DEBUG ) << "thread initiliazed";
+    // Depth_Log( DEBUG ) << "newKeyframeMinDepth: " << m_newKeyframeMinDepth << ", newKeyframeMinDepth: " << m_newKeyframeMinDepth;
+
 }
 
 DepthEstimator::~DepthEstimator()
 {
-    if ( m_thread != nullptr && m_thread->joinable() )
+    m_terminateThread = true;
+    m_condition.notify_one();
+    while ( m_thread != nullptr && m_thread->joinable() )
     {
         m_haltUpdatingDepthFilter = true;
         // m_thread_->interrupt();
@@ -50,13 +55,14 @@ void DepthEstimator::addFrame( std::shared_ptr< Frame >& frame )
 
 void DepthEstimator::addKeyframe( std::shared_ptr< Frame >& frame, double depthMean, double depthMin )
 {
-    m_newKeyframeMinDepth = depthMean;
+    m_newKeyframeMeanDepth = depthMean;
     m_newKeyframeMinDepth = depthMin;
 
-    Depth_Log( DEBUG ) << "newKeyframeMinDepth: " << m_newKeyframeMinDepth << ", newKeyframeMinDepth: " << m_newKeyframeMinDepth;
+    Depth_Log( DEBUG ) << "newKeyframeMinDepth: " << m_newKeyframeMinDepth << ", newKeyframeMeanDepth: " << m_newKeyframeMeanDepth;
 
     if ( m_thread != nullptr )
     {
+        std::unique_lock< std::mutex > threadLocker( m_mutexFrame );
         m_newKeyframe             = frame;
         m_haltUpdatingDepthFilter = true;
         m_newKeyframeAdded        = true;
@@ -71,7 +77,7 @@ void DepthEstimator::addKeyframe( std::shared_ptr< Frame >& frame, double depthM
 void DepthEstimator::removeKeyframe( std::shared_ptr< Frame >& frame )
 {
     m_haltUpdatingDepthFilter = true;
-    std::unique_lock< std::mutex > threadLocker( m_mutexSeed );
+    // std::unique_lock< std::mutex > threadLocker( m_mutexFilter );
     // std::list<Seed>::iterator it=seeds_.begin();
     // size_t n_removed = 0;
     // while(it!=seeds_.end())
@@ -90,13 +96,58 @@ void DepthEstimator::removeKeyframe( std::shared_ptr< Frame >& frame )
 void DepthEstimator::reset()
 {
     m_haltUpdatingDepthFilter = true;
-    std::unique_lock< std::mutex > threadLocker( m_mutexSeed );
+    // std::unique_lock< std::mutex > threadLocker( m_mutexFilter );
     // seeds_.clear();
     // TODO: check this line
     // std::unique_lock< std::mutex > threadLocker();
     while ( !m_queueFrames.empty() )
         m_queueFrames.pop();
     m_haltUpdatingDepthFilter = false;
+}
+
+void DepthEstimator::updateFiltersLoop()
+{
+    // TODO: change the thread name of depth estimation
+    // el::Logger* l = el::Loggers::getLogger("Depth");
+    // el::Helpers::setThreadName("depth-thread");
+
+    while ( m_activeThread == true )
+    {
+        std::shared_ptr< Frame > frame;
+        std::unique_lock< std::mutex > threadLocker( m_mutexFrame );
+        while ( m_queueFrames.empty() && m_newKeyframeAdded == false && m_terminateThread == false)
+        {
+            m_condition.wait( threadLocker );
+        }
+
+        if (m_terminateThread == true)
+            return;
+        // while ( m_queueFrames.empty() && m_newKeyframeAdded == false )
+        // m_condition.wait( threadLocker , [this] {return m_queueFrames.empty() && m_newKeyframeAdded == false;} );
+        
+        if ( m_newKeyframeAdded == true )
+        {
+            Depth_Log( INFO ) << "New key frame id " << m_newKeyframe->m_id << " added to depth estimation";
+            m_newKeyframeAdded        = false;
+            m_haltUpdatingDepthFilter = false;
+            clearFrameQueue();
+            frame = m_newKeyframe;
+        }
+        else
+        {
+            frame = m_queueFrames.front();
+            m_queueFrames.pop();
+        }
+
+        updateFilters( frame );
+        Depth_Log( INFO ) << "Depth of frame id " << frame->m_id << " updated.";
+
+        if ( frame->isKeyframe() )
+        {
+            initializeFilters( frame );
+            Depth_Log( INFO ) << "Depth of key frame id " << frame->m_id << " initialized.";
+        }
+    }
 }
 
 void DepthEstimator::initializeFilters( std::shared_ptr< Frame >& frame )
@@ -111,13 +162,12 @@ void DepthEstimator::initializeFilters( std::shared_ptr< Frame >& frame )
     // set halt updating seed
 
     m_haltUpdatingDepthFilter = true;
-    std::unique_lock< std::mutex > threadLocker( m_mutexSeed );  // by locking the updateSeeds function stops
-    for ( const auto& feature : frame->m_frameFeatures )
-    {
-        m_depthFilters.emplace_back( MixedGaussianFilter( feature, m_newKeyframeMeanDepth, m_newKeyframeMinDepth ) );
-    }
-    Depth_Log (DEBUG) << "size depthFilters: " << m_depthFilters.size() << std::endl;
+    // std::unique_lock< std::mutex > threadLocker( m_mutexFilter );
 
+    for ( auto& feature : frame->m_frameFeatures )
+    {
+        m_depthFilters.push_back( MixedGaussianFilter( feature, m_newKeyframeMeanDepth, m_newKeyframeMinDepth ) );
+    }
     m_haltUpdatingDepthFilter = false;
 }
 
@@ -129,17 +179,18 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
     //   lock_t lock(seeds_mut_);
     //   std::list<Seed>::iterator it=seeds_.begin();
 
+    // std::unique_lock< std::mutex > threadLocker( m_mutexFilter );  // by locking the updateSeeds function stops
     // const double focal_length = frame->cam_->errorMultiplier2();
     const double focal_length   = 10;
     const double px_noise       = 1.0;
     const double px_error_angle = atan( px_noise / ( 2.0 * focal_length ) ) * 2.0;  // law of chord (sehnensatz)
 
-    Depth_Log (DEBUG) << "size depthFilters: " << m_depthFilters.size() << std::endl;
+
+    Depth_Log (DEBUG) << "Frame id: " << frame->m_id << ", size its depthFilters " << m_depthFilters.size();
     for ( auto& depthFilter : m_depthFilters )
     {
-        if ( m_haltUpdatingDepthFilter == false )
+        if ( m_haltUpdatingDepthFilter == true )
             return;
-
         // if the current depth filter is very old, delete it
         if ( MixedGaussianFilter::m_frameCounter - depthFilter.m_frameCounter > 2 )
         {
@@ -147,14 +198,10 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
             continue;
         }
 
+        //TODO: double check the code
         const Sophus::SE3d relativePose        = algorithm::computeRelativePose( depthFilter.m_feature->m_frame, frame );
         const Eigen::Vector3d pointInCurCamera = relativePose * ( depthFilter.m_feature->m_bearingVec / depthFilter.m_mu );
-        if ( pointInCurCamera.z() < 0 )
-        {
-            depthFilter.m_validity = false;
-            continue;
-        }
-        if ( frame->isVisible( pointInCurCamera ) == false )
+        if ( pointInCurCamera.z() < 0 || frame->isVisible( pointInCurCamera ) == false)
         {
             depthFilter.m_validity = false;
             continue;
@@ -262,32 +309,4 @@ void DepthEstimator::clearFrameQueue()
     // https://stackoverflow.com/a/709161/1804533
     std::queue< std::shared_ptr< Frame > > empty;
     std::swap( m_queueFrames, empty );
-}
-
-void DepthEstimator::updateFiltersLoop()
-{
-    while ( m_activeThread == true )
-    {
-        std::shared_ptr< Frame > frame;
-        std::unique_lock< std::mutex > threadLocker( m_mutexFrame );
-        while ( m_queueFrames.empty() && m_newKeyframeAdded == false )
-            m_condition.wait( threadLocker );
-        if ( m_newKeyframeAdded == true )
-        {
-            m_newKeyframeAdded        = false;
-            m_haltUpdatingDepthFilter = false;
-            clearFrameQueue();
-            frame = m_newKeyframe;
-        }
-        else
-        {
-            frame = m_queueFrames.front();
-            m_queueFrames.pop();
-        }
-
-        updateFilters( frame );
-        Depth_Log( INFO ) << "frame id  " << frame->m_id << "updated.";
-        if ( frame->isKeyframe() )
-            initializeFilters( frame );
-    }
 }

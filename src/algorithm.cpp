@@ -238,7 +238,7 @@ void algorithm::getAffineWarp( const std::shared_ptr< Frame >& refFrame,
     affineWarp.col( 1 ) = dvDiff / halfpatchSize;
 }
 
-void applyAffineWarp( const std::shared_ptr< Frame >& frame,
+void algorithm::applyAffineWarp( const std::shared_ptr< Frame >& frame,
                       const Eigen::Vector2d& point,
                       const uint32_t halfPatchSize,
                       const Eigen::Matrix2d& affineWarp,
@@ -262,7 +262,7 @@ void applyAffineWarp( const std::shared_ptr< Frame >& frame,
     }
 }
 
-double computeScore( const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& refPatchIntensity,
+double algorithm::computeScore( const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& refPatchIntensity,
                      const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& curPatchIntensity )
 
 {
@@ -277,7 +277,7 @@ double computeScore( const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& refPatch
     return sum;
 }
 
-bool matchDirect( const std::shared_ptr< Point >& point, const std::shared_ptr< Frame >& curFrame, Eigen::Vector2d& featurePose )
+bool algorithm::matchDirect( const std::shared_ptr< Point >& point, const std::shared_ptr< Frame >& curFrame, Eigen::Vector2d& featurePose )
 {
     const uint32_t patchSize     = 7;
     const uint32_t halfPatchSize = patchSize / 2;
@@ -524,7 +524,7 @@ void algorithm::triangulatePointDLT( const std::shared_ptr< Frame >& refFrame,
     */
 }
 
-bool depthFromTriangulation( const Sophus::SE3d& relativePose,
+bool algorithm::depthFromTriangulation( const Sophus::SE3d& relativePose,
                              const Eigen::Vector3d& refBearingVec,
                              const Eigen::Vector3d& curBearingVec,
                              double depth )
@@ -737,7 +737,7 @@ float algorithm::bilinearInterpolation( const MapXRowConst& image, const double 
     return ( ( y2 - y ) * a + ( y - y1 ) * b );
 }
 
-double computeNormalDistribution( const double mu, const double sigma, const double x )
+double algorithm::computeNormalDistribution( const double mu, const double sigma, const double x )
 {
     const double p = ( x - mu ) / sigma;
     return utils::constants::inv_sqrt_2_pi / sigma * std::exp( -0.5 * p * p );

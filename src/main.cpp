@@ -5,6 +5,8 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <chrono>
+#include <thread>
 
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
@@ -54,6 +56,7 @@ void configLogger( const std::string& logFilePath )
     el::Loggers::configureFromGlobal( utils::findAbsoluteFilePath( logFilePath ).c_str() );
     el::Loggers::addFlag( el::LoggingFlag::MultiLoggerSupport );
     el::Loggers::addFlag( el::LoggingFlag::ColoredTerminalOutput );
+    // el::Helpers::setThreadName("main-thread");
 }
 
 int main( int argc, char* argv[] )
@@ -72,6 +75,7 @@ int main( int argc, char* argv[] )
     Config config( utils::findAbsoluteFilePath( configIOFile ) );
     System system( config );
     configLogger( config.m_logFilePath );
+    Main_Log(DEBUG) << "Main thread id: " << std::this_thread::get_id();
 
     // const cv::Mat refImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000000.png" ), cv::IMREAD_GRAYSCALE );
     // const cv::Mat curImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000001.png" ), cv::IMREAD_GRAYSCALE );
@@ -90,7 +94,7 @@ int main( int argc, char* argv[] )
         curFrame.setKeyframe();
     */
 
-    for ( int i( 0 ); i < 10; i++ )
+    for ( int i( 0 ); i < 2; i++ )
     {
         std::stringstream ss;
         ss << "input/000000000" << i << ".png";
@@ -101,8 +105,9 @@ int main( int argc, char* argv[] )
         auto t2 = std::chrono::high_resolution_clock::now();
         Main_Log( DEBUG ) << "Elapsed time for matching: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
                           << " milli sec";
-        cv::waitKey( 0 );
+        // cv::waitKey( 0 );
     }
+    std::this_thread::sleep_for(std::chrono::seconds(2));
     // system.reportSummaryFrames();
     // system.reportSummaryFeatures();
     return 0;

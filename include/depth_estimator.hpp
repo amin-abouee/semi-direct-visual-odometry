@@ -29,7 +29,7 @@ class DepthEstimator final
 {
 public:
     std::unique_ptr< std::thread > m_thread;
-    std::mutex m_mutexSeed;
+    std::mutex m_mutexFilter;
     std::mutex m_mutexFrame;
     std::condition_variable m_condition;
     // std::unique_lock<std::mutex> m_threadLocker;
@@ -44,6 +44,7 @@ public:
     bool m_activeThread;
     double m_newKeyframeMinDepth;
     double m_newKeyframeMeanDepth;
+    bool m_terminateThread;
 
     // C'tor
     explicit DepthEstimator();

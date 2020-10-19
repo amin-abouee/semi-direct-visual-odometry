@@ -5,6 +5,7 @@
 
 #include <any>
 #include <opencv2/core/eigen.hpp>
+#include <sophus/se2.hpp>
 
 #include "easylogging++.h"
 #define Optimizer_Log( LEVEL ) CLOG( LEVEL, "Optimizer" )
@@ -578,10 +579,15 @@ template Optimizer::OptimizerResult Optimizer::optimizeGN( Sophus::SE3d& params,
                                 const std::function< uint32_t( Sophus::SE3d& params ) >& lambdaJacobianFunctor,
                                 const std::function< void( Sophus::SE3d& params, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
 
-template Optimizer::OptimizerResult Optimizer::optimizeGN( Eigen::Vector3d& params,
-                                const std::function< uint32_t( Eigen::Vector3d& params ) >& lambdaResidualFunctor,
-                                const std::function< uint32_t( Eigen::Vector3d& params ) >& lambdaJacobianFunctor,
-                                const std::function< void( Eigen::Vector3d& params, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
+template Optimizer::OptimizerResult Optimizer::optimizeGN( Sophus::SE2d& params,
+                                const std::function< uint32_t( Sophus::SE2d& params ) >& lambdaResidualFunctor,
+                                const std::function< uint32_t( Sophus::SE2d& params ) >& lambdaJacobianFunctor,
+                                const std::function< void( Sophus::SE2d& params, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
+
+template Optimizer::OptimizerResult Optimizer::optimizeGN( std::shared_ptr <Point>& params,
+                                const std::function< uint32_t( std::shared_ptr <Point>& params ) >& lambdaResidualFunctor,
+                                const std::function< uint32_t( std::shared_ptr <Point>& params ) >& lambdaJacobianFunctor,
+                                const std::function< void( std::shared_ptr <Point>& params, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
 
 template Optimizer::OptimizerResult Optimizer::optimizeLM( Sophus::SE3d& pose,
                                 const std::function< uint32_t( Sophus::SE3d& ) >& lambdaResidualFunctor,
