@@ -1,8 +1,11 @@
 #include "depth_estimator.hpp"
 #include "algorithm.hpp"
 #include "utils.hpp"
+#include "visualization.hpp"
 
 #include <random>
+
+#include <opencv2/highgui.hpp>
 
 #include "easylogging++.h"
 #define Depth_Log( LEVEL ) CLOG( LEVEL, "Depth" )
@@ -183,9 +186,22 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
     const double pixelErrorAngle = atan( pixelNoise / ( 2.0 * focalLength ) ) * 2.0;  // law of chord (sehnensatz)
 
     Depth_Log( DEBUG ) << "Frame id: " << frame->m_id << ", size its depthFilters " << m_depthFilters.size();
+
+    if (m_depthFilters.size() > 0)
+    {
+        cv::Mat refBGR = visualization::getBGRImage( m_depthFilters[0].m_feature->m_frame->m_imagePyramid.getBaseImage() );
+        // cv::Mat curBGR = visualization::getBGRImage( frame->m_imagePyramid.getBaseImage() );
+        // cv::Mat stickImg;
+        // visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
+        visualization::projectDepthFilters(refBGR, frame, m_depthFilters, 4, "lime", visualization::drawingLine);
+        cv::imshow( "init depth", refBGR );
+        cv::waitKey(0);
+    }
+
+
     for ( auto& depthFilter : m_depthFilters )
     {
-        Depth_Log( DEBUG ) << "Filter id: " << depthFilter.m_id << ", mu: " << depthFilter.m_mu << ", sigma: " << depthFilter.m_sigma;
+        // Depth_Log( DEBUG ) << "Filter id: " << depthFilter.m_id << ", mu: " << depthFilter.m_mu << ", sigma: " << depthFilter.m_sigma;
 
         if ( m_haltUpdatingDepthFilter == true )
             return;
@@ -264,7 +280,7 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
             depthFilter.m_validity = false;
             failedUpdated++;
         }
-        Depth_Log( DEBUG ) << "Filter id: " << depthFilter.m_id << ", mu: " << depthFilter.m_mu << ", sigma: " << depthFilter.m_sigma;
+        // Depth_Log( DEBUG ) << "Filter id: " << depthFilter.m_id << ", mu: " << depthFilter.m_mu << ", sigma: " << depthFilter.m_sigma;
     }
 }
 

@@ -505,28 +505,42 @@ void visualization::epipole(
     drawingFunctor( img, C, radiusSize, colorRGB );
 }
 
-void projectDepthFilters(
+void visualization::projectDepthFilters(
+  cv::Mat& img,
   const std::shared_ptr< Frame >& frame,
   const std::vector< MixedGaussianFilter >& depthFilters,
   const u_int32_t radiusSize,
   const std::string& color,
-  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >& drawingFunctor )
+  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
+    drawingFunctor )
 {
-    for ( auto& depthFilter : m_depthFilters )
+    const uint32_t imgWidth = frame->m_camera->width();
+    for ( auto& depthFilter : depthFilters )
     {
         const Sophus::SE3d relativePose        = algorithm::computeRelativePose( depthFilter.m_feature->m_frame, frame );
         const Eigen::Vector3d pointInCurCamera = relativePose * ( depthFilter.m_feature->m_bearingVec / depthFilter.m_mu );
-        if ( pointInCurCamera.z() < 0 || frame->m_camera->isInFrame( frame->camera2image( pointInCurCamera ) ) == false )
+        const Eigen::Vector2d pointInCurImage  = frame->camera2image( pointInCurCamera );
+        if ( pointInCurCamera.z() < 0 || frame->m_camera->isInFrame( pointInCurImage ) == false )
         {
-            depthFilter.m_validity = false;
-            failedUpdated++;
             continue;
         }
+
+        // cv::circle( img, cv::Point2d( depthFilter.m_feature->m_feature.x(), depthFilter.m_feature->m_feature.y() ), radiusSize,
+                    // colors.at( "pink" ) );
+        cv::circle( img, cv::Point2d( pointInCurImage.x(), pointInCurImage.y() ), radiusSize,
+                    colors.at( "orange" ) );
 
         // inverse representation of depth
         const double inverseMinDepth = depthFilter.m_mu + depthFilter.m_var;
         const double inverseMaxDepth = std::max( depthFilter.m_mu - depthFilter.m_var, 1e-7 );
-        const double depth           = 0.0;
+
+        const Eigen::Vector2d projectedMinDepth =
+          frame->camera2image( relativePose * ( depthFilter.m_feature->m_bearingVec / inverseMinDepth ) );
+        const Eigen::Vector2d projectedMaxDepth =
+          frame->camera2image( relativePose * ( depthFilter.m_feature->m_bearingVec / inverseMaxDepth ) );
+
+        drawingFunctor( img, Eigen::Vector2d( projectedMinDepth.x(), projectedMinDepth.y() ),
+                        Eigen::Vector2d( projectedMaxDepth.x(), projectedMaxDepth.y() ), colors.at( color ) );
     }
 }
 

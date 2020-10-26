@@ -124,20 +124,26 @@ void projectLinesWithF(
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
     drawingFunctor );
 
-void epipole( cv::Mat& img,
-              const std::shared_ptr< Frame >& frame,
-              const u_int32_t radiusSize,
-              const std::string& color,
-              const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >&
-                drawingFunctor );
+void epipole(
+  cv::Mat& img,
+  const std::shared_ptr< Frame >& frame,
+  const u_int32_t radiusSize,
+  const std::string& color,
+  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >&
+    drawingFunctor
+   );
 
 void projectDepthFilters(
+  cv::Mat& img,
   const std::shared_ptr< Frame >& frame,
-  const std::vector< MixedGaussianFilter >& depthFilters const u_int32_t radiusSize,
+  const std::vector< MixedGaussianFilter >& depthFilters,
+  const u_int32_t radiusSize,
   const std::string& color,
-  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >& drawingFunctor )
+  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
+    drawingFunctor
+   );
 
-  void stickTwoImageVertically( const cv::Mat& refImg, const cv::Mat& curImg, cv::Mat& img );
+void stickTwoImageVertically( const cv::Mat& refImg, const cv::Mat& curImg, cv::Mat& img );
 
 void stickTwoImageHorizontally( const cv::Mat& refImg, const cv::Mat& curImg, cv::Mat& img );
 

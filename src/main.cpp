@@ -105,7 +105,7 @@ int main( int argc, char* argv[] )
         auto t2 = std::chrono::high_resolution_clock::now();
         Main_Log( DEBUG ) << "Elapsed time for matching: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
                           << " milli sec";
-        // cv::waitKey( 0 );
+        cv::waitKey( 0 );
     }
     std::this_thread::sleep_for(std::chrono::seconds(1));
     // system.reportSummaryFrames();
