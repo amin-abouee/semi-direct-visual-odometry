@@ -218,7 +218,7 @@ void System::processNewFrame(  )
         // visualization::featurePointsInGrid(curBGR, curFrame, 50);
         // visualization::featurePoints(newBGR, newFrame);
         // visualization::project3DPoints(curBGR, curFrame);
-        visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 8, "orange", visualization::drawingCircle );
+        visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 8, "orange", visualization::drawingRectangle );
         cv::Mat stickImg;
         visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
         cv::imshow( "tracking", stickImg );
