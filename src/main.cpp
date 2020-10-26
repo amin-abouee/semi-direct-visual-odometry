@@ -94,7 +94,7 @@ int main( int argc, char* argv[] )
         curFrame.setKeyframe();
     */
 
-    for ( int i( 0 ); i < 2; i++ )
+    for ( int i( 0 ); i < 3; i++ )
     {
         std::stringstream ss;
         ss << "input/000000000" << i << ".png";
@@ -107,7 +107,7 @@ int main( int argc, char* argv[] )
                           << " milli sec";
         // cv::waitKey( 0 );
     }
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     // system.reportSummaryFrames();
     // system.reportSummaryFeatures();
     return 0;

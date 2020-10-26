@@ -172,6 +172,9 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
 
     bool computeJacobian = lambdaJacobianFunctor == nullptr ? false : true;
 
+    Optimizer_Log(DEBUG) << "pose: " << pose.params().transpose() << std::endl;
+
+
     unsigned int curIteration = 0;
     // bool stop                 = false;
 
@@ -259,6 +262,10 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
         //     }
         // }
         // std::cout << "hessian sum: " << m_hessian << std::endl;
+        // Optimizer_Log(DEBUG) << "Jacobian: " << m_jacobian;
+        // Optimizer_Log(DEBUG) << "Residuals: " << m_residuals;
+
+        
         m_hessian.noalias() = m_jacobian.transpose() * m_weights.asDiagonal() * m_jacobian;
         m_gradient.noalias() = m_jacobian.transpose() * m_weights.asDiagonal() * m_residuals;
         // std::cout << "hessian linear: " << m_hessian << std::endl;
@@ -354,6 +361,7 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
 void Optimizer::initParameters( const std::size_t numObservations )
 {
     m_jacobian.conservativeResize( numObservations, m_numUnknowns );
+    m_jacobian.setZero();
     m_residuals.conservativeResize( numObservations );
     m_weights.conservativeResize( numObservations );
     m_visiblePoints.conservativeResize( numObservations );

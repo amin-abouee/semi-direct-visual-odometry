@@ -79,7 +79,7 @@ public:
     void updateFilter( const double x, const double tau2, MixedGaussianFilter& depthFilter );
 
     /// Compute the uncertainty of the measurement.
-    double computeTau( const Sophus::SE3d& relativePose, const Eigen::Vector3d& bearing, const double z, const double px_error_angle );
+    double computeTau( const Sophus::SE3d& relativePose, const Eigen::Vector3d& bearing, const double z, const double pixelErrorAngle );
 
     /// Initialize new Filters from a frame.
     void initializeFilters( std::shared_ptr< Frame >& frame );

@@ -1,7 +1,7 @@
 #include "frame.hpp"
 #include "feature.hpp"
 
-uint64_t Frame::m_frameCounter;
+uint64_t Frame::m_frameCounter = 0;
 
 Frame::Frame( const std::shared_ptr<PinholeCamera>& camera, const cv::Mat& img, const uint32_t maxImagePyramid, const double timestamp )
     : m_id( m_frameCounter++ )

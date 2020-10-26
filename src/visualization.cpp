@@ -90,8 +90,8 @@ void visualization::templatePatches( const cv::Mat& patches,
     const uint32_t numberNecessaryCols = numberPatches > maxPatchInRow ? maxPatchInRow : numberPatches;
     const uint32_t numberNecessaryRows = static_cast< uint32_t >( std::ceil( numberPatches / static_cast< float >( maxPatchInRow ) ) );
     // const uint32_t patchArea           = patchSize * patchSize;
-    const uint32_t rows                = numberNecessaryRows * ( horizontalMargin + patchSize + 1 );
-    const uint32_t cols                = numberNecessaryCols * ( verticalMargin + patchSize + 1 );
+    const uint32_t rows = numberNecessaryRows * ( horizontalMargin + patchSize + 1 );
+    const uint32_t cols = numberNecessaryCols * ( verticalMargin + patchSize + 1 );
 
     cv::Mat outputImg( rows, cols, patches.type(), cv::Scalar( 0 ) );
     uint32_t cntPatches = 0;
@@ -503,6 +503,31 @@ void visualization::epipole(
 
     const Eigen::Vector2d C = frame->camera2image( frame->cameraInWorld() );
     drawingFunctor( img, C, radiusSize, colorRGB );
+}
+
+void projectDepthFilters(
+  const std::shared_ptr< Frame >& frame,
+  const std::vector< MixedGaussianFilter >& depthFilters,
+  const u_int32_t radiusSize,
+  const std::string& color,
+  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >& drawingFunctor )
+{
+    for ( auto& depthFilter : m_depthFilters )
+    {
+        const Sophus::SE3d relativePose        = algorithm::computeRelativePose( depthFilter.m_feature->m_frame, frame );
+        const Eigen::Vector3d pointInCurCamera = relativePose * ( depthFilter.m_feature->m_bearingVec / depthFilter.m_mu );
+        if ( pointInCurCamera.z() < 0 || frame->m_camera->isInFrame( frame->camera2image( pointInCurCamera ) ) == false )
+        {
+            depthFilter.m_validity = false;
+            failedUpdated++;
+            continue;
+        }
+
+        // inverse representation of depth
+        const double inverseMinDepth = depthFilter.m_mu + depthFilter.m_var;
+        const double inverseMaxDepth = std::max( depthFilter.m_mu - depthFilter.m_var, 1e-7 );
+        const double depth           = 0.0;
+    }
 }
 
 void visualization::stickTwoImageVertically( const cv::Mat& refImg, const cv::Mat& curImg, cv::Mat& img )

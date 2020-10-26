@@ -24,13 +24,13 @@ System::System( const Config& config ) : m_config( &config ), m_systemStatus (Sy
     m_map = std::make_unique< Map >( m_camera, 32 );
 
     cv::Mat initImg (m_camera->width(), m_camera->height(), CV_8U);
-    m_refFrame = std::make_shared< Frame >( m_camera, initImg, m_config->m_maxLevelImagePyramid + 1, 0.0 );
-
 }
 
 void System::addImage(const cv::Mat& img, const double timestamp)
 {
     m_curFrame = std::make_shared< Frame >( m_camera, img, m_config->m_maxLevelImagePyramid + 1, timestamp );
+    System_Log( INFO ) << "Processing frame id: " << m_curFrame->m_id;
+
 
     if (m_systemStatus == System::Status::Procese_New_Frame)
     {
@@ -65,16 +65,16 @@ void System::processFirstFrame()
     // m_featureSelection->detectFeaturesWithSSC(m_curFrame, 1000);
 
     // visualize
-    // {
-    //     cv::Mat gradient = m_featureSelection->m_gradientMagnitude.clone();
-    //     cv::normalize(gradient, gradient, 0, 255, cv::NORM_MINMAX, CV_8U);
-    //     cv::Mat refBGR = visualization::getBGRImage( gradient );
-    //     // cv::Mat refBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
-    //     visualization::featurePoints( refBGR, m_curFrame, 5, "pink", visualization::drawingRectangle );
-    //     visualization::imageGrid(refBGR, m_curFrame, m_config->m_gridPixelSize, "amber");
-    //     cv::imshow("First Image", refBGR);
-    //     cv::waitKey(0);
-    // }
+    {
+        cv::Mat gradient = m_featureSelection->m_gradientMagnitude.clone();
+        cv::normalize(gradient, gradient, 0, 255, cv::NORM_MINMAX, CV_8U);
+        cv::Mat refBGR = visualization::getBGRImage( gradient );
+        // cv::Mat refBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
+        visualization::featurePoints( refBGR, m_curFrame, 5, "pink", visualization::drawingRectangle );
+        visualization::imageGrid(refBGR, m_curFrame, m_config->m_gridPixelSize, "amber");
+        cv::imshow("First Image", refBGR);
+        cv::waitKey(0);
+    }
 
     m_curFrame->setKeyframe();
     m_map->addKeyframe( m_curFrame );
@@ -181,20 +181,20 @@ void System::processSecondFrame( )
     m_map->addKeyframe( m_curFrame );
     m_systemStatus = System::Status::Procese_New_Frame;
 
-    // {
-    //     cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
-    //     cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
-    //     visualization::featurePoints( refBGR, m_refFrame, 8, "pink", visualization::drawingRectangle );
-    //     // visualization::featurePointsInGrid(curBGR, curFrame, 50);
-    //     // visualization::featurePoints(newBGR, newFrame);
-    //     // visualization::project3DPoints(curBGR, curFrame);
-    //     visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 8, "orange", visualization::drawingCircle );
-    //     cv::Mat stickImg;
-    //     visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
-    //     cv::imshow( "both_image_1_2_optimization", stickImg );
-    //     // cv::imshow("relative_1_2", curBGR);
-    //     cv::waitKey( 0 );
-    // }
+    {
+        cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
+        cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
+        visualization::featurePoints( refBGR, m_refFrame, 8, "pink", visualization::drawingRectangle );
+        // visualization::featurePointsInGrid(curBGR, curFrame, 50);
+        // visualization::featurePoints(newBGR, newFrame);
+        // visualization::project3DPoints(curBGR, curFrame);
+        visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 8, "orange", visualization::drawingRectangle );
+        cv::Mat stickImg;
+        visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
+        cv::imshow( "both_image_1_2_optimization", stickImg );
+        // cv::imshow("relative_1_2", curBGR);
+        // cv::waitKey( 0 );
+    }
 }
 
 void System::processNewFrame(  )
@@ -223,7 +223,7 @@ void System::processNewFrame(  )
         visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
         cv::imshow( "both_image_1_2_optimization", stickImg );
         // cv::imshow("relative_1_2", curBGR);
-        cv::waitKey( 0 );
+        // cv::waitKey( 0 );
     }
 
     for ( const auto& refFeatures : m_refFrame->m_frameFeatures )
@@ -253,6 +253,8 @@ void System::processNewFrame(  )
     algorithm::depthCamera( m_curFrame, newCurDepths );
     const double depthMean = algorithm::computeMedian( newCurDepths );
     const double depthMin  = newCurDepths.minCoeff();
+
+m_depthEstimator->addFrame(m_curFrame);
     // frame_utils::getSceneDepth(*new_frame_, depth_mean, depth_min);
     // if(!needNewKf(depth_mean) || tracking_quality_ == TRACKING_BAD)
     // {
