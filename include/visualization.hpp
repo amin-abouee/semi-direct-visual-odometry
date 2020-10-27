@@ -40,17 +40,17 @@ const std::unordered_map< std::string, cv::Scalar > colors{
 
 namespace plt = matplotlibcpp;
 
-auto drawingCircle = []( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) -> void {
+auto inline drawingCircle = []( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) -> void {
     cv::circle( img, cv::Point2d( point.x(), point.y() ), size, color );
 };
 
-auto drawingRectangle = []( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) -> void {
+auto inline drawingRectangle = []( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) -> void {
     const u_int32_t halfPatch = size / 2;
     cv::rectangle( img, cv::Point2d( point.x() - halfPatch, point.y() - halfPatch ),
                    cv::Point2d( point.x() + halfPatch, point.y() + halfPatch ), color );
 };
 
-auto drawingLine = []( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) -> void {
+auto inline drawingLine = []( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) -> void {
     cv::line( img, cv::Point2d( point1.x(), point1.y() ), cv::Point2d( point2.x(), point2.y() ), color );
 };
 
