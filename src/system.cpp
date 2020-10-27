@@ -11,48 +11,45 @@
 #define System_Log( LEVEL ) CLOG( LEVEL, "System" )
 
 // System::System( const Config& config )
-System::System( const Config& config ) : m_config( &config ), m_systemStatus (System::Status::Process_First_Frame)
+System::System( const Config& config ) : m_config( &config ), m_systemStatus( System::Status::Process_First_Frame )
 {
     const std::string calibrationFile = utils::findAbsoluteFilePath( m_config->m_cameraCalibrationPath );
     cv::Mat cameraMatrix;
     cv::Mat distortionCoeffs;
     loadCameraIntrinsics( calibrationFile, cameraMatrix, distortionCoeffs );
-    m_camera    = std::make_shared< PinholeCamera >( m_config->m_imgWidth, m_config->m_imgHeight, cameraMatrix, distortionCoeffs );
-    m_alignment = std::make_shared< ImageAlignment >( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid,
+    m_camera         = std::make_shared< PinholeCamera >( m_config->m_imgWidth, m_config->m_imgHeight, cameraMatrix, distortionCoeffs );
+    m_alignment      = std::make_shared< ImageAlignment >( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid,
                                                       m_config->m_maxLevelImagePyramid, 6 );
-    m_depthEstimator = std::make_unique <DepthEstimator> ();
-    m_map = std::make_unique< Map >( m_camera, 32 );
+    m_depthEstimator = std::make_unique< DepthEstimator >();
+    m_map            = std::make_unique< Map >( m_camera, 32 );
 
-    cv::Mat initImg (m_camera->width(), m_camera->height(), CV_8U);
+    cv::Mat initImg( m_camera->width(), m_camera->height(), CV_8U );
 }
 
-void System::addImage(const cv::Mat& img, const double timestamp)
+void System::addImage( const cv::Mat& img, const double timestamp )
 {
     m_curFrame = std::make_shared< Frame >( m_camera, img, m_config->m_maxLevelImagePyramid + 1, timestamp );
     System_Log( INFO ) << "Processing frame id: " << m_curFrame->m_id;
 
-
-    if (m_systemStatus == System::Status::Procese_New_Frame)
+    if ( m_systemStatus == System::Status::Procese_New_Frame )
     {
         processNewFrame();
     }
-    else if (m_systemStatus == System::Status::Process_Second_Frame)
+    else if ( m_systemStatus == System::Status::Process_Second_Frame )
     {
         processSecondFrame();
-        return;
     }
-    else if (m_systemStatus == System::Status::Process_First_Frame)
+    else if ( m_systemStatus == System::Status::Process_First_Frame )
     {
         processFirstFrame();
     }
-    else if (m_systemStatus == System::Status::Process_Relocalozation)
+    else if ( m_systemStatus == System::Status::Process_Relocalozation )
     {
         System_Log( DEBUG ) << "Relocalizations";
     }
 
     m_refFrame = std::move( m_curFrame );
 }
-
 
 void System::processFirstFrame()
 {
@@ -65,16 +62,17 @@ void System::processFirstFrame()
     // m_featureSelection->detectFeaturesWithSSC(m_curFrame, 1000);
 
     // visualize
-    // {
-    //     cv::Mat gradient = m_featureSelection->m_gradientMagnitude.clone();
-    //     cv::normalize(gradient, gradient, 0, 255, cv::NORM_MINMAX, CV_8U);
-    //     cv::Mat refBGR = visualization::getBGRImage( gradient );
-    //     // cv::Mat refBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
-    //     visualization::featurePoints( refBGR, m_curFrame, 5, "pink", visualization::drawingRectangle );
-    //     visualization::imageGrid(refBGR, m_curFrame, m_config->m_gridPixelSize, "amber");
-    //     cv::imshow("First Image", refBGR);
-    //     // cv::waitKey(0);
-    // }
+    {
+        cv::Mat gradient = m_featureSelection->m_gradientMagnitude.clone();
+        cv::normalize( gradient, gradient, 0, 255, cv::NORM_MINMAX, CV_8U );
+        cv::Mat refBGR = visualization::getBGRImage( gradient );
+        // cv::Mat refBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
+        visualization::featurePoints( refBGR, m_curFrame, 5, "pink", visualization::drawingRectangle );
+        visualization::imageGrid( refBGR, m_config->m_gridPixelSize, "amber" );
+        cv::imshow( "First Image", refBGR );
+        // cv::waitKey( 0 );
+        // cv::destroyAllWindows();
+    }
 
     m_curFrame->setKeyframe();
     m_map->addKeyframe( m_curFrame );
@@ -83,7 +81,7 @@ void System::processFirstFrame()
     // m_keyFrames.emplace_back( m_curFrame );
 }
 
-void System::processSecondFrame( )
+void System::processSecondFrame()
 {
     System_Log( DEBUG ) << "Number of Features: " << m_refFrame->numberObservation();
 
@@ -145,8 +143,8 @@ void System::processSecondFrame( )
             //    std::cout << "3D points: " << point->m_position.format(utils::eigenFormat()) << std::endl;
             m_refFrame->m_frameFeatures[ i ]->setPoint( point );
             m_curFrame->m_frameFeatures[ i ]->setPoint( point );
-            point->addFeature(m_refFrame->m_frameFeatures[ i ]);
-            point->addFeature(m_curFrame->m_frameFeatures[ i ]);
+            point->addFeature( m_refFrame->m_frameFeatures[ i ] );
+            point->addFeature( m_curFrame->m_frameFeatures[ i ] );
             cnt++;
         }
     }
@@ -169,13 +167,13 @@ void System::processSecondFrame( )
     medianDepth           = algorithm::computeMedian( newCurDepths );
     const double minDepth = newCurDepths.minCoeff();
     const double maxDepth = newCurDepths.maxCoeff();
-    System_Log( INFO ) << "Before SCALE, Median Depth: " << medianDepth << ", minDepth: " << minDepth << ", maxDepth: " << maxDepth;
+    System_Log( INFO ) << "After SCALE, Median Depth: " << medianDepth << ", minDepth: " << minDepth << ", maxDepth: " << maxDepth;
 
     // std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
     m_curFrame->setKeyframe();
     System_Log( INFO ) << "Number of Features: " << m_curFrame->numberObservation();
 
-    m_depthEstimator->addKeyframe(m_curFrame, medianDepth, 0.5 * minDepth);
+    m_depthEstimator->addKeyframe( m_curFrame, medianDepth, 0.4 * minDepth );
     // m_keyFrames.emplace_back( m_curFrame );
     // m_depthEstimator->addKeyframe(m_curFrame, medianDepth, 0.5 * minDepth);
     m_map->addKeyframe( m_curFrame );
@@ -191,13 +189,17 @@ void System::processSecondFrame( )
         visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 8, "orange", visualization::drawingRectangle );
         cv::Mat stickImg;
         visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
-        cv::imshow( "both_image_1_2_optimization", stickImg );
+        std::stringstream ss;
+        ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
+        cv::imshow( ss.str(), stickImg );
         // cv::imshow("relative_1_2", curBGR);
         // cv::waitKey( 0 );
+        // cv::destroyAllWindows();
+        // System_Log( INFO ) << "ref id: " << m_refFrame->m_id << ", cur id: " << m_curFrame->m_id;
     }
 }
 
-void System::processNewFrame(  )
+void System::processNewFrame()
 {
     // https://docs.microsoft.com/en-us/cpp/cpp/how-to-create-and-use-shared-ptr-instances?view=vs-2019
     // m_refFrame = std::move( m_curFrame );
@@ -221,9 +223,13 @@ void System::processNewFrame(  )
         visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 8, "orange", visualization::drawingRectangle );
         cv::Mat stickImg;
         visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
-        cv::imshow( "tracking", stickImg );
+        std::stringstream ss;
+        ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
+        cv::imshow( ss.str(), stickImg );
+        // cv::imshow( "tracking", stickImg );
         // cv::imshow("relative_1_2", curBGR);
         // cv::waitKey( 0 );
+        // System_Log( INFO ) << "ref id: " << m_refFrame->m_id << ", cur id: " << m_curFrame->m_id;
     }
 
     for ( const auto& refFeatures : m_refFrame->m_frameFeatures )
@@ -254,7 +260,7 @@ void System::processNewFrame(  )
     const double depthMean = algorithm::computeMedian( newCurDepths );
     const double depthMin  = newCurDepths.minCoeff();
 
-    m_depthEstimator->addFrame(m_curFrame);
+    m_depthEstimator->addFrame( m_curFrame );
     // frame_utils::getSceneDepth(*new_frame_, depth_mean, depth_min);
     // if(!needNewKf(depth_mean) || tracking_quality_ == TRACKING_BAD)
     // {

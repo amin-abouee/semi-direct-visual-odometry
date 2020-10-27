@@ -12,7 +12,7 @@
     "algorithm":
     {
         "number_detected_features" : 20,
-        "grid_size_select_features" : 50,
+        "grid_size_select_features" : 150,
         "patch_size_optical_flow" : 11,
         "patch_size_image_alignment" : 5,
         "min_level_image_pyramid": 0,

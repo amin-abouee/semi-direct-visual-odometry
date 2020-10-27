@@ -106,6 +106,7 @@ int main( int argc, char* argv[] )
         Main_Log( DEBUG ) << "Elapsed time for matching: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
                           << " milli sec";
         cv::waitKey( 0 );
+        cv::destroyAllWindows();
     }
     std::this_thread::sleep_for(std::chrono::seconds(1));
     // system.reportSummaryFrames();
