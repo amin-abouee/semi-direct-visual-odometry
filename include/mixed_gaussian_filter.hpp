@@ -25,15 +25,15 @@ public:
     static uint64_t m_frameCounter;
     static uint64_t m_filterCounter;
 
-    uint64_t m_frameId;                    //!< Frame id is the id of the keyframe for which the filter was created.
     uint64_t m_id;                         //!< Filter ID, only used for visualization.
+    uint64_t m_frameId;                    //!< Frame id is the id of the keyframe for which the filter was created.
     std::shared_ptr< Feature > m_feature;  //!< Feature in the keyframe for which the depth should be computed.
     double m_a;                            //!< a of Beta distribution: When high, probability of inlier is large.
     double m_b;                            //!< b of Beta distribution: When high, probability of outlier is large.
     double m_mu;                           //!< Mean of normal distribution.
     double m_maxDepth;                     //!< Max range of the possible depth.
-    double m_var;                          //!< Variance of normal distribution.
     double m_sigma;                        //!< sigma of normal distribution.
+    double m_var;                          //!< Variance of normal distribution.
     Eigen::Matrix2d m_CovPatch;            //!< Patch covariance in reference image.
     bool m_validity;                       //!< Check the validity of this filter
 

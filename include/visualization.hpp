@@ -87,7 +87,7 @@ void featurePoints(
     drawingFunctor );
 
 /// visualize feature points in any input image (for instance on HSV image)
-void imageGrid( cv::Mat& img, const std::shared_ptr< Frame >& frame, const int32_t gridSize, const std::string& color );
+void imageGrid( cv::Mat& img, const int32_t gridSize, const std::string& color );
 
 void project3DPoints(
   cv::Mat& img,

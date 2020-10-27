@@ -361,7 +361,7 @@ void visualization::featurePoints(
     }
 }
 
-void visualization::imageGrid( cv::Mat& img, const std::shared_ptr< Frame >& frame, const int32_t gridSize, const std::string& color )
+void visualization::imageGrid( cv::Mat& img, const int32_t gridSize, const std::string& color )
 {
     cv::Scalar colorRGB;
     if ( colors.find( color ) != colors.end() )
@@ -514,7 +514,7 @@ void visualization::projectDepthFilters(
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
     drawingFunctor )
 {
-    const uint32_t imgWidth = frame->m_camera->width();
+    // const uint32_t imgWidth = frame->m_camera->width();
     for ( auto& depthFilter : depthFilters )
     {
         const Sophus::SE3d relativePose        = algorithm::computeRelativePose( depthFilter.m_feature->m_frame, frame );

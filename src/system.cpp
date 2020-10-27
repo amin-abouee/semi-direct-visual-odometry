@@ -254,7 +254,7 @@ void System::processNewFrame(  )
     const double depthMean = algorithm::computeMedian( newCurDepths );
     const double depthMin  = newCurDepths.minCoeff();
 
-m_depthEstimator->addFrame(m_curFrame);
+    m_depthEstimator->addFrame(m_curFrame);
     // frame_utils::getSceneDepth(*new_frame_, depth_mean, depth_min);
     // if(!needNewKf(depth_mean) || tracking_quality_ == TRACKING_BAD)
     // {
