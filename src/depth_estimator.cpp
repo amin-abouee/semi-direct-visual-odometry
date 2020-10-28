@@ -168,16 +168,16 @@ void DepthEstimator::initializeFilters( std::shared_ptr< Frame >& frame )
     }
     m_haltUpdatingDepthFilter = false;
     
-    if (m_depthFilters.size() > 0)
-    {
-        cv::Mat refBGR = visualization::getBGRImage( m_depthFilters[0].m_feature->m_frame->m_imagePyramid.getBaseImage() );
-        visualization::projectDepthFilters(refBGR, frame, m_depthFilters, 4, "lime", visualization::drawingLine);
-        std::stringstream ss;
-        ss << "create depth for frame " << frame->m_id;
-        cv::imshow( ss.str(), refBGR );
-        // cv::imshow( "create depth", refBGR );
-        cv::waitKey(0);
-    }
+    // if (m_depthFilters.size() > 0)
+    // {
+    //     cv::Mat refBGR = visualization::getBGRImage( m_depthFilters[0].m_feature->m_frame->m_imagePyramid.getBaseImage() );
+    //     visualization::projectDepthFilters(refBGR, frame, m_depthFilters, 4, "lime", visualization::drawingLine);
+    //     std::stringstream ss;
+    //     ss << "create depth for frame " << frame->m_id;
+    //     cv::imshow( ss.str(), refBGR );
+    //     // cv::imshow( "create depth", refBGR );
+    //     cv::waitKey(0);
+    // }
 }
 
 void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
@@ -198,18 +198,18 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
 
     Depth_Log( DEBUG ) << "Frame id: " << frame->m_id << ", size its depthFilters " << m_depthFilters.size();
 
-    if (m_depthFilters.size() > 0)
-    {
-        cv::Mat refBGR = visualization::getBGRImage( frame->m_imagePyramid.getBaseImage() );
-        // cv::Mat curBGR = visualization::getBGRImage( frame->m_imagePyramid.getBaseImage() );
-        // cv::Mat stickImg;
-        // visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
-        visualization::projectDepthFilters(refBGR, frame, m_depthFilters, 4, "lime", visualization::drawingLine);
-        std::stringstream ss;
-        ss << "depth for frame " << frame->m_id;
-        cv::imshow( ss.str(), refBGR );
-        cv::waitKey(0);
-    }
+    // if (m_depthFilters.size() > 0)
+    // {
+    //     cv::Mat refBGR = visualization::getBGRImage( frame->m_imagePyramid.getBaseImage() );
+    //     // cv::Mat curBGR = visualization::getBGRImage( frame->m_imagePyramid.getBaseImage() );
+    //     // cv::Mat stickImg;
+    //     // visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
+    //     visualization::projectDepthFilters(refBGR, frame, m_depthFilters, 4, "lime", visualization::drawingLine);
+    //     std::stringstream ss;
+    //     ss << "depth for frame " << frame->m_id;
+    //     cv::imshow( ss.str(), refBGR );
+    //     cv::waitKey(0);
+    // }
 
     for ( auto& depthFilter : m_depthFilters )
     {

@@ -62,17 +62,17 @@ void System::processFirstFrame()
     // m_featureSelection->detectFeaturesWithSSC(m_curFrame, 1000);
 
     // visualize
-    {
-        cv::Mat gradient = m_featureSelection->m_gradientMagnitude.clone();
-        cv::normalize( gradient, gradient, 0, 255, cv::NORM_MINMAX, CV_8U );
-        cv::Mat refBGR = visualization::getBGRImage( gradient );
-        // cv::Mat refBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
-        visualization::featurePoints( refBGR, m_curFrame, 5, "pink", visualization::drawingRectangle );
-        visualization::imageGrid( refBGR, m_config->m_gridPixelSize, "amber" );
-        cv::imshow( "First Image", refBGR );
-        // cv::waitKey( 0 );
-        // cv::destroyAllWindows();
-    }
+    // {
+    //     cv::Mat gradient = m_featureSelection->m_gradientMagnitude.clone();
+    //     cv::normalize( gradient, gradient, 0, 255, cv::NORM_MINMAX, CV_8U );
+    //     cv::Mat refBGR = visualization::getBGRImage( gradient );
+    //     // cv::Mat refBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
+    //     visualization::featurePoints( refBGR, m_curFrame, 5, "pink", visualization::drawingRectangle );
+    //     visualization::imageGrid( refBGR, m_config->m_gridPixelSize, "amber" );
+    //     cv::imshow( "First Image", refBGR );
+    //     // cv::waitKey( 0 );
+    //     // cv::destroyAllWindows();
+    // }
 
     m_curFrame->setKeyframe();
     m_map->addKeyframe( m_curFrame );
@@ -179,24 +179,24 @@ void System::processSecondFrame()
     m_map->addKeyframe( m_curFrame );
     m_systemStatus = System::Status::Procese_New_Frame;
 
-    {
-        cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
-        cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
-        visualization::featurePoints( refBGR, m_refFrame, 8, "pink", visualization::drawingRectangle );
-        // visualization::featurePointsInGrid(curBGR, curFrame, 50);
-        // visualization::featurePoints(newBGR, newFrame);
-        // visualization::project3DPoints(curBGR, curFrame);
-        visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 8, "orange", visualization::drawingRectangle );
-        cv::Mat stickImg;
-        visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
-        std::stringstream ss;
-        ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
-        cv::imshow( ss.str(), stickImg );
-        // cv::imshow("relative_1_2", curBGR);
-        // cv::waitKey( 0 );
-        // cv::destroyAllWindows();
-        // System_Log( INFO ) << "ref id: " << m_refFrame->m_id << ", cur id: " << m_curFrame->m_id;
-    }
+    // {
+    //     cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
+    //     cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
+    //     visualization::featurePoints( refBGR, m_refFrame, 8, "pink", visualization::drawingRectangle );
+    //     // visualization::featurePointsInGrid(curBGR, curFrame, 50);
+    //     // visualization::featurePoints(newBGR, newFrame);
+    //     // visualization::project3DPoints(curBGR, curFrame);
+    //     visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 8, "orange", visualization::drawingRectangle );
+    //     cv::Mat stickImg;
+    //     visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
+    //     std::stringstream ss;
+    //     ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
+    //     cv::imshow( ss.str(), stickImg );
+    //     // cv::imshow("relative_1_2", curBGR);
+    //     // cv::waitKey( 0 );
+    //     // cv::destroyAllWindows();
+    //     // System_Log( INFO ) << "ref id: " << m_refFrame->m_id << ", cur id: " << m_curFrame->m_id;
+    // }
 }
 
 void System::processNewFrame()
@@ -213,19 +213,19 @@ void System::processNewFrame()
     auto t2 = std::chrono::high_resolution_clock::now();
     System_Log( INFO ) << "Elapsed time for alignment: " << std::chrono::duration_cast< std::chrono::microseconds >( t2 - t1 ).count()
                        << " micro sec";
-{
-        cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
-        cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
-        visualization::featurePoints( refBGR, m_refFrame, 8, "pink", visualization::drawingRectangle );
-        // visualization::featurePointsInGrid(curBGR, curFrame, 50);
-        // visualization::featurePoints(newBGR, newFrame);
-        // visualization::project3DPoints(curBGR, curFrame);
-        visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 8, "orange", visualization::drawingRectangle );
-        cv::Mat stickImg;
-        visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
-        std::stringstream ss;
-        ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
-        cv::imshow( ss.str(), stickImg );
+    {
+        // cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
+        // cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
+        // visualization::featurePoints( refBGR, m_refFrame, 8, "pink", visualization::drawingRectangle );
+        // // visualization::featurePointsInGrid(curBGR, curFrame, 50);
+        // // visualization::featurePoints(newBGR, newFrame);
+        // // visualization::project3DPoints(curBGR, curFrame);
+        // visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 8, "orange", visualization::drawingRectangle );
+        // cv::Mat stickImg;
+        // visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
+        // std::stringstream ss;
+        // ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
+        // cv::imshow( ss.str(), stickImg );
         // cv::imshow( "tracking", stickImg );
         // cv::imshow("relative_1_2", curBGR);
         // cv::waitKey( 0 );
