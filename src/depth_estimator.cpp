@@ -241,7 +241,7 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
         const double depth           = 0.0;
 
         // TODO:check in epipolar distance
-        algorithm::matchEpipolarConstraint( depthFilter.m_feature->m_frame, frame, depthFilter.m_feature, 1.0 / depthFilter.m_mu,
+        algorithm::matchEpipolarConstraint( depthFilter.m_feature->m_frame, frame, depthFilter.m_feature, 7,  1.0 / depthFilter.m_mu,
                                             1.0 / inverseMinDepth, 1.0 / inverseMaxDepth, depth );
 
         // compute tau

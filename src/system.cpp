@@ -213,7 +213,7 @@ void System::processNewFrame()
     auto t2 = std::chrono::high_resolution_clock::now();
     System_Log( INFO ) << "Elapsed time for alignment: " << std::chrono::duration_cast< std::chrono::microseconds >( t2 - t1 ).count()
                        << " micro sec";
-    {
+{
         cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
         cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
         visualization::featurePoints( refBGR, m_refFrame, 8, "pink", visualization::drawingRectangle );

@@ -35,8 +35,8 @@ void getAffineWarp( const std::shared_ptr< Frame >& refFrame,
                     const std::shared_ptr< Frame >& curFrame,
                     const std::shared_ptr< Feature >& feature,
                     const Sophus::SE3d& relativePose,
+                    const uint32_t patchSize,
                     const double depth,
-                    // const int level,
                     Eigen::Matrix2d& affineWarp );
 
 void applyAffineWarp( const std::shared_ptr< Frame >& frame,
@@ -52,7 +52,8 @@ bool matchDirect( const std::shared_ptr< Point >& point, const std::shared_ptr< 
 
 bool matchEpipolarConstraint( const std::shared_ptr< Frame >& refFrame,
                               const std::shared_ptr< Frame >& curFrame,
-                              std::shared_ptr< Feature >& feature,
+                              std::shared_ptr< Feature >& refFeature,
+                              const uint32_t patchSize,
                               const double initialDepth,
                               const double minDepth,
                               const double maxDepth,
