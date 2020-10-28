@@ -173,7 +173,7 @@ void System::processSecondFrame()
     m_curFrame->setKeyframe();
     System_Log( INFO ) << "Number of Features: " << m_curFrame->numberObservation();
 
-    m_depthEstimator->addKeyframe( m_curFrame, medianDepth, 0.4 * minDepth );
+    m_depthEstimator->addKeyframe( m_curFrame, medianDepth, 0.5 * minDepth );
     // m_keyFrames.emplace_back( m_curFrame );
     // m_depthEstimator->addKeyframe(m_curFrame, medianDepth, 0.5 * minDepth);
     m_map->addKeyframe( m_curFrame );

@@ -41,8 +41,9 @@ void getAffineWarp( const std::shared_ptr< Frame >& refFrame,
 
 void applyAffineWarp( const std::shared_ptr< Frame >& frame,
                       const Eigen::Vector2d& point,
-                      const uint32_t halfPatchSize,
+                      const int32_t halfPatchSize,
                       const Eigen::Matrix2d& affineWarp,
+                      const double boundary,
                       Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& data );
 
 double computeScore( const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& refPatchIntensity,
@@ -57,7 +58,7 @@ bool matchEpipolarConstraint( const std::shared_ptr< Frame >& refFrame,
                               const double initialDepth,
                               const double minDepth,
                               const double maxDepth,
-                              double estimatedDepth );
+                              double& estimatedDepth );
 
 void triangulate3DWorldPoints( const std::shared_ptr< Frame >& refFrame,
                                const std::shared_ptr< Frame >& curFrame,
@@ -93,7 +94,7 @@ void triangulatePointDLT( const std::shared_ptr< Frame >& refFrame,
 bool depthFromTriangulation( const Sophus::SE3d& relativePose,
                              const Eigen::Vector3d& refBearingVec,
                              const Eigen::Vector3d& curBearingVec,
-                             double depth );
+                             double& depth );
 
 // https://paperpile.com/app/p/5bafd339-43e6-0f8e-b976-951e527f7a45
 // Multi view geometry, Result 9.19, page 259

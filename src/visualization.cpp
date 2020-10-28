@@ -544,6 +544,55 @@ void visualization::projectDepthFilters(
     }
 }
 
+void visualization::projectDepthFilters(
+  cv::Mat& img,
+  const std::shared_ptr< Frame >& frame,
+  const std::vector< MixedGaussianFilter >& depthFilters,
+  const std::vector< double >& updatedDepths,
+  const u_int32_t radiusSize,
+  const std::string& color,
+  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
+    drawingFunctor )
+{
+    // const uint32_t imgWidth = frame->m_camera->width();
+    std::cout << "updatedDepths.size(): " << updatedDepths.size() << ", depthFilters.size(): " << depthFilters.size() << std::endl;
+    assert(updatedDepths.size() == depthFilters.size());
+    uint32_t idx = 0;
+    for ( auto& depthFilter : depthFilters )
+    {
+        const Sophus::SE3d relativePose        = algorithm::computeRelativePose( depthFilter.m_feature->m_frame, frame );
+        const Eigen::Vector3d pointInCurCamera = relativePose * ( depthFilter.m_feature->m_bearingVec / depthFilter.m_mu );
+        const Eigen::Vector2d pointInCurImage  = frame->camera2image( pointInCurCamera );
+        if ( pointInCurCamera.z() < 0 || frame->m_camera->isInFrame( pointInCurImage ) == false )
+        {
+            idx++;
+            continue;
+        }
+
+        // cv::circle( img, cv::Point2d( depthFilter.m_feature->m_feature.x(), depthFilter.m_feature->m_feature.y() ), radiusSize,
+                    // colors.at( "pink" ) );
+        cv::circle( img, cv::Point2d( pointInCurImage.x(), pointInCurImage.y() ), radiusSize,
+                    colors.at( "orange" ) );
+
+        const Eigen::Vector2d updatedLocationInCurImage = frame->camera2image ( relativePose * (depthFilter.m_feature->m_bearingVec * updatedDepths[idx++]));
+        cv::circle( img, cv::Point2d( updatedLocationInCurImage.x(), updatedLocationInCurImage.y() ), radiusSize,
+                    colors.at( "purple" ) );
+
+
+        // inverse representation of depth
+        const double inverseMinDepth = depthFilter.m_mu + depthFilter.m_var;
+        const double inverseMaxDepth = std::max( depthFilter.m_mu - depthFilter.m_var, 1e-7 );
+
+        const Eigen::Vector2d projectedMinDepth =
+          frame->camera2image( relativePose * ( depthFilter.m_feature->m_bearingVec / inverseMinDepth ) );
+        const Eigen::Vector2d projectedMaxDepth =
+          frame->camera2image( relativePose * ( depthFilter.m_feature->m_bearingVec / inverseMaxDepth ) );
+
+        drawingFunctor( img, Eigen::Vector2d( projectedMinDepth.x(), projectedMinDepth.y() ),
+                        Eigen::Vector2d( projectedMaxDepth.x(), projectedMaxDepth.y() ), colors.at( color ) );
+    }
+}
+
 void visualization::stickTwoImageVertically( const cv::Mat& refImg, const cv::Mat& curImg, cv::Mat& img )
 {
     cv::vconcat( refImg, curImg, img );

@@ -198,18 +198,20 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
 
     Depth_Log( DEBUG ) << "Frame id: " << frame->m_id << ", size its depthFilters " << m_depthFilters.size();
 
-    // if (m_depthFilters.size() > 0)
-    // {
-    //     cv::Mat refBGR = visualization::getBGRImage( frame->m_imagePyramid.getBaseImage() );
-    //     // cv::Mat curBGR = visualization::getBGRImage( frame->m_imagePyramid.getBaseImage() );
-    //     // cv::Mat stickImg;
-    //     // visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
-    //     visualization::projectDepthFilters(refBGR, frame, m_depthFilters, 4, "lime", visualization::drawingLine);
-    //     std::stringstream ss;
-    //     ss << "depth for frame " << frame->m_id;
-    //     cv::imshow( ss.str(), refBGR );
-    //     cv::waitKey(0);
-    // }
+    if (m_depthFilters.size() > 0)
+    {
+        cv::Mat refBGR = visualization::getBGRImage( frame->m_imagePyramid.getBaseImage() );
+        // cv::Mat curBGR = visualization::getBGRImage( frame->m_imagePyramid.getBaseImage() );
+        // cv::Mat stickImg;
+        // visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
+        visualization::projectDepthFilters(refBGR, frame, m_depthFilters, 4, "lime", visualization::drawingLine);
+        std::stringstream ss;
+        ss << "depth for frame " << frame->m_id;
+        cv::imshow( ss.str(), refBGR );
+        // cv::waitKey(0);
+    }
+
+    std::vector<double> updatedDepths;
 
     for ( auto& depthFilter : m_depthFilters )
     {
@@ -222,6 +224,7 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
         {
             depthFilter.m_validity = false;
             failedUpdated++;
+            updatedDepths.push_back(0.0);
             continue;
         }
 
@@ -232,17 +235,20 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
         {
             depthFilter.m_validity = false;
             failedUpdated++;
+            updatedDepths.push_back(0.0);
             continue;
         }
 
         // inverse representation of depth
         const double inverseMinDepth = depthFilter.m_mu + depthFilter.m_var;
         const double inverseMaxDepth = std::max( depthFilter.m_mu - depthFilter.m_var, 1e-7 );
-        const double depth           = 0.0;
+        double depth           = 0.0;
 
         // TODO:check in epipolar distance
         algorithm::matchEpipolarConstraint( depthFilter.m_feature->m_frame, frame, depthFilter.m_feature, 7,  1.0 / depthFilter.m_mu,
                                             1.0 / inverseMinDepth, 1.0 / inverseMaxDepth, depth );
+
+        updatedDepths.push_back(depth);
 
         // compute tau
         const double tau         = computeTau( relativePose, depthFilter.m_feature->m_bearingVec, depth, pixelErrorAngle );
@@ -293,6 +299,20 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
             failedUpdated++;
         }
         // Depth_Log( DEBUG ) << "Filter id: " << depthFilter.m_id << ", mu: " << depthFilter.m_mu << ", sigma: " << depthFilter.m_sigma;
+    }
+
+    if (m_depthFilters.size() > 0)
+    {
+        cv::Mat refBGR = visualization::getBGRImage( m_depthFilters[0].m_feature->m_frame->m_imagePyramid.getBaseImage() );
+        visualization::featurePoints( refBGR, m_depthFilters[0].m_feature->m_frame, 8, "pink", visualization::drawingRectangle );
+        cv::Mat curBGR = visualization::getBGRImage( frame->m_imagePyramid.getBaseImage() );
+        visualization::projectDepthFilters(curBGR, frame, m_depthFilters, updatedDepths, 4, "lime", visualization::drawingLine);
+        cv::Mat stickImg;
+        visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
+        std::stringstream ss;
+        ss << "updated depth for frame " << frame->m_id;
+        cv::imshow( ss.str(), stickImg );
+        cv::waitKey(0);
     }
 }
 

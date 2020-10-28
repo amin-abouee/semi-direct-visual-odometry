@@ -249,27 +249,27 @@ void algorithm::getAffineWarp( const std::shared_ptr< Frame >& refFrame,
 
 void algorithm::applyAffineWarp( const std::shared_ptr< Frame >& frame,
                                  const Eigen::Vector2d& location,
-                                 const uint32_t halfPatchSize,
+                                 const int32_t halfPatchSize,
                                  const Eigen::Matrix2d& affineWarp,
+                                 const double boundary,
                                  Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& data )
 {
     const cv::Mat& img = frame->m_imagePyramid.getBaseImage();
     const algorithm::MapXRowConst imgEigen( img.ptr< uint8_t >(), img.rows, img.cols );
 
-    uint32_t idx                  = 0;
-    const Eigen::Vector2d borders = affineWarp * Eigen::Vector2d( halfPatchSize, halfPatchSize );
-    const double boundary         = std::max( borders.x(), borders.y() ) + 1;
+    uint32_t idx = 0;
     if ( frame->m_camera->isInFrame( location, boundary ) )
     {
         for ( int32_t i( -halfPatchSize ); i <= halfPatchSize; i++ )
         {
             for ( int32_t j( -halfPatchSize ); j <= halfPatchSize; j++ )
             {
-                const Eigen::Vector2d locationInPatch = location + Eigen::Vector2d( j, i );
+                const Eigen::Vector2d locationInPatch = location + affineWarp * Eigen::Vector2d( j, i );
                 data( idx++ ) = algorithm::bilinearInterpolation( imgEigen, locationInPatch.x(), locationInPatch.y() );
             }
         }
     }
+    // Algorithm_Log( DEBUG ) << "number of matched pixels: " << idx;
 }
 
 double algorithm::computeScore( const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& refPatchIntensity,
@@ -282,7 +282,8 @@ double algorithm::computeScore( const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 
     for ( int32_t i( 0 ); i < refPatchIntensity.size(); i++ )
     {
         double error = ( refPatchIntensity( i ) - refMeanPatchInt ) - ( curPatchIntensity( i ) - curMeanPatchInt );
-        sum += error * error;
+        // sum += error * error;
+        sum += std::fabs( error );
     }
     return sum;
 }
@@ -303,10 +304,10 @@ bool algorithm::matchDirect( const std::shared_ptr< Point >& point, const std::s
     const Sophus::SE3d relativePose = algorithm::computeRelativePose( feature->m_frame, curFrame );
     const double depth              = ( feature->m_frame->cameraInWorld() - point->m_position ).norm();
     Eigen::Matrix2d affineWarp;
-    algorithm::getAffineWarp( feature->m_frame, curFrame, feature, relativePose, 7,  depth, affineWarp );
+    algorithm::getAffineWarp( feature->m_frame, curFrame, feature, relativePose, 7, depth, affineWarp );
 
     Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 > refPatchIntensities( patchArea );
-    algorithm::applyAffineWarp( feature->m_frame, feature->m_feature, halfPatchSize, Eigen::Matrix2d::Identity(), refPatchIntensities );
+    algorithm::applyAffineWarp( feature->m_frame, feature->m_feature, halfPatchSize, Eigen::Matrix2d::Identity(), halfPatchSize + 1, refPatchIntensities );
 
     // TODO: optimize the pose
     // if (i = 0)
@@ -323,30 +324,32 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
                                          const double initialDepth,
                                          const double minDepth,
                                          const double maxDepth,
-                                         double estimatedDepth )
+                                         double& estimatedDepth )
 {
     // const uint32_t patchSize     = 7;
     const uint32_t halfPatchSize = patchSize / 2;
     const uint32_t patchArea     = patchSize * patchSize;
 
     const Sophus::SE3d relativePose = algorithm::computeRelativePose( refFrame, curFrame );
-    const uint32_t thresholdZSSD    = patchArea * 0.5 * 255;
-    const Eigen::Vector2d locationMin  = curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_feature, minDepth ) );
-    const Eigen::Vector2d locationMax  = curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_feature, maxDepth ) );
+    const uint32_t thresholdZSSD    = patchArea * 128;
+    const Eigen::Vector2d locationCenter =
+      curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_feature, initialDepth ) );
+    const Eigen::Vector2d locationMin = curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_feature, minDepth ) );
+    const Eigen::Vector2d locationMax = curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_feature, maxDepth ) );
     const Eigen::Vector2d epipolarDirection = locationMax - locationMin;
 
     Eigen::Matrix2d affineWarp;
     algorithm::getAffineWarp( refFrame, curFrame, refFeature, relativePose, patchSize, initialDepth, affineWarp );
     double normEpipolar = epipolarDirection.norm();
+    Algorithm_Log( DEBUG ) << "affine matrix: " << affineWarp.format( utils::eigenFormat() );
 
     Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 > refPatchIntensities( patchArea );
-    algorithm::applyAffineWarp( refFrame, refFeature->m_feature, halfPatchSize, Eigen::Matrix2d::Identity(), refPatchIntensities );
-    Algorithm_Log( DEBUG ) << "ref patch intensities: " << refPatchIntensities.transpose();
-
+    refPatchIntensities.setZero();
+    algorithm::applyAffineWarp( refFrame, refFeature->m_feature, halfPatchSize, Eigen::Matrix2d::Identity(), halfPatchSize + 1, refPatchIntensities );
 
     if ( normEpipolar < 2.0 )
     {
-        //TODO: 2D alignment
+        // TODO: 2D alignment
         const Eigen::Vector2d centerLocation   = ( locationMax + locationMin ) / 2.0;
         const Eigen::Vector3d bearingCurCamera = curFrame->m_camera->inverseProject2d( centerLocation );
         if ( depthFromTriangulation( relativePose, refFeature->m_bearingVec, bearingCurCamera, estimatedDepth ) )
@@ -365,24 +368,32 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
     // Vector2d px_B(cur_frame.cam_->world2cam(B));
     // epi_length_ = (px_A-px_B).norm() / (1<<search_level_);
 
+    const Eigen::Vector2d borders = affineWarp * Eigen::Vector2d( halfPatchSize, halfPatchSize );
+    const double boundary         = std::max( borders.x(), borders.y() ) + 1;
+
     Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 > curPatchIntensities( patchArea );
-    uint32_t pixelStep           = normEpipolar / 0.7;
-    const Eigen::Vector2d step2D = epipolarDirection / pixelStep;
+    curPatchIntensities.setZero();
+    //TODO: why divide by 0.7. divide by norm
+    // const uint32_t pixelStep           = normEpipolar / 0.7;
+    // const Eigen::Vector2d step2D = epipolarDirection / pixelStep;
+    const uint32_t pixelStep           = std::ceil(normEpipolar);
+    const Eigen::Vector2d step2D = epipolarDirection / normEpipolar;
     double minimumScore          = std::numeric_limits< double >::max();
     Eigen::Vector2d bestLocation;
 
-    Algorithm_Log( DEBUG ) << "Epipolar Direction: " << epipolarDirection.transpose() << ", norm: " << normEpipolar;
-    Algorithm_Log( DEBUG ) << "Pixel step: " << pixelStep;
-    Algorithm_Log( DEBUG ) << "step 2D: " << step2D.transpose();
+    Algorithm_Log( DEBUG ) << "Epipolar Direction: " << epipolarDirection.transpose() << ", norm: " << normEpipolar
+                           << ", Pixel step: " << pixelStep << ", Step 2D: " << step2D.transpose();
+    // Algorithm_Log( INFO ) << "Location in ref frame: " << refFeature->m_feature.transpose();
+    // Algorithm_Log( INFO ) << "Ref patch intensities: " << refPatchIntensities.cast<int32_t>().transpose();
 
     // traverse over the epipolar line
     for ( uint32_t i( 0 ); i < pixelStep; i++ )
     {
         const Eigen::Vector2d location = locationMin + i * step2D;
-        algorithm::applyAffineWarp( curFrame, location, halfPatchSize, affineWarp, curPatchIntensities );
+        algorithm::applyAffineWarp( curFrame, location, halfPatchSize, affineWarp, boundary, curPatchIntensities );
         double zssd = computeScore( refPatchIntensities, curPatchIntensities );
-        Algorithm_Log( DEBUG ) << "cur patch intensities: " << curPatchIntensities.transpose();
-        Algorithm_Log( DEBUG ) << "loc: " << location.transpose() << ", zzd score: " << zssd;
+        // Algorithm_Log( DEBUG ) << "Loc in cur frame: " << location.transpose() << ", zzd score: " << zssd;
+        // Algorithm_Log( DEBUG ) << "Cur patch intensities: " << curPatchIntensities.cast<int32_t>().transpose();
         if ( zssd < minimumScore )
         {
             minimumScore = zssd;
@@ -393,8 +404,10 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
     Algorithm_Log( DEBUG ) << "Min zssd score: " << minimumScore;
     if ( minimumScore < thresholdZSSD )
     {
-        //TODO: 2D alignment
+        // TODO: 2D alignment
         const Eigen::Vector3d bearingCurCamera = curFrame->m_camera->inverseProject2d( bestLocation );
+        Algorithm_Log( DEBUG ) << "pre location: " << bestLocation.transpose() << ", cur location: " << locationCenter.transpose();
+
         if ( depthFromTriangulation( relativePose, refFeature->m_bearingVec, bearingCurCamera, estimatedDepth ) )
         {
             Algorithm_Log( DEBUG ) << "pre depth: " << initialDepth << ", depth updated: " << estimatedDepth;
@@ -573,21 +586,22 @@ void algorithm::triangulatePointDLT( const std::shared_ptr< Frame >& refFrame,
 bool algorithm::depthFromTriangulation( const Sophus::SE3d& relativePose,
                                         const Eigen::Vector3d& refBearingVec,
                                         const Eigen::Vector3d& curBearingVec,
-                                        double depth )
+                                        double& depth )
 {
     // R * (bea_ref * d1) + t = bea_cur * d2
     // R * bea_ref * d1 - bea_cur * d2 = -t
-    // [R * bea_ref, bea_cur][d1; d2] = -t
+    // [R * bea_ref, -bea_cur][d1; d2] = -t
 
     Eigen::Matrix< double, 3, 2 > A;
-    A << relativePose.rotationMatrix() * refBearingVec, curBearingVec;
+    A << relativePose.rotationMatrix() * refBearingVec, -curBearingVec;
     const Eigen::Matrix2d AtA = A.transpose() * A;
     if ( AtA.determinant() < 0.000001 )
     {
         return false;
     }
     const Eigen::Vector2d depths = -AtA.inverse() * A.transpose() * relativePose.translation();
-    depth                        = std::fabs( depths( 0 ) );
+    Algorithm_Log( DEBUG ) << "depths: " << depths.transpose();
+    depth                        = std::fabs( depths.x() );
     return true;
 }
 
