@@ -19,6 +19,7 @@
 #include <queue>
 #include <thread>
 
+// #include "feature_selection.hpp"
 #include "frame.hpp"
 #include "mixed_gaussian_filter.hpp"
 
@@ -36,8 +37,9 @@ public:
 
     std::shared_ptr< Frame > m_newKeyframe;
     std::queue< std::shared_ptr< Frame > > m_queueFrames;
-
     std::vector< MixedGaussianFilter > m_depthFilters;
+
+    // std::shared_ptr< FeatureSelection > m_featureSelection;
 
     bool m_haltUpdatingDepthFilter;
     bool m_newKeyframeAdded;

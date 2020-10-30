@@ -336,6 +336,8 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
       curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_feature, initialDepth ) );
     const Eigen::Vector2d locationMin = curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_feature, minDepth ) );
     const Eigen::Vector2d locationMax = curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_feature, maxDepth ) );
+
+    //FIXME: check with the original code. They don't project to the camera. Just project2d (x/z, y/z)
     const Eigen::Vector2d epipolarDirection = locationMax - locationMin;
 
     Eigen::Matrix2d affineWarp;

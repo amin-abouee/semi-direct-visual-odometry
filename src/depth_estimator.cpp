@@ -131,7 +131,7 @@ void DepthEstimator::updateFiltersLoop()
 
         if ( m_newKeyframeAdded == true )
         {
-            Depth_Log( INFO ) << "New key frame id " << m_newKeyframe->m_id << " added to depth estimation";
+            Depth_Log( INFO ) << "New key frame " << m_newKeyframe->m_id << " added to depth estimation";
             m_newKeyframeAdded        = false;
             m_haltUpdatingDepthFilter = false;
             clearFrameQueue();
@@ -144,12 +144,12 @@ void DepthEstimator::updateFiltersLoop()
         }
 
         updateFilters( frame );
-        Depth_Log( INFO ) << "Depth of frame id " << frame->m_id << " updated.";
+        Depth_Log( INFO ) << "Depth of frame " << frame->m_id << " updated.";
 
         if ( frame->isKeyframe() )
         {
             initializeFilters( frame );
-            Depth_Log( INFO ) << "Depth of key frame id " << frame->m_id << " initialized.";
+            Depth_Log( INFO ) << "Depth of key frame " << frame->m_id << " initialized.";
         }
     }
 }
@@ -157,7 +157,6 @@ void DepthEstimator::updateFiltersLoop()
 void DepthEstimator::initializeFilters( std::shared_ptr< Frame >& frame )
 {
     Depth_Log( DEBUG ) << "initializeFilters";
-    // detect new feature
 
     m_haltUpdatingDepthFilter = true;
     std::unique_lock< std::mutex > threadLocker( m_mutexFilter );
@@ -167,7 +166,9 @@ void DepthEstimator::initializeFilters( std::shared_ptr< Frame >& frame )
         m_depthFilters.push_back( MixedGaussianFilter( feature, m_newKeyframeMeanDepth, m_newKeyframeMinDepth ) );
     }
     m_haltUpdatingDepthFilter = false;
-    
+
+    Depth_Log( DEBUG ) << m_depthFilters.size() << " filters initialized for depth estimation";
+
     // if (m_depthFilters.size() > 0)
     // {
     //     cv::Mat refBGR = visualization::getBGRImage( m_depthFilters[0].m_feature->m_frame->m_imagePyramid.getBaseImage() );
@@ -196,27 +197,25 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
     // here, W = 1 (pixel error). theta = arctan(1/2*f)*2
     const double pixelErrorAngle = atan( pixelNoise / ( 2.0 * focalLength ) ) * 2.0;  // law of chord (sehnensatz)
 
-    Depth_Log( DEBUG ) << "Frame id: " << frame->m_id << ", size its depthFilters " << m_depthFilters.size();
+    Depth_Log( DEBUG ) << "Frame: " << frame->m_id << ", size its depthFilters " << m_depthFilters.size();
 
-    if (m_depthFilters.size() > 0)
+    if ( m_depthFilters.size() > 0 )
     {
         cv::Mat refBGR = visualization::getBGRImage( frame->m_imagePyramid.getBaseImage() );
         // cv::Mat curBGR = visualization::getBGRImage( frame->m_imagePyramid.getBaseImage() );
         // cv::Mat stickImg;
         // visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
-        visualization::projectDepthFilters(refBGR, frame, m_depthFilters, 4, "lime", visualization::drawingLine);
+        visualization::projectDepthFilters( refBGR, frame, m_depthFilters, 4, "lime", visualization::drawingLine );
         std::stringstream ss;
         ss << "depth for frame " << frame->m_id;
         cv::imshow( ss.str(), refBGR );
         // cv::waitKey(0);
     }
 
-    std::vector<double> updatedDepths;
+    std::vector< double > updatedDepths;
 
     for ( auto& depthFilter : m_depthFilters )
     {
-        // Depth_Log( DEBUG ) << "Filter id: " << depthFilter.m_id << ", mu: " << depthFilter.m_mu << ", sigma: " << depthFilter.m_sigma;
-
         if ( m_haltUpdatingDepthFilter == true )
             return;
         // if the current depth filter is very old, delete it
@@ -224,7 +223,7 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
         {
             depthFilter.m_validity = false;
             failedUpdated++;
-            updatedDepths.push_back(0.0);
+            updatedDepths.push_back( 0.0 );
             continue;
         }
 
@@ -235,33 +234,36 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
         {
             depthFilter.m_validity = false;
             failedUpdated++;
-            updatedDepths.push_back(0.0);
+            updatedDepths.push_back( 0.0 );
             continue;
         }
 
         // inverse representation of depth
         const double inverseMinDepth = depthFilter.m_mu + depthFilter.m_var;
         const double inverseMaxDepth = std::max( depthFilter.m_mu - depthFilter.m_var, 1e-7 );
-        double depth           = 0.0;
+        double updatedDepth          = 0.0;
 
         // TODO:check in epipolar distance
-        algorithm::matchEpipolarConstraint( depthFilter.m_feature->m_frame, frame, depthFilter.m_feature, 7,  1.0 / depthFilter.m_mu,
-                                            1.0 / inverseMinDepth, 1.0 / inverseMaxDepth, depth );
+        algorithm::matchEpipolarConstraint( depthFilter.m_feature->m_frame, frame, depthFilter.m_feature, 7, 1.0 / depthFilter.m_mu,
+                                            1.0 / inverseMinDepth, 1.0 / inverseMaxDepth, updatedDepth );
 
-        updatedDepths.push_back(depth);
+        updatedDepths.push_back( updatedDepth );
 
         // compute tau
-        const double tau         = computeTau( relativePose, depthFilter.m_feature->m_bearingVec, depth, pixelErrorAngle );
-        const double tau_inverse = 0.5 * ( 1.0 / std::max( 1e-7, depth - tau ) - 1.0 / ( depth + tau ) );
+        const double tau        = computeTau( relativePose, depthFilter.m_feature->m_bearingVec, updatedDepth, pixelErrorAngle );
+        const double inverseTau = 0.5 * ( 1.0 / std::max( 1e-7, updatedDepth - tau ) - 1.0 / ( updatedDepth + tau ) );
 
         // update the estimate
-        updateFilter( 1.0 / depth, tau_inverse * tau_inverse, depthFilter );
+        updateFilter( 1.0 / updatedDepth, inverseTau * inverseTau, depthFilter );
         successUpdated++;
 
         if ( frame->isKeyframe() )
         {
             // The feature detector should not initialize new seeds close to this location
-            // feature_detector_->setGridOccpuancy(matcher_.px_cur_);
+            const Eigen::Vector2d newLocation =
+              frame->camera2image( relativePose * frame->image2camera( depthFilter.m_feature->m_feature, 1.0 / depthFilter.m_mu ) );
+            // TODO: we need to set the corresponding location in our grid
+            m_featureSelection->setCellInGridOccupancy( newLocation );
         }
 
         // if the filter has converged, we initialize a new candidate point and remove the seed
@@ -269,12 +271,9 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
         {
             // assert( it->ftr->point == NULL );  // TODO this should not happen anymore
             const Eigen::Vector3d pointInWorld =
-              depthFilter.m_feature->m_frame->image2camera( depthFilter.m_feature->m_feature, 1.0 / depthFilter.m_mu );
-            auto point = std::make_shared<Point>(pointInWorld, depthFilter.m_feature);
+              depthFilter.m_feature->m_frame->image2world( depthFilter.m_feature->m_feature, 1.0 / depthFilter.m_mu );
+            auto point                     = std::make_shared< Point >( pointInWorld, depthFilter.m_feature );
             depthFilter.m_feature->m_point = point;
-
-            // Point* point   = new Point( xyz_world, it->ftr );
-            // it->ftr->point = point;
 
             /* FIXME it is not threadsafe to add a feature to the frame here.
             if(frame->isKeyframe())
@@ -295,25 +294,34 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
         }
         else if ( std::isnan( inverseMinDepth ) )
         {
+            Depth_Log( WARNING ) << "Inverse depth is nan";
             depthFilter.m_validity = false;
             failedUpdated++;
         }
         // Depth_Log( DEBUG ) << "Filter id: " << depthFilter.m_id << ", mu: " << depthFilter.m_mu << ", sigma: " << depthFilter.m_sigma;
     }
 
-    if (m_depthFilters.size() > 0)
+    if ( m_depthFilters.size() > 0 )
     {
-        cv::Mat refBGR = visualization::getBGRImage( m_depthFilters[0].m_feature->m_frame->m_imagePyramid.getBaseImage() );
-        visualization::featurePoints( refBGR, m_depthFilters[0].m_feature->m_frame, 8, "pink", visualization::drawingRectangle );
+        cv::Mat refBGR = visualization::getBGRImage( m_depthFilters[ 0 ].m_feature->m_frame->m_imagePyramid.getBaseImage() );
+        visualization::featurePoints( refBGR, m_depthFilters[ 0 ].m_feature->m_frame, 8, "pink", visualization::drawingRectangle );
         cv::Mat curBGR = visualization::getBGRImage( frame->m_imagePyramid.getBaseImage() );
-        visualization::projectDepthFilters(curBGR, frame, m_depthFilters, updatedDepths, 4, "lime", visualization::drawingLine);
+        visualization::projectDepthFilters( curBGR, frame, m_depthFilters, updatedDepths, 4, "lime", visualization::drawingLine );
         cv::Mat stickImg;
         visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
         std::stringstream ss;
         ss << "updated depth for frame " << frame->m_id;
         cv::imshow( ss.str(), stickImg );
-        cv::waitKey(0);
+        cv::waitKey( 0 );
     }
+
+    // remove bad filters
+    auto removedElements = std::remove_if( m_depthFilters.begin(), m_depthFilters.end(), []( auto& depthFilter ) -> bool {
+        if ( depthFilter.m_validity == false )
+            return true;
+        return false;
+    } );
+    m_depthFilters.erase( removedElements, m_depthFilters.end() );
 }
 
 void DepthEstimator::updateFilter( const double x, const double tau2, MixedGaussianFilter& depthFilter )
@@ -349,19 +357,19 @@ void DepthEstimator::updateFilter( const double x, const double tau2, MixedGauss
 
 double DepthEstimator::computeTau( const Sophus::SE3d& relativePose,
                                    const Eigen::Vector3d& bearing,
-                                   const double z,
+                                   const double depth,
                                    const double pixelErrorAngle )
 {
     const Eigen::Vector3d translation = relativePose.translation();
-    const Eigen::Vector3d a           = bearing * z - translation;
-    const double nomrTranslation      = translation.norm();
-    const double a_norm               = a.norm();
-    const double alpha                = acos( bearing.dot( translation ) / nomrTranslation );          // dot product
-    const double beta                 = acos( a.dot( -translation ) / ( nomrTranslation * a_norm ) );  // dot product
-    const double beta_plus            = beta + pixelErrorAngle;
-    const double gamma_plus           = utils::constants::pi - alpha - beta_plus;                // triangle angles sum to PI
-    const double z_plus               = nomrTranslation * sin( beta_plus ) / sin( gamma_plus );  // law of sines
-    return ( z_plus - z );                                                                       // tau
+    const Eigen::Vector3d diff        = bearing * depth - translation;
+    const double normTranslation      = translation.norm();
+    const double normDiff             = diff.norm();
+    const double alpha                = std::acos( bearing.dot( translation ) / normTranslation );               // dot product
+    const double beta                 = std::acos( diff.dot( -translation ) / ( normTranslation * normDiff ) );  // dot product
+    const double betaUpdated          = beta + pixelErrorAngle;
+    const double gammaUpdated         = utils::constants::pi - alpha - betaUpdated;                            // triangle angles sum to PI
+    const double depthUpdated         = normTranslation * std::sin( betaUpdated ) / std::sin( gammaUpdated );  // law of sines
+    return ( depthUpdated - depth );                                                                           // tau
 }
 
 void DepthEstimator::clearFrameQueue()
