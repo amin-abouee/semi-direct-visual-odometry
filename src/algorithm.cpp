@@ -86,7 +86,7 @@ void algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame, st
 
     for ( std::size_t i( 0 ); i < curPoints.size(); i++ )
     {
-        if ( status[ i ] )
+        if ( status[ i ] == true )
         {
             std::shared_ptr< Feature > newFeature =
               std::make_shared< Feature >( curFrame, Eigen::Vector2d( curPoints[ i ].x, curPoints[ i ].y ), 0.0, 0.0, 0 );
@@ -96,12 +96,7 @@ void algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame, st
 
     uint32_t cnt = 0;
     /// if status[i] == true, it have to return false because we dont want to remove it from our container
-    auto isNotValid = [ &cnt, &status, &refFrame ]( const auto& feature ) {
-        if ( feature->m_frame == refFrame )
-            return status[ cnt++ ] ? false : true;
-        else
-            return false;
-    };
+    auto isNotValid = [ &cnt, &status ]( const auto& feature ) { return status[ cnt++ ] ? false : true; };
 
     // https://en.wikipedia.org/wiki/Erase%E2%80%93remove_idiom
     refFrame->m_frameFeatures.erase( std::remove_if( refFrame->m_frameFeatures.begin(), refFrame->m_frameFeatures.end(), isNotValid ),
@@ -307,7 +302,8 @@ bool algorithm::matchDirect( const std::shared_ptr< Point >& point, const std::s
     algorithm::getAffineWarp( feature->m_frame, curFrame, feature, relativePose, 7, depth, affineWarp );
 
     Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 > refPatchIntensities( patchArea );
-    algorithm::applyAffineWarp( feature->m_frame, feature->m_feature, halfPatchSize, Eigen::Matrix2d::Identity(), halfPatchSize + 1, refPatchIntensities );
+    algorithm::applyAffineWarp( feature->m_frame, feature->m_feature, halfPatchSize, Eigen::Matrix2d::Identity(), halfPatchSize + 1,
+                                refPatchIntensities );
 
     // TODO: optimize the pose
     // if (i = 0)
@@ -337,7 +333,7 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
     const Eigen::Vector2d locationMin = curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_feature, minDepth ) );
     const Eigen::Vector2d locationMax = curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_feature, maxDepth ) );
 
-    //FIXME: check with the original code. They don't project to the camera. Just project2d (x/z, y/z)
+    // FIXME: check with the original code. They don't project to the camera. Just project2d (x/z, y/z)
     const Eigen::Vector2d epipolarDirection = locationMax - locationMin;
 
     Eigen::Matrix2d affineWarp;
@@ -347,7 +343,8 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
 
     Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 > refPatchIntensities( patchArea );
     refPatchIntensities.setZero();
-    algorithm::applyAffineWarp( refFrame, refFeature->m_feature, halfPatchSize, Eigen::Matrix2d::Identity(), halfPatchSize + 1, refPatchIntensities );
+    algorithm::applyAffineWarp( refFrame, refFeature->m_feature, halfPatchSize, Eigen::Matrix2d::Identity(), halfPatchSize + 1,
+                                refPatchIntensities );
 
     if ( normEpipolar < 2.0 )
     {
@@ -375,10 +372,10 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
 
     Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 > curPatchIntensities( patchArea );
     curPatchIntensities.setZero();
-    //TODO: why divide by 0.7. divide by norm
+    // TODO: why divide by 0.7. divide by norm
     // const uint32_t pixelStep           = normEpipolar / 0.7;
     // const Eigen::Vector2d step2D = epipolarDirection / pixelStep;
-    const uint32_t pixelStep           = std::ceil(normEpipolar);
+    const uint32_t pixelStep     = std::ceil( normEpipolar );
     const Eigen::Vector2d step2D = epipolarDirection / normEpipolar;
     double minimumScore          = std::numeric_limits< double >::max();
     Eigen::Vector2d bestLocation;
@@ -603,7 +600,7 @@ bool algorithm::depthFromTriangulation( const Sophus::SE3d& relativePose,
     }
     const Eigen::Vector2d depths = -AtA.inverse() * A.transpose() * relativePose.translation();
     Algorithm_Log( DEBUG ) << "depths: " << depths.transpose();
-    depth                        = std::fabs( depths.x() );
+    depth = std::fabs( depths.x() );
     return true;
 }
 

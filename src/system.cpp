@@ -21,7 +21,7 @@ System::System( const Config& config ) : m_config( &config ), m_systemStatus( Sy
     m_alignment        = std::make_shared< ImageAlignment >( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid,
                                                       m_config->m_maxLevelImagePyramid, 6 );
     m_featureSelection = std::make_shared< FeatureSelection >( m_config->m_imgWidth, m_config->m_imgHeight, m_config->m_cellPixelSize );
-    m_depthEstimator   = std::make_unique< DepthEstimator >();
+    m_depthEstimator   = std::make_unique< DepthEstimator >(m_featureSelection);
     m_map              = std::make_unique< Map >( m_camera, 32 );
 
     // cv::Mat initImg( m_camera->width(), m_camera->height(), CV_8U );

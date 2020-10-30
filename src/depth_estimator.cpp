@@ -10,13 +10,14 @@
 #include "easylogging++.h"
 #define Depth_Log( LEVEL ) CLOG( LEVEL, "Depth" )
 
-DepthEstimator::DepthEstimator()
+DepthEstimator::DepthEstimator(std::shared_ptr< FeatureSelection >& featureSelection)
     : m_haltUpdatingDepthFilter( false )
     , m_newKeyframeAdded( false )
     , m_activeThread( true )
     , m_newKeyframeMinDepth( 0.0 )
     , m_newKeyframeMeanDepth( 0.0 )
     , m_terminateThread( false )
+    , m_featureSelection(featureSelection)
 {
     // https://stackoverflow.com/a/18376082/1804533
     // https://thispointer.com/c-11-multithreading-part-1-three-different-ways-to-create-threads/

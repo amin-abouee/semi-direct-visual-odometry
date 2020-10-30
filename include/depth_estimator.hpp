@@ -19,7 +19,7 @@
 #include <queue>
 #include <thread>
 
-// #include "feature_selection.hpp"
+#include "feature_selection.hpp"
 #include "frame.hpp"
 #include "mixed_gaussian_filter.hpp"
 
@@ -39,7 +39,7 @@ public:
     std::queue< std::shared_ptr< Frame > > m_queueFrames;
     std::vector< MixedGaussianFilter > m_depthFilters;
 
-    // std::shared_ptr< FeatureSelection > m_featureSelection;
+    std::shared_ptr< FeatureSelection > m_featureSelection;
 
     bool m_haltUpdatingDepthFilter;
     bool m_newKeyframeAdded;
@@ -49,7 +49,7 @@ public:
     bool m_terminateThread;
 
     // C'tor
-    explicit DepthEstimator();
+    explicit DepthEstimator(std::shared_ptr< FeatureSelection >& featureSelection);
     // Copy C'tor
     DepthEstimator( const DepthEstimator& rhs ) = delete;
     // move C'tor
