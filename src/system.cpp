@@ -17,13 +17,14 @@ System::System( const Config& config ) : m_config( &config ), m_systemStatus( Sy
     cv::Mat cameraMatrix;
     cv::Mat distortionCoeffs;
     loadCameraIntrinsics( calibrationFile, cameraMatrix, distortionCoeffs );
-    m_camera         = std::make_shared< PinholeCamera >( m_config->m_imgWidth, m_config->m_imgHeight, cameraMatrix, distortionCoeffs );
-    m_alignment      = std::make_shared< ImageAlignment >( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid,
+    m_camera           = std::make_shared< PinholeCamera >( m_config->m_imgWidth, m_config->m_imgHeight, cameraMatrix, distortionCoeffs );
+    m_alignment        = std::make_shared< ImageAlignment >( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid,
                                                       m_config->m_maxLevelImagePyramid, 6 );
-    m_depthEstimator = std::make_unique< DepthEstimator >();
-    m_map            = std::make_unique< Map >( m_camera, 32 );
+    m_featureSelection = std::make_shared< FeatureSelection >( m_config->m_imgWidth, m_config->m_imgHeight, m_config->m_cellPixelSize );
+    m_depthEstimator   = std::make_unique< DepthEstimator >();
+    m_map              = std::make_unique< Map >( m_camera, 32 );
 
-    cv::Mat initImg( m_camera->width(), m_camera->height(), CV_8U );
+    // cv::Mat initImg( m_camera->width(), m_camera->height(), CV_8U );
 }
 
 void System::addImage( const cv::Mat& img, const double timestamp )
@@ -55,11 +56,12 @@ void System::processFirstFrame()
 {
     // m_refFrame = std::make_shared< Frame >( m_camera, firstImg, m_config->m_maxLevelImagePyramid + 1 );
     // Frame refFrame( camera, refImg );
-    m_featureSelection = std::make_unique< FeatureSelection >( m_curFrame->m_imagePyramid.getBaseImage() );
+    // m_featureSelection = std::make_unique< FeatureSelection >( m_curFrame->m_imagePyramid.getBaseImage() );
     // FeatureSelection featureSelection( m_curFrame->m_imagePyramid.getBaseImage() );
-    m_featureSelection->detectFeaturesInGrid( m_curFrame, m_config->m_gridPixelSize );
+    m_featureSelection->detectFeaturesInGrid( m_curFrame, 0.0 );
     // m_featureSelection->detectFeaturesByValue( m_curFrame, 150 );
     // m_featureSelection->detectFeaturesWithSSC(m_curFrame, 1000);
+    // TODO: check the size of detected points. Less than threshold, re run again
 
     // visualize
     // {
@@ -90,9 +92,12 @@ void System::processSecondFrame()
     Eigen::Matrix3d R;
     Eigen::Vector3d t;
 
+    // we find teh corresponding point in curFrame and create feature for them
     algorithm::computeOpticalFlowSparse( m_refFrame, m_curFrame, m_config->m_patchSizeOpticalFlow );
     algorithm::computeEssentialMatrix( m_refFrame, m_curFrame, 1.0, E );
     // F = m_curFrame->m_camera->invK().transpose() * E * m_refFrame->m_camera->invK();
+
+    // TODO: check the number of matched!!!
 
     // decompose essential matrix to R and t and set the absolute pose of reference frame
     algorithm::recoverPose( E, m_refFrame, m_curFrame, R, t );
@@ -100,7 +105,7 @@ void System::processSecondFrame()
     System_Log( DEBUG ) << "Initial t: " << t.format( utils::eigenFormat() );
 
     // reserve the memory for depth information
-    std::size_t numObserves = m_refFrame->numberObservation();
+    std::size_t numObserves = m_curFrame->numberObservation();
     Eigen::MatrixXd pointsWorld( 3, numObserves );
     Eigen::MatrixXd pointsCurCamera( 3, numObserves );
     Eigen::VectorXd depthCurFrame( numObserves );
@@ -159,8 +164,9 @@ void System::processSecondFrame()
                                        m_curFrame->m_frameFeatures.end() );
 
     System_Log( INFO ) << "Init Points: " << pointsWorld.cols() << ", ref obs: " << m_refFrame->numberObservation()
-                       << ", cur obs: " << m_curFrame->numberObservation();
+                       << ", cur obs: " << m_curFrame->numberObservation() << ", number of removed: " << pointsWorld.cols() - cnt;
 
+    m_curFrame->setKeyframe();
     numObserves = m_curFrame->numberObservation();
     Eigen::VectorXd newCurDepths( numObserves );
     algorithm::depthCamera( m_curFrame, newCurDepths );
@@ -169,9 +175,11 @@ void System::processSecondFrame()
     const double maxDepth = newCurDepths.maxCoeff();
     System_Log( INFO ) << "After SCALE, Median Depth: " << medianDepth << ", minDepth: " << minDepth << ", maxDepth: " << maxDepth;
 
-    // std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
-    m_curFrame->setKeyframe();
-    System_Log( INFO ) << "Number of Features: " << m_curFrame->numberObservation();
+    System_Log( INFO ) << "size observation: " << m_curFrame->numberObservation();
+    m_featureSelection->setExistingFeatures( m_curFrame->m_frameFeatures );
+    m_featureSelection->detectFeaturesInGrid( m_curFrame, 0.0 );
+    System_Log( INFO ) << "size observation after detect: " << m_curFrame->numberObservation();
+    // System_Log( INFO ) << "Number of Features: " << m_curFrame->numberObservation();
 
     m_depthEstimator->addKeyframe( m_curFrame, medianDepth, 0.5 * minDepth );
     // m_keyFrames.emplace_back( m_curFrame );
@@ -206,6 +214,8 @@ void System::processNewFrame()
     // std::cout << "counter ref: " << m_refFrame.use_count() << std::endl;
     // m_curFrame = std::make_shared< Frame >( m_camera, newImg, m_config->m_maxLevelImagePyramid + 1 );
     // std::cout << "counter cur: " << m_curFrame.use_count() << std::endl;
+    m_curFrame->m_TransW2F = m_refFrame->m_TransW2F;
+    System_Log( INFO ) << "Number of features, pre: " << m_refFrame->numberObservation() << ", cur: " << m_curFrame->numberObservation();
 
     // ImageAlignment match( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid, m_config->m_maxLevelImagePyramid, 6 );
     auto t1 = std::chrono::high_resolution_clock::now();
@@ -234,6 +244,11 @@ void System::processNewFrame()
 
     for ( const auto& refFeatures : m_refFrame->m_frameFeatures )
     {
+        if ( refFeatures->m_point == nullptr )
+        {
+            continue;
+        }
+
         const auto& point      = refFeatures->m_point->m_position;
         const auto& curFeature = m_curFrame->world2image( point );
         if ( m_curFrame->m_camera->isInFrame( curFeature, 5.0 ) == true )

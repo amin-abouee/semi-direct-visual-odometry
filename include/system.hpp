@@ -30,15 +30,6 @@ class System final
     };
 
 public:
-    std::shared_ptr< PinholeCamera > m_camera;
-    std::shared_ptr< Frame > m_refFrame;
-    std::shared_ptr< Frame > m_curFrame;
-    std::unique_ptr< FeatureSelection > m_featureSelection;
-    std::vector< std::shared_ptr< Frame > > m_keyFrames;
-    std::unique_ptr< DepthEstimator > m_depthEstimator;
-    std::unique_ptr< Map > m_map;
-    Status m_systemStatus;
-
     explicit System( const Config& config );
     System( const System& rhs ) = delete;
     System( System&& rhs )      = delete;
@@ -55,6 +46,15 @@ public:
     void reportSummaryFrames();
     void reportSummaryFeatures();
     void reportSummaryPoints();
+
+    std::shared_ptr< PinholeCamera > m_camera;
+    std::shared_ptr< Frame > m_refFrame;
+    std::shared_ptr< Frame > m_curFrame;
+    std::shared_ptr< FeatureSelection > m_featureSelection;
+    std::vector< std::shared_ptr< Frame > > m_keyFrames;
+    std::unique_ptr< DepthEstimator > m_depthEstimator;
+    std::unique_ptr< Map > m_map;
+    Status m_systemStatus;
 
 private:
     bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs );

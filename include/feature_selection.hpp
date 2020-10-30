@@ -25,7 +25,8 @@ class FeatureSelection final
 {
 public:
     // C'tor
-    explicit FeatureSelection( const cv::Mat& imgGray );
+    // explicit FeatureSelection( const cv::Mat& imgGray );
+    explicit FeatureSelection( const int32_t width, const int32_t height, const uint32_t cellSize );
 
     // explicit FeatureSelection( const cv::Mat& imgGray );
 
@@ -48,13 +49,22 @@ public:
 
     void detectFeaturesWithSSC( std::shared_ptr< Frame >& frame, const uint32_t numberCandidate );
 
-    void detectFeaturesInGrid( std::shared_ptr< Frame >& frame, const uint32_t gridSize );
+    void detectFeaturesInGrid( std::shared_ptr< Frame >& frame, const float detectionThreshold );
 
-    void detectFeaturesByValue( std::shared_ptr< Frame >& frame, const uint32_t value );
+    void detectFeaturesByValue( std::shared_ptr< Frame >& frame, const float detectionThreshold );
+
+    void setExistingFeatures (const std::vector<std::shared_ptr<Feature>>& features);
+
+    void setCellInGridOccupancy(const Eigen::Vector2d& location);
 
     // std::vector< Feature > m_features;
     cv::Mat m_gradientMagnitude;
     cv::Mat m_gradientOrientation;
+
+    uint32_t m_cellSize;
+    uint32_t m_gridCols;
+    uint32_t m_gridRows;
+    std::vector< bool > m_occupancyGrid;
 
 private:
     // Efficient adaptive non-maximal suppression algorithms for homogeneous spatial keypoint distribution
@@ -65,10 +75,11 @@ private:
               const uint32_t cols,
               const uint32_t rows );
 
-    // void computeGradient( const cv::Mat& currentTemplateImage, cv::Mat& templateGradientX, cv::Mat& templateGradientY );
+    void comouteImageGradient( const cv::Mat& imgGray, cv::Mat& imgGradientMagnitude, cv::Mat& imgGradientOrientation );
 
-    cv::Mat m_dx;
-    cv::Mat m_dy;
+    void resetGridOccupancy ();
+
+    // void computeGradient( const cv::Mat& currentTemplateImage, cv::Mat& templateGradientX, cv::Mat& templateGradientY );
 };
 
 #endif /* __FEATURE_SELECTION_H__ */

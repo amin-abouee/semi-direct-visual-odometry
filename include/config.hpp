@@ -40,7 +40,7 @@ public:
     std::string m_cameraCalibrationPath;
     uint32_t m_imgWidth;
     uint32_t m_imgHeight;
-    uint32_t m_gridPixelSize;
+    uint32_t m_cellPixelSize;
     uint32_t m_patchSizeOpticalFlow;
     uint32_t m_patchSizeImageAlignment;
     uint32_t m_minLevelImagePyramid;

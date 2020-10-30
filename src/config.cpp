@@ -39,7 +39,7 @@ Config::Config( const std::string& configFile )
     m_imgHeight             = cameraJson[ "img_height" ].get< int32_t >();
 
     const nlohmann::json& algoJson = m_configJson[ "algorithm" ];
-    m_gridPixelSize                = algoJson[ "grid_size_select_features" ].get< uint32_t >();
+    m_cellPixelSize                = algoJson[ "cell_size_select_features" ].get< uint32_t >();
     m_patchSizeOpticalFlow         = algoJson[ "patch_size_optical_flow" ].get< uint32_t >();
     m_patchSizeImageAlignment      = algoJson[ "patch_size_image_alignment" ].get< uint32_t >();
     m_minLevelImagePyramid         = algoJson[ "min_level_image_pyramid" ].get< uint32_t >();
