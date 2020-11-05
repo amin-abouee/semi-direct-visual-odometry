@@ -11,13 +11,14 @@
 class Map final
 {
     using keyframeDistance = std::pair< const std::shared_ptr< Frame >&, double >;
+    using frameSize        = std::pair< const std::shared_ptr< Frame >&, int32_t>;
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     std::vector< std::shared_ptr< Frame > > m_keyFrames;
     // std::vector< std::shared_ptr< Point > > m_trashPoints;
 
-    explicit Map(const std::shared_ptr< PinholeCamera >& camera, const uint32_t gridSize);
+    explicit Map( const std::shared_ptr< PinholeCamera >& camera, const uint32_t cellSize );
     Map( const Map& rhs ) = delete;
     Map( Map&& rhs )      = delete;
     Map& operator=( const Map& rhs ) = delete;
@@ -38,7 +39,7 @@ public:
 
     void addKeyframe( std::shared_ptr< Frame >& frame );
 
-    std::shared_ptr< Frame >& getCloseKeyframe( std::shared_ptr< Frame >& frame ) const;
+    std::shared_ptr< Frame >& getClosestKeyframe( std::shared_ptr< Frame >& frame ) const;
 
     void getCloseKeyframes( const std::shared_ptr< Frame >& frame, std::vector< keyframeDistance >& closeKeyframes ) const;
 
@@ -52,7 +53,7 @@ public:
 
     std::shared_ptr< Frame >& getFurthestKeyframe( const Eigen::Vector3d& pos );
 
-    bool getFrameById( const uint64_t id, const std::shared_ptr< Frame >& frame ) const;
+    bool getFrameById( const uint64_t id, std::shared_ptr< Frame >& lookingFrame ) const;
 
     /// Return the number of keyframes in the map
     std::size_t sizeKeyframes() const;
@@ -60,7 +61,7 @@ public:
     /// Project points from the map into the image. First finds keyframes with
     /// overlapping field of view and projects only those map-points.
     void reprojectMap( std::shared_ptr< Frame >& frame,
-                       std::vector< std::pair< const std::shared_ptr< Frame >&, std::size_t > >& overlapKeyFrames );
+                       std::vector< frameSize >& overlapKeyFrames );
 
     int32_t m_matches;
     int32_t m_trials;
@@ -79,7 +80,7 @@ private:
     };
 
     using Cell          = std::vector< Candidate >;
-    using CandidateGrid = std::vector< Cell >;
+    using CandidateGrid = std::vector< std::shared_ptr< Cell > >;
 
     /// The grid stores a set of candidate matches. For every grid cell we try to find one match.
     struct Grid
@@ -94,9 +95,9 @@ private:
     Grid m_grid;
 
     bool pointQualityComparator( Candidate& lhs, Candidate& rhs );
-    void initializeGrid( const std::shared_ptr< PinholeCamera >& camera, const uint32_t gridSize );
+    void initializeGrid( const std::shared_ptr< PinholeCamera >& camera, const uint32_t cellSize );
     void resetGrid();
-    bool reprojectCell( Cell& cell, std::shared_ptr< Frame >& frame );
+    bool reprojectCell( std::shared_ptr<Cell>& cell, std::shared_ptr< Frame >& frame );
     bool reprojectPoint( const std::shared_ptr< Frame >& frame, const std::shared_ptr< Point >& point );
 };
 

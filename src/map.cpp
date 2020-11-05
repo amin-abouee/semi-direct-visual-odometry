@@ -1,17 +1,19 @@
 #include "map.hpp"
+#include "algorithm.hpp"
+
 #include <algorithm>
 #include <memory>
 #include <numeric>
 #include <random>
+#include <utility>
 
-#include "algorithm.hpp"
 
 #include "easylogging++.h"
 #define Map_Log( LEVEL ) CLOG( LEVEL, "Map" )
 
-Map::Map( const std::shared_ptr< PinholeCamera >& camera, const uint32_t gridSize )
+Map::Map( const std::shared_ptr< PinholeCamera >& camera, const uint32_t cellSize )
 {
-    initializeGrid( camera, gridSize );
+    initializeGrid( camera, cellSize );
 }
 
 void Map::reset()
@@ -49,6 +51,8 @@ void Map::removeFrame( std::shared_ptr< Frame >& frame )
     }
 
     m_keyFrames.erase( m_keyFrames.begin() + delIdx );
+
+    // TODO: also remove from point candidate
 }
 
 void Map::removePoint( std::shared_ptr< Point >& point )
@@ -67,12 +71,13 @@ void Map::removePoint( std::shared_ptr< Point >& point )
 
 void Map::removeFeature( std::shared_ptr< Feature >& feature )
 {
-    if ( feature->m_point->m_features.size() <= 2 )
+    feature->m_point = nullptr;
+    if ( feature->m_point->numberObservation() <= 2 )
     {
         removePoint( feature->m_point );
         return;
     }
-    feature->m_point = nullptr;
+    // FIXME:  implement removeFeature in point class
     feature->m_point->removeFrame( feature->m_frame );
     feature->m_frame->removeFeature( feature );
 }
@@ -82,7 +87,7 @@ void Map::addKeyframe( std::shared_ptr< Frame >& frame )
     m_keyFrames.push_back( frame );
 }
 
-std::shared_ptr< Frame >& Map::getCloseKeyframe( std::shared_ptr< Frame >& frame ) const
+std::shared_ptr< Frame >& Map::getClosestKeyframe( std::shared_ptr< Frame >& frame ) const
 {
     std::shared_ptr< Frame > selectedKeyFrame{ nullptr };
     std::vector< keyframeDistance > closeKeyframes;
@@ -92,6 +97,7 @@ std::shared_ptr< Frame >& Map::getCloseKeyframe( std::shared_ptr< Frame >& frame
         return selectedKeyFrame;
     }
 
+    // TODO: do std::sort instead of this one
     double minDistance = std::numeric_limits< double >::max();
     for ( auto& element : closeKeyframes )
     {
@@ -114,50 +120,25 @@ void Map::getCloseKeyframes( const std::shared_ptr< Frame >& frame, std::vector<
     {
         if ( keyFrame == frame )
             continue;
+        // FIXME: m_frameFeatures -> features
         for ( auto& feature : keyFrame->m_frameFeatures )
         {
+            if ( feature == nullptr )
+            {
+                continue;
+            }
+
             if ( frame->isVisible( feature->m_point->m_position ) )
             {
+                // TODO: compute the relative pose and get the translation out of that
                 closeKeyframes.push_back(
                   std::make_pair( keyFrame, ( frame->m_TransW2F.translation() - keyFrame->m_TransW2F.translation() ).norm() ) );
                 break;
             }
         }
     }
-}
 
-void Map::transform( const Eigen::Matrix3d& R, const Eigen::Vector3d& t, const double& s ) const
-{
-    //     for(auto it=keyframes_.begin(), ite=keyframes_.end(); it!=ite; ++it)
-    //   {
-    //     Vector3d pos = s*R*(*it)->pos() + t;
-    //     Matrix3d rot = R*(*it)->T_f_w_.rotation_matrix().inverse();
-    //     (*it)->T_f_w_ = SE3(rot, pos).inverse();
-    //     for(auto ftr=(*it)->fts_.begin(); ftr!=(*it)->fts_.end(); ++ftr)
-    //     {
-    //       if((*ftr)->point == NULL)
-    //         continue;
-    //       if((*ftr)->point->last_published_ts_ == -1000)
-    //         continue;
-    //       (*ftr)->point->last_published_ts_ = -1000;
-    //       (*ftr)->point->pos_ = s*R*(*ftr)->point->pos_ + t;
-    //     }
-    //   }
-
-    // TODO: check the formula
-    for ( auto& frame : m_keyFrames )
-    {
-        Eigen::Vector3d pos = s * R * ( frame->cameraInWorld() ) + t;
-        Eigen::Matrix3d rot = R * frame->m_TransW2F.rotationMatrix().inverse();
-        frame->m_TransW2F   = Sophus::SE3d( rot, pos ).inverse();
-        for ( auto& feature : frame->m_frameFeatures )
-        {
-            // TODO: check the last published ts
-            if ( feature->m_point == nullptr )
-                continue;
-            feature->m_point->m_position = s * R * feature->m_point->m_position + t;
-        }
-    }
+    //TODO: sort it here
 }
 
 std::shared_ptr< Frame >& Map::getFurthestKeyframe( const Eigen::Vector3d& pos )
@@ -177,12 +158,13 @@ std::shared_ptr< Frame >& Map::getFurthestKeyframe( const Eigen::Vector3d& pos )
     return selectedKeyFrame;
 }
 
-bool Map::getFrameById( const uint64_t id, const std::shared_ptr< Frame >& frame ) const
+bool Map::getFrameById( const uint64_t id, std::shared_ptr< Frame >& lookingFrame ) const
 {
     for ( const auto& frame : m_keyFrames )
     {
         if ( frame->m_id == id )
         {
+            lookingFrame = frame;
             return true;
         }
     }
@@ -190,14 +172,32 @@ bool Map::getFrameById( const uint64_t id, const std::shared_ptr< Frame >& frame
     return false;
 }
 
+void Map::transform( const Eigen::Matrix3d& R, const Eigen::Vector3d& t, const double& s ) const
+{
+    // TODO: check the formula
+    for ( auto& frame : m_keyFrames )
+    {
+        Eigen::Vector3d pos = s * R * ( frame->cameraInWorld() ) + t;
+        Eigen::Matrix3d rot = R * frame->m_TransW2F.rotationMatrix().inverse();
+        frame->m_TransW2F   = Sophus::SE3d( rot, pos ).inverse();
+        for ( auto& feature : frame->m_frameFeatures )
+        {
+            // TODO: check the last published ts
+            if ( feature->m_point == nullptr )
+                continue;
+            feature->m_point->m_position = s * R * feature->m_point->m_position + t;
+        }
+    }
+}
+
 std::size_t Map::sizeKeyframes() const
 {
     return m_keyFrames.size();
 }
 
-void Map::initializeGrid( const std::shared_ptr< PinholeCamera >& camera, const uint32_t gridSize )
+void Map::initializeGrid( const std::shared_ptr< PinholeCamera >& camera, const uint32_t cellSize )
 {
-    m_grid.m_cellSize       = gridSize;
+    m_grid.m_cellSize       = cellSize;
     m_grid.m_gridCols       = ceil( static_cast< double >( camera->width() ) / m_grid.m_cellSize );
     m_grid.m_gridRows       = ceil( static_cast< double >( camera->height() ) / m_grid.m_cellSize );
     const uint32_t numCells = m_grid.m_gridCols * m_grid.m_gridRows;
@@ -205,7 +205,7 @@ void Map::initializeGrid( const std::shared_ptr< PinholeCamera >& camera, const 
 
     for ( uint32_t c( 0 ); c < numCells; c++ )
     {
-        m_grid.m_cells.emplace_back( Cell() );
+        m_grid.m_cells.emplace_back( std::make_shared< Cell >() );
     }
 
     m_grid.m_cellOrders.resize( numCells );
@@ -214,8 +214,11 @@ void Map::initializeGrid( const std::shared_ptr< PinholeCamera >& camera, const 
         m_grid.m_cellOrders[ i ] = i;
     }
 
+    std::random_device rd;
+    std::mt19937 g( rd() );
+
     // TODO: enable this one again
-    // std::random_shuffle( m_grid.m_cellOrders.begin(), m_grid.m_cellOrders.end() );  // maybe we should do it at every iteration!
+    std::shuffle( m_grid.m_cellOrders.begin(), m_grid.m_cellOrders.end(), g );  // maybe we should do it at every iteration!
 }
 
 void Map::resetGrid()
@@ -224,12 +227,11 @@ void Map::resetGrid()
     m_trials  = 0;
     for ( auto& cell : m_grid.m_cells )
     {
-        cell.clear();
+        cell->clear();
     }
 }
 
-void Map::reprojectMap( std::shared_ptr< Frame >& frame,
-                        std::vector< std::pair< const std::shared_ptr< Frame >&, std::size_t > >& overlapKeyFrames )
+void Map::reprojectMap( std::shared_ptr< Frame >& frame, std::vector< frameSize >& overlapKeyFrames )
 {
     resetGrid();
 
@@ -237,8 +239,12 @@ void Map::reprojectMap( std::shared_ptr< Frame >& frame,
     std::vector< keyframeDistance > closeKeyframes;
     getCloseKeyframes( frame, closeKeyframes );
 
-    // Sort KFs with overlap according to their closeness
-    // std::sort(closeKeyframes.begin(), closeKeyframes.end());
+    // auto compare = [] (const std::pair< const std::shared_ptr< Frame >&, double >& lhs, const std::pair< const std::shared_ptr< Frame >&, double >& rhs) -> bool {
+        // return lhs.second < rhs.second;
+    // };
+
+    //TODO: Sort KFs with overlap according to their closeness
+    // std::sort(closeKeyframes.begin(), closeKeyframes.end(), compare);
     overlapKeyFrames.reserve( 4 );
 
     for ( const auto& kfDistance : closeKeyframes )
@@ -266,7 +272,7 @@ void Map::reprojectMap( std::shared_ptr< Frame >& frame,
     {
         // we prefer good quality points over unkown quality (more likely to match)
         // and unknown quality over candidates (position not optimized)
-        if ( reprojectCell( m_grid.m_cells.at( m_grid.m_cellOrders[ i ] ), frame ) )
+        if ( reprojectCell( m_grid.m_cells[ m_grid.m_cellOrders[ i ] ], frame ) )
         {
             m_matches++;
         }
@@ -277,9 +283,9 @@ void Map::reprojectMap( std::shared_ptr< Frame >& frame,
     }
 }
 
-bool Map::reprojectCell( Cell& cell, std::shared_ptr< Frame >& frame )
+bool Map::reprojectCell( std::shared_ptr<Cell>& cell, std::shared_ptr< Frame >& frame )
 {
-    std::sort( cell.begin(), cell.end(), []( auto& lhs, auto& rhs ) -> bool {
+    std::sort( cell->begin(), cell->end(), []( const auto& lhs, const auto& rhs ) -> bool {
         if ( lhs.m_point->m_type > rhs.m_point->m_type )
         {
             return true;
@@ -287,14 +293,14 @@ bool Map::reprojectCell( Cell& cell, std::shared_ptr< Frame >& frame )
         return false;
     } );
 
-    auto it = cell.begin();
-    while ( it != cell.end() )
+    auto it = cell->begin();
+    while ( it != cell->end() )
     {
         m_trials++;
 
         if ( it->m_point->m_type == Point::PointType::DELETED )
         {
-            it = cell.erase( it );
+            it = cell->erase( it );
             continue;
         }
 
@@ -311,7 +317,7 @@ bool Map::reprojectCell( Cell& cell, std::shared_ptr< Frame >& frame )
             {
                 // TODO: remove from candidate
             }
-            it = cell.erase( it );
+            it = cell->erase( it );
             continue;
         }
 
@@ -329,7 +335,7 @@ bool Map::reprojectCell( Cell& cell, std::shared_ptr< Frame >& frame )
 
         // If the keyframe is selected and we reproject the rest, we don't have to
         // check this point anymore.
-        it = cell.erase( it );
+        it = cell->erase( it );
 
         // Maximum one point per cell.
         return true;
@@ -345,7 +351,7 @@ bool Map::reprojectPoint( const std::shared_ptr< Frame >& frame, const std::shar
     {
         const int k =
           static_cast< int >( pixel.y() / m_grid.m_cellSize ) * m_grid.m_gridCols + static_cast< int >( pixel.x() / m_grid.m_cellSize );
-        m_grid.m_cells.at( k ).emplace_back( Candidate( point, pixel ) );
+        m_grid.m_cells.at( k )->emplace_back( Candidate( point, pixel ) );
         return true;
     }
     return false;

@@ -59,9 +59,7 @@ void System::processFirstFrame()
     // m_featureSelection = std::make_unique< FeatureSelection >( m_curFrame->m_imagePyramid.getBaseImage() );
     // FeatureSelection featureSelection( m_curFrame->m_imagePyramid.getBaseImage() );
     m_featureSelection->detectFeaturesInGrid( m_curFrame, 0.0 );
-    // m_featureSelection->detectFeaturesByValue( m_curFrame, 150 );
-    // m_featureSelection->detectFeaturesWithSSC(m_curFrame, 1000);
-    // TODO: check the size of detected points. Less than threshold, re run again
+    // FIXME: check the size of detected points. Less than threshold, re run again
 
     // visualize
     // {
@@ -70,9 +68,9 @@ void System::processFirstFrame()
     //     cv::Mat refBGR = visualization::getBGRImage( gradient );
     //     // cv::Mat refBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
     //     visualization::featurePoints( refBGR, m_curFrame, 5, "pink", visualization::drawingRectangle );
-    //     visualization::imageGrid( refBGR, m_config->m_gridPixelSize, "amber" );
+    //     visualization::imageGrid( refBGR, m_config->m_cellPixelSize, "amber" );
     //     cv::imshow( "First Image", refBGR );
-    //     // cv::waitKey( 0 );
+    //     cv::waitKey( 0 );
     //     // cv::destroyAllWindows();
     // }
 
@@ -80,7 +78,6 @@ void System::processFirstFrame()
     m_map->addKeyframe( m_curFrame );
     System_Log( DEBUG ) << "Number of Features: " << m_curFrame->numberObservation();
     m_systemStatus = System::Status::Process_Second_Frame;
-    // m_keyFrames.emplace_back( m_curFrame );
 }
 
 void System::processSecondFrame()
@@ -166,6 +163,8 @@ void System::processSecondFrame()
     System_Log( INFO ) << "Init Points: " << pointsWorld.cols() << ", ref obs: " << m_refFrame->numberObservation()
                        << ", cur obs: " << m_curFrame->numberObservation() << ", number of removed: " << pointsWorld.cols() - cnt;
 
+    //FIXME: do BA
+
     m_curFrame->setKeyframe();
     numObserves = m_curFrame->numberObservation();
     Eigen::VectorXd newCurDepths( numObserves );
@@ -188,8 +187,8 @@ void System::processSecondFrame()
     m_systemStatus = System::Status::Procese_New_Frame;
 
     // {
-    //     cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
-    //     cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
+        // cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
+        // cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
     //     visualization::featurePoints( refBGR, m_refFrame, 8, "pink", visualization::drawingRectangle );
     //     // visualization::featurePointsInGrid(curBGR, curFrame, 50);
     //     // visualization::featurePoints(newBGR, newFrame);
@@ -200,8 +199,8 @@ void System::processSecondFrame()
     //     std::stringstream ss;
     //     ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
     //     cv::imshow( ss.str(), stickImg );
-    //     // cv::imshow("relative_1_2", curBGR);
-    //     // cv::waitKey( 0 );
+        // cv::imshow("relative_1_2", curBGR);
+        // cv::waitKey( 0 );
     //     // cv::destroyAllWindows();
     //     // System_Log( INFO ) << "ref id: " << m_refFrame->m_id << ", cur id: " << m_curFrame->m_id;
     // }
