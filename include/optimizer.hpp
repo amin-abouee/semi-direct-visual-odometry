@@ -48,11 +48,12 @@ public:
                                 const std::function< void( T& params, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
 
     template < typename T >
-    OptimizerResult optimizeLM( T& pose,
+    OptimizerResult optimizeLM( T& params,
                                 const std::function< uint32_t( T& ) >& lambdaResidualFunctor,
                                 const std::function< uint32_t( T& ) >& lambdaJacobianFunctor,
                                 const std::function< void( T& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
 
+    void setNumUnknowns (const uint32_t numUnknowns );
     void initParameters( const std::size_t numObservations );
 
     uint32_t m_numUnknowns;

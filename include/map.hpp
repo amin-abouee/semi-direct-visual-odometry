@@ -4,6 +4,7 @@
 #include "feature.hpp"
 #include "frame.hpp"
 #include "point.hpp"
+#include "feature_alignment.hpp"
 
 #include <iostream>
 #include <memory>
@@ -67,6 +68,9 @@ public:
     int32_t m_trials;
 
 private:
+
+    std::shared_ptr< FeatureAlignment > m_alignment;
+
     /// A candidate is a point that projects into the image plane and for which we
     /// will search a maching feature in the image.
     struct Candidate

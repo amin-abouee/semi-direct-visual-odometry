@@ -14,6 +14,7 @@
 Map::Map( const std::shared_ptr< PinholeCamera >& camera, const uint32_t cellSize )
 {
     initializeGrid( camera, cellSize );
+    m_alignment = std::make_shared< FeatureAlignment >( 7, 0, 3);
 }
 
 void Map::reset()
@@ -246,9 +247,12 @@ void Map::reprojectMap( std::shared_ptr< Frame >& frame, std::vector< frameSize 
     //TODO: Sort KFs with overlap according to their closeness
     // std::sort(closeKeyframes.begin(), closeKeyframes.end(), compare);
     overlapKeyFrames.reserve( 4 );
+    int32_t n = 0;
 
-    for ( const auto& kfDistance : closeKeyframes )
+    // for ( const auto& kfDistance : closeKeyframes )
+    for (int32_t i(0); i < closeKeyframes.size() && n < 4; i++, n++)
     {
+        const auto& kfDistance = closeKeyframes[i];
         overlapKeyFrames.push_back( std::make_pair( kfDistance.first, 0 ) );
         for ( const auto& feature : kfDistance.first->m_frameFeatures )
         {
@@ -276,12 +280,27 @@ void Map::reprojectMap( std::shared_ptr< Frame >& frame, std::vector< frameSize 
         {
             m_matches++;
         }
-        if ( m_matches > 4 )
+        if ( m_matches > 120 )
         {
             break;
         }
     }
 }
+
+// TODO: check with const point
+bool Map::reprojectPoint( const std::shared_ptr< Frame >& frame, const std::shared_ptr< Point >& point )
+{
+    const Eigen::Vector2d pixel = frame->world2image( point->m_position );
+    if ( frame->m_camera->isInFrame( pixel, 8 ) )  // 8px is the patch size in the matcher
+    {
+        const int k =
+          static_cast< int >( pixel.y() / m_grid.m_cellSize ) * m_grid.m_gridCols + static_cast< int >( pixel.x() / m_grid.m_cellSize );
+        m_grid.m_cells[k]->emplace_back( Candidate( point, pixel ) );
+        return true;
+    }
+    return false;
+}
+
 
 bool Map::reprojectCell( std::shared_ptr<Cell>& cell, std::shared_ptr< Frame >& frame )
 {
@@ -293,65 +312,59 @@ bool Map::reprojectCell( std::shared_ptr<Cell>& cell, std::shared_ptr< Frame >& 
         return false;
     } );
 
-    auto it = cell->begin();
-    while ( it != cell->end() )
+    for (auto& candidate : *cell)
     {
         m_trials++;
 
-        if ( it->m_point->m_type == Point::PointType::DELETED )
+        if ( candidate.m_point->m_type == Point::PointType::DELETED )
         {
-            it = cell->erase( it );
+            // it = cell->erase( it );
             continue;
         }
 
-        bool foundMatch = algorithm::matchDirect( it->m_point, frame, it->m_feature );
+        // bool foundMatch = algorithm::matchDirect( candidate.m_point, frame, candidate.m_feature );
+
+        std::shared_ptr< Feature > refFeature;
+        if ( candidate.m_point->getCloseViewObservation( frame->cameraInWorld(), refFeature ) == false )
+        {
+            continue;
+        }
+        
+        double error = m_alignment->align(refFeature, frame, candidate.m_feature);
+        bool foundMatch = error < 0.3 ? true : false;
+
         if ( foundMatch == false )
         {
-            // it->pt->n_failed_reproj_++;
-            it->m_point->m_failedProjection++;
-            if ( it->m_point->m_type == Point::PointType::UNKNOWN && it->m_point->m_failedProjection > 15 )
+            candidate.m_point->m_failedProjection++;
+            if ( candidate.m_point->m_type == Point::PointType::UNKNOWN && candidate.m_point->m_failedProjection > 15 )
             {
-                removePoint( it->m_point );
+                removePoint( candidate.m_point );
             }
-            if ( it->m_point->m_type == Point::PointType::CANDIDATE && it->m_point->m_failedProjection > 30 )
+            if ( candidate.m_point->m_type == Point::PointType::CANDIDATE && candidate.m_point->m_failedProjection > 30 )
             {
                 // TODO: remove from candidate
             }
-            it = cell->erase( it );
+            // it = cell->erase( it );
             continue;
         }
 
-        it->m_point->m_succeededProjection++;
-        if ( it->m_point->m_type == Point::PointType::UNKNOWN && it->m_point->m_succeededProjection > 10 )
+        candidate.m_point->m_succeededProjection++;
+        if ( candidate.m_point->m_type == Point::PointType::UNKNOWN && candidate.m_point->m_succeededProjection > 10 )
         {
-            it->m_point->m_type = Point::PointType::GOOD;
+            candidate.m_point->m_type = Point::PointType::GOOD;
         }
 
-        std::shared_ptr< Feature > feature = std::make_shared< Feature >( frame, it->m_feature, 0 );
+        std::shared_ptr< Feature > feature = std::make_shared< Feature >( frame, candidate.m_feature, 0 );
         frame->addFeature( feature );
         // Here we add a reference in the feature to the 3D point, the other way
         // round is only done if this frame is selected as keyframe.
-        feature->m_point = it->m_point;
+        feature->m_point = candidate.m_point;
 
         // If the keyframe is selected and we reproject the rest, we don't have to
         // check this point anymore.
-        it = cell->erase( it );
+        // it = cell->erase( it );
 
         // Maximum one point per cell.
-        return true;
-    }
-    return false;
-}
-
-// TODO: check with const point
-bool Map::reprojectPoint( const std::shared_ptr< Frame >& frame, const std::shared_ptr< Point >& point )
-{
-    Eigen::Vector2d pixel = frame->world2image( point->m_position );
-    if ( frame->m_camera->isInFrame( pixel, 8 ) )  // 8px is the patch size in the matcher
-    {
-        const int k =
-          static_cast< int >( pixel.y() / m_grid.m_cellSize ) * m_grid.m_gridCols + static_cast< int >( pixel.x() / m_grid.m_cellSize );
-        m_grid.m_cells.at( k )->emplace_back( Candidate( point, pixel ) );
         return true;
     }
     return false;

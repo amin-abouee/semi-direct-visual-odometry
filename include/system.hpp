@@ -1,5 +1,6 @@
 #ifndef __SYSTEM_HPP__
 #define __SYSTEM_HPP__
+#include "bundle_adjustment.hpp"
 #include "config.hpp"
 #include "depth_estimator.hpp"
 #include "feature_selection.hpp"
@@ -7,7 +8,6 @@
 #include "image_alignment.hpp"
 #include "map.hpp"
 #include "pinhole_camera.hpp"
-#include "system.hpp"
 
 #include <iomanip>
 #include <iostream>
@@ -19,6 +19,8 @@
 
 class System final
 {
+    using frameSize = std::pair< const std::shared_ptr< Frame >&, int32_t >;
+
     enum class Status : uint8_t
     {
         Process_First_Frame    = 0,
@@ -39,9 +41,9 @@ public:
 
     void addImage( const cv::Mat& img, const double timestamp );
 
-    void processFirstFrame( );
-    void processSecondFrame( );
-    void processNewFrame( );
+    void processFirstFrame();
+    void processSecondFrame();
+    void processNewFrame();
 
     void reportSummaryFrames();
     void reportSummaryFeatures();
@@ -54,14 +56,15 @@ public:
     std::vector< std::shared_ptr< Frame > > m_keyFrames;
     std::unique_ptr< DepthEstimator > m_depthEstimator;
     std::unique_ptr< Map > m_map;
+    std::shared_ptr< ImageAlignment > m_alignment;
+    std::shared_ptr< BundleAdjustment > m_bundler;
     Status m_systemStatus;
 
 private:
     bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs );
-    bool needKeyframe( const double sceneDepthMean );
+    bool needKeyframe( const double sceneDepthMean, const std::vector< frameSize >& overlapKeyFrames );
     void makeKeyframe( std::shared_ptr< Frame >& frame, const double& depthMean, const double& depthMin );
 
-    std::shared_ptr< ImageAlignment > m_alignment;
     const Config* m_config;
 };
 

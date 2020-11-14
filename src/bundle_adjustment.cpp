@@ -24,6 +24,7 @@ double BundleAdjustment::optimizePose( std::shared_ptr< Frame >& frame )
     if ( frame->numberObservation() == 0 )
         return 0;
 
+    m_optimizer.setNumUnknowns(6);
     // auto t1 = std::chrono::high_resolution_clock::now();
     const std::size_t numFeatures = frame->numberObservation();
     // const uint32_t numObservations = numFeatures;
@@ -59,6 +60,7 @@ double BundleAdjustment::optimizeStructure( std::shared_ptr< Frame >& frame, con
     if ( frame->numberObservation() == 0 )
         return 0;
 
+    m_optimizer.setNumUnknowns(3);
     std::vector< std::shared_ptr< Point > > points;
     for ( const auto& feature : frame->m_frameFeatures )
     {

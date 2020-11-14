@@ -70,9 +70,9 @@ void FeatureAlignment::computeJacobian( const std::shared_ptr< Feature >& refFea
     // FIXME: Patch size should be set as odd
     const int32_t beginIdx = -m_halfPatchSize;
     const int32_t endIdx   = m_halfPatchSize;
-    for ( int32_t y{ beginIdx }; y <= endIdx; y++ )
+    for ( int32_t y(beginIdx); y <= endIdx; y++ )
     {
-        for ( int32_t x{ beginIdx }; x <= endIdx; x++, cntPixel++, pixelPtr++ )
+        for ( int32_t x(beginIdx); x <= endIdx; x++, cntPixel++, pixelPtr++ )
         {
             Eigen::Matrix< double, 2, 3 > imageJac;
             computeImageJac( imageJac, pixelPos );
@@ -148,29 +148,16 @@ void FeatureAlignment::computeImageJac( Eigen::Matrix< double, 2, 3 >& imageJac,
     // https://github.com/uzh-rpg/rpg_svo/blob/master/svo/include/svo/frame.h, jacobian_xyz2uv function but the negative
     // one
 
-    //                              ⎡fx        -fx⋅x ⎤
-    //                              ⎢──   0.0  ──────⎥
-    //                              ⎢z           z₂  ⎥
-    // dx / dX =                    ⎢                ⎥
-    //                              ⎢     fy   -fy⋅y ⎥
-    //                              ⎢0.0  ──   ──────⎥
-    //                              ⎣     z      z₂  ⎦
+    // Euclidean (tx,ty,θ)
 
-    //                              ⎡1  0  0  0   z   -y⎤
-    //                              ⎢                   ⎥
-    // dX / d(theta) = [I [X]x]     ⎢0  1  0  -z  0   x ⎥
-    //                              ⎢                   ⎥
-    //                              ⎣0  0  1  y   -x  0 ⎦
+    //  [[cosθ −sinθ tx] 
+    //   [sinθ cosθ  ty]
+    //   [0      0    1]]
 
-    //                              ⎡                                  .             ⎤
-    //                              ⎢fx      -fx⋅x     -fx⋅x⋅y     fx⋅x₂       -fx⋅y ⎥
-    //                              ⎢──  0   ──────    ────────    ───── + fx  ──────⎥
-    //                              ⎢z         z₂         z₂         z₂          z   ⎥
-    // (dx / dX) * (dX / d(theta))  ⎢                                                ⎥
-    //                              ⎢                      .                         ⎥
-    //                              ⎢    fy  -fy⋅y     fy⋅y₂         fy⋅x⋅y     fy⋅x ⎥
-    //                              ⎢0   ──  ──────  - ───── - fy    ──────     ──── ⎥
-    //                              ⎣    z     z₂        z₂            z₂        z   ⎦
+    // Jac = [[1        0     −xsinθ−ycosθ]
+    //        [0        1      xcosθ−ysinθ]]
+
+    // θ = 0
 
     const double x = pixelPos.x();
     const double y = pixelPos.y();

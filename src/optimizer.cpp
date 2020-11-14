@@ -37,6 +37,7 @@ Optimizer::Optimizer( const u_int32_t numUnknowns )
     // m_timerCheck            = 0;
     // m_timerFor              = 0;
 }
+
 template<typename T>
 Optimizer::OptimizerResult Optimizer::optimizeGN(
   T& params,
@@ -121,11 +122,12 @@ Optimizer::OptimizerResult Optimizer::optimizeGN(
 
         stepSize     = m_dx.transpose() * m_dx;
 
-        // if (std::is_same_v<T, Sophus::SE3d>)
+        // if (std::is_same<T, Sophus::SE3d>::value)
         // {
-            // normDiffPose = m_dx.norm() / ( params.log() ).norm();
+        //     normDiffPose = m_dx.norm() / ( params.log() ).norm();
         // }
-        // else
+        
+        // if (std::is_same<T, Eigen::MatrixXd>::value)
         // {
         //     normDiffPose = m_dx.norm() / params.norm();
         // }
@@ -157,7 +159,7 @@ Optimizer::OptimizerResult Optimizer::optimizeGN(
 
 template<typename T>
 Optimizer::OptimizerResult Optimizer::optimizeLM(
-  T& pose,
+  T& params,
   const std::function< uint32_t( T& ) >& lambdaResidualFunctor,
   const std::function< uint32_t( T& ) >& lambdaJacobianFunctor,
   const std::function< void( T& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor )
@@ -172,7 +174,7 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
 
     bool computeJacobian = lambdaJacobianFunctor == nullptr ? false : true;
 
-    Optimizer_Log(DEBUG) << "pose: " << pose.params().transpose() << std::endl;
+    Optimizer_Log(DEBUG) << "params: " << params.params().transpose() << std::endl;
 
 
     unsigned int curIteration = 0;
@@ -193,12 +195,12 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
     // auto t1 = std::chrono::high_resolution_clock::now();
     /// run for the first time to get the chi error
     resetAllParameters( computeJacobian );
-    cntTotalProjectedPixels = lambdaResidualFunctor( pose );
+    cntTotalProjectedPixels = lambdaResidualFunctor( params );
     tukeyWeighting( cntTotalProjectedPixels );
     chiSquaredError = computeChiSquaredError();
     // m_timerResiduals += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
 
-    Sophus::SE3d prePose = pose;
+    T preParams = params;
 
     Eigen::VectorXd preResiduals( numObservations );
     Eigen::VectorXd preWeights( numObservations );
@@ -213,7 +215,7 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
         // store the current data into the previous ones before updating the parameters
         if ( successIteration == true )
         {
-            prePose                 = pose;
+            preParams                 = params;
             preChiSquaredError      = chiSquaredError;
             preResiduals            = m_residuals;
             preWeights              = m_weights;
@@ -224,7 +226,7 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
         // m_timerSwitch += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
 
         if ( computeJacobian == true )
-            lambdaJacobianFunctor( pose );
+            lambdaJacobianFunctor( params );
 
         // t1 = std::chrono::high_resolution_clock::now();
 
@@ -296,7 +298,7 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
         // std::cout << "lambda: " << lambda << std::endl;
         Optimizer_Log(DEBUG) << "dx: " << m_dx.transpose() << std::endl;
         // pose updated here
-        lambdaUpdateFunctor( pose, m_dx );
+        lambdaUpdateFunctor( params, m_dx );
         // m_timerSolve += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
 
         // t1 = std::chrono::high_resolution_clock::now();
@@ -313,7 +315,7 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
         }
 
         stepSize     = m_dx.transpose() * m_dx;
-        normDiffPose = ( m_dx ).norm() / ( prePose.log() ).norm();
+        normDiffPose = ( m_dx ).norm() / ( preParams.log() ).norm();
         if ( stepSize < m_stepSize || lambda >= 1e14 || lambda <= 1e-14 || normDiffPose < m_normInfDiff )
         {
             optimizeStatus = stepSize < m_stepSize ? Status::Small_Step_Size : optimizeStatus;
@@ -325,7 +327,7 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
 
         // t1 = std::chrono::high_resolution_clock::now();
         resetResidualParameters();
-        cntTotalProjectedPixels = lambdaResidualFunctor( pose );
+        cntTotalProjectedPixels = lambdaResidualFunctor( params );
         tukeyWeighting( cntTotalProjectedPixels );
         chiSquaredError = computeChiSquaredError();
         m_timerResiduals +=
@@ -341,7 +343,7 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
         if ( successIteration == false )
         {
             chiSquaredError         = preChiSquaredError;
-            pose                    = prePose;
+            params                    = preParams;
             m_residuals             = preResiduals;
             m_weights               = preWeights;
             m_visiblePoints         = preVisiblePoints;
@@ -356,6 +358,12 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
     // m_timerFor += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t3 ).count();
     // std::cout << "Pose: " << pose.params().transpose() << std::endl;
     return std::make_pair( optimizeStatus, rmse );
+}
+
+void Optimizer::setNumUnknowns (const uint32_t numUnknowns )
+{
+    m_numUnknowns = numUnknowns;
+    m_dx.conservativeResize(m_numUnknowns);
 }
 
 void Optimizer::initParameters( const std::size_t numObservations )
@@ -417,13 +425,13 @@ bool Optimizer::updateParameters( const double preSquaredError, const double cur
     //     // if ( gainRatio > 1e-1 )
     //     if ( diffSquaredError > 0.0 )
     //     {
-    //         curPose = Sophus::SE3d::exp( dx * alpha ) * prePose;
+    //         curPose = Sophus::SE3d::exp( dx * alpha ) * preParams;
     //         lambda  = std::max< double >( lambda / ( 1 + alpha ), double( 1e-7 ) );
     //         return true;
     //     }
     //     else
     //     {
-    //         curPose = prePose;
+    //         curPose = preParams;
     //         lambda  = lambda + ( std::fabs( diffSquaredError ) / ( 2 * alpha ) );
     //         return false;
     //     }

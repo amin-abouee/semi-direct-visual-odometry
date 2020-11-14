@@ -21,8 +21,9 @@ System::System( const Config& config ) : m_config( &config ), m_systemStatus( Sy
     m_alignment        = std::make_shared< ImageAlignment >( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid,
                                                       m_config->m_maxLevelImagePyramid, 6 );
     m_featureSelection = std::make_shared< FeatureSelection >( m_config->m_imgWidth, m_config->m_imgHeight, m_config->m_cellPixelSize );
-    m_depthEstimator   = std::make_unique< DepthEstimator >(m_featureSelection);
+    m_depthEstimator   = std::make_unique< DepthEstimator >( m_featureSelection );
     m_map              = std::make_unique< Map >( m_camera, 32 );
+    m_bundler          = std::make_shared< BundleAdjustment >( 0, 6 );
 
     // cv::Mat initImg( m_camera->width(), m_camera->height(), CV_8U );
 }
@@ -163,7 +164,7 @@ void System::processSecondFrame()
     System_Log( INFO ) << "Init Points: " << pointsWorld.cols() << ", ref obs: " << m_refFrame->numberObservation()
                        << ", cur obs: " << m_curFrame->numberObservation() << ", number of removed: " << pointsWorld.cols() - cnt;
 
-    //FIXME: do BA
+    // FIXME: do BA
 
     m_curFrame->setKeyframe();
     numObserves = m_curFrame->numberObservation();
@@ -187,8 +188,8 @@ void System::processSecondFrame()
     m_systemStatus = System::Status::Procese_New_Frame;
 
     // {
-        // cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
-        // cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
+    // cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
+    // cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
     //     visualization::featurePoints( refBGR, m_refFrame, 8, "pink", visualization::drawingRectangle );
     //     // visualization::featurePointsInGrid(curBGR, curFrame, 50);
     //     // visualization::featurePoints(newBGR, newFrame);
@@ -199,8 +200,8 @@ void System::processSecondFrame()
     //     std::stringstream ss;
     //     ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
     //     cv::imshow( ss.str(), stickImg );
-        // cv::imshow("relative_1_2", curBGR);
-        // cv::waitKey( 0 );
+    // cv::imshow("relative_1_2", curBGR);
+    // cv::waitKey( 0 );
     //     // cv::destroyAllWindows();
     //     // System_Log( INFO ) << "ref id: " << m_refFrame->m_id << ", cur id: " << m_curFrame->m_id;
     // }
@@ -241,24 +242,25 @@ void System::processNewFrame()
         // System_Log( INFO ) << "ref id: " << m_refFrame->m_id << ", cur id: " << m_curFrame->m_id;
     }
 
-    for ( const auto& refFeatures : m_refFrame->m_frameFeatures )
-    {
-        if ( refFeatures->m_point == nullptr )
-        {
-            continue;
-        }
+    // for ( const auto& refFeatures : m_refFrame->m_frameFeatures )
+    // {
+    //     if ( refFeatures->m_point == nullptr )
+    //     {
+    //         continue;
+    //     }
 
-        const auto& point      = refFeatures->m_point->m_position;
-        const auto& curFeature = m_curFrame->world2image( point );
-        if ( m_curFrame->m_camera->isInFrame( curFeature, 5.0 ) == true )
-        {
-            std::shared_ptr< Feature > newFeature = std::make_shared< Feature >( m_curFrame, curFeature, 0.0 );
-            m_curFrame->addFeature( newFeature );
-            m_curFrame->m_frameFeatures.back()->setPoint( refFeatures->m_point );
-        }
-    }
+    //     const auto& point      = refFeatures->m_point->m_position;
+    //     const auto& curFeature = m_curFrame->world2image( point );
+    //     if ( m_curFrame->m_camera->isInFrame( curFeature, 5.0 ) == true )
+    //     {
+    //         std::shared_ptr< Feature > newFeature = std::make_shared< Feature >( m_curFrame, curFeature, 0.0 );
+    //         m_curFrame->addFeature( newFeature );
+    //         m_curFrame->m_frameFeatures.back()->setPoint( refFeatures->m_point );
+    //     }
+    // }
+    std::vector< frameSize > overlapKeyFrames;
+    m_map->reprojectMap( m_curFrame, overlapKeyFrames );
     System_Log( INFO ) << "Number of Features: " << m_curFrame->numberObservation();
-    m_keyFrames.emplace_back( m_curFrame );
 
     // select keyframe
     // core_kfs_.insert(new_frame_);
@@ -268,19 +270,39 @@ void System::processNewFrame()
     //     new_frame_->T_f_w_ = last_frame_->T_f_w_; // reset to avoid crazy pose jumps
     //     return RESULT_FAILURE;
     // }
+
+    m_bundler->optimizePose( m_curFrame );
+    m_bundler->optimizeStructure( m_curFrame, 50 );
+    m_keyFrames.emplace_back( m_curFrame );
+
     const uint32_t numObserves = m_curFrame->numberObservation();
     Eigen::VectorXd newCurDepths( numObserves );
     algorithm::depthCamera( m_curFrame, newCurDepths );
     const double depthMean = algorithm::computeMedian( newCurDepths );
     const double depthMin  = newCurDepths.minCoeff();
 
-    m_depthEstimator->addFrame( m_curFrame );
-    // frame_utils::getSceneDepth(*new_frame_, depth_mean, depth_min);
-    // if(!needNewKf(depth_mean) || tracking_quality_ == TRACKING_BAD)
-    // {
-    // depth_filter_->addFrame(new_frame_);
-    // return RESULT_NO_KEYFRAME;
-    // }
+    if ( needKeyframe(depthMean, overlapKeyFrames) )
+    {
+        m_depthEstimator->addFrame( m_curFrame );
+        return;
+    }
+    m_curFrame->setKeyframe();
+
+    //TODO: add candidatepoint to map
+
+    //TODO: use bundle adjustment
+
+    m_depthEstimator->addKeyframe ( m_curFrame, depthMean, depthMin * 0.5 );
+
+    if (m_map->m_keyFrames.size() > 10)
+    {
+        auto& furthestFrame = m_map->getFurthestKeyframe(m_curFrame->cameraInWorld());
+        m_depthEstimator->removeKeyframe(furthestFrame);
+        m_map->removeFrame(furthestFrame);
+    }
+
+    m_map->addKeyframe (m_curFrame);
+
 }
 
 void System::reportSummaryFrames()
@@ -371,8 +393,15 @@ void System::makeKeyframe( std::shared_ptr< Frame >& frame, const double& depthM
     m_map->addKeyframe( frame );
 }
 
-bool System::needKeyframe( const double sceneDepthMean )
+bool System::needKeyframe( const double sceneDepthMean, const std::vector< frameSize >& overlapKeyFrames )
 {
+    for ( const auto& frame : overlapKeyFrames )
+    {
+        const Eigen::Vector3d diffPose = m_curFrame->world2camera( frame.first->cameraInWorld() );
+        if ( std::abs( diffPose.x() ) / sceneDepthMean < 0.12 && std::abs( diffPose.y() ) / sceneDepthMean < 0.12 * 0.8 &&
+             std::abs( diffPose.z() ) / sceneDepthMean < 0.12 * 1.3 )
+            return false;
+    }
     return true;
 }
 

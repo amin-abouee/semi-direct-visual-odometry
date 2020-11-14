@@ -288,21 +288,22 @@ bool algorithm::matchDirect( const std::shared_ptr< Point >& point, const std::s
     const uint32_t patchSize     = 7;
     const uint32_t halfPatchSize = patchSize / 2;
     const uint32_t patchArea     = patchSize * patchSize;
-    std::shared_ptr< Feature > feature;
+    std::shared_ptr< Feature > refFeature;
 
-    if ( point->getCloseViewObservation( curFrame->cameraInWorld(), feature ) == false )
+    if ( point->getCloseViewObservation( curFrame->cameraInWorld(), refFeature ) == false )
         return false;
 
-    if ( feature->m_frame->m_camera->isInFrame( feature->m_feature, halfPatchSize ) == false )
-        return false;
+    // TODO: for sure, the point is visible in the referencePoint
+    // if ( refFeature->m_frame->m_camera->isInFrame( refFeature->m_feature, halfPatchSize ) == false )
+        // return false;
 
-    const Sophus::SE3d relativePose = algorithm::computeRelativePose( feature->m_frame, curFrame );
-    const double depth              = ( feature->m_frame->cameraInWorld() - point->m_position ).norm();
+    const Sophus::SE3d relativePose = algorithm::computeRelativePose( refFeature->m_frame, curFrame );
+    const double depth              = ( refFeature->m_frame->cameraInWorld() - point->m_position ).norm();
     Eigen::Matrix2d affineWarp;
-    algorithm::getAffineWarp( feature->m_frame, curFrame, feature, relativePose, 7, depth, affineWarp );
+    algorithm::getAffineWarp( refFeature->m_frame, curFrame, refFeature, relativePose, 7, depth, affineWarp );
 
     Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 > refPatchIntensities( patchArea );
-    algorithm::applyAffineWarp( feature->m_frame, feature->m_feature, halfPatchSize, Eigen::Matrix2d::Identity(), halfPatchSize + 1,
+    algorithm::applyAffineWarp( refFeature->m_frame, refFeature->m_feature, halfPatchSize, Eigen::Matrix2d::Identity(), halfPatchSize + 1,
                                 refPatchIntensities );
 
     // TODO: optimize the pose
