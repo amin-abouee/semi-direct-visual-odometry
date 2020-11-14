@@ -36,12 +36,14 @@ public:
     // std::unique_lock<std::mutex> m_threadLocker;
 
     std::shared_ptr< Frame > m_newKeyframe;
+    std::shared_ptr< Frame > m_deletedKeyframe;
     std::queue< std::shared_ptr< Frame > > m_queueFrames;
     std::vector< MixedGaussianFilter > m_depthFilters;
 
     std::shared_ptr< FeatureSelection > m_featureSelection;
 
     bool m_haltUpdatingDepthFilter;
+    // bool m_haveDeletedKeyFrame;
     bool m_newKeyframeAdded;
     bool m_activeThread;
     double m_newKeyframeMinDepth;
@@ -76,9 +78,13 @@ public:
     /// to old frames.
     void reset();
 
+private:
+
     /// Bayes update of the seed, x is the measurement, tau2 the measurement uncertainty
     /// Reference: Video-based, real-time multi-view stereo. Supplementary matterial
     void updateFilter( const double x, const double tau2, MixedGaussianFilter& depthFilter );
+
+    void removeKeyframe();
 
     /// Compute the uncertainty of the measurement.
     double computeTau( const Sophus::SE3d& relativePose, const Eigen::Vector3d& bearing, const double z, const double pixelErrorAngle );
