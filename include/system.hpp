@@ -16,7 +16,6 @@
 #include <Eigen/Core>
 #include <nlohmann/json.hpp>
 #include <opencv2/core.hpp>
-
 class System final
 {
     using frameSize = std::pair< const std::shared_ptr< Frame >&, int32_t >;
@@ -26,7 +25,7 @@ class System final
         Process_First_Frame    = 0,
         Process_Second_Frame   = 1,
         Procese_New_Frame      = 2,
-        Process_Relocalozation = 3,
+        Process_Relocalization = 3,
         Process_Default        = 4,
         Process_Paused         = 5
     };
@@ -49,6 +48,11 @@ public:
     void reportSummaryFeatures();
     void reportSummaryPoints();
 
+private:
+    bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs );
+    bool needKeyframe( const double sceneDepthMean, const std::vector< frameSize >& overlapKeyFrames );
+    // void makeKeyframe( std::shared_ptr< Frame >& frame, const double& depthMean, const double& depthMin );
+
     std::shared_ptr< PinholeCamera > m_camera;
     std::shared_ptr< Frame > m_refFrame;
     std::shared_ptr< Frame > m_curFrame;
@@ -58,14 +62,9 @@ public:
     std::unique_ptr< Map > m_map;
     std::shared_ptr< ImageAlignment > m_alignment;
     std::shared_ptr< BundleAdjustment > m_bundler;
-    Status m_systemStatus;
-
-private:
-    bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs );
-    bool needKeyframe( const double sceneDepthMean, const std::vector< frameSize >& overlapKeyFrames );
-    void makeKeyframe( std::shared_ptr< Frame >& frame, const double& depthMean, const double& depthMin );
 
     const Config* m_config;
+    Status m_systemStatus;
 };
 
 #endif /* __SYSTEM_HPP__ */

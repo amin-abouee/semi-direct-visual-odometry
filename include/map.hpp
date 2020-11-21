@@ -40,7 +40,7 @@ public:
 
     void addKeyframe( std::shared_ptr< Frame >& frame );
 
-    std::shared_ptr< Frame >& getClosestKeyframe( std::shared_ptr< Frame >& frame ) const;
+    void getClosestKeyframe( std::shared_ptr< Frame >& frame, std::shared_ptr<Frame>& closestKeyframe ) const;
 
     void getCloseKeyframes( const std::shared_ptr< Frame >& frame, std::vector< keyframeDistance >& closeKeyframes ) const;
 
@@ -52,7 +52,7 @@ public:
     /// a list of objects which must be removed.
     // void emptyTrash();
 
-    std::shared_ptr< Frame >& getFurthestKeyframe( const Eigen::Vector3d& pos );
+    void getFurthestKeyframe( const Eigen::Vector3d& pos, std::shared_ptr<Frame>& furthestKeyframe ) const;
 
     bool getFrameById( const uint64_t id, std::shared_ptr< Frame >& lookingFrame ) const;
 

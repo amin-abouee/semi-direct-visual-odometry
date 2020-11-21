@@ -47,9 +47,9 @@ public:
     // Copy C'tor
     Frame( const Frame& rhs ) = delete;  // non construction-copyable
     // move C'tor
-    Frame( Frame&& rhs ) = delete;  // non copyable
+    Frame( Frame&& rhs ) = delete;  // non construction movable
     // Copy assignment operator
-    Frame& operator=( const Frame& rhs ) = delete;  // non construction movable
+    Frame& operator=( const Frame& rhs ) = delete;  // non copyable
     // move assignment operator
     Frame& operator=( Frame&& rhs ) = delete;  // non movable
     // D'tor

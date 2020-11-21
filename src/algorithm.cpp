@@ -283,36 +283,36 @@ double algorithm::computeScore( const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 
     return sum;
 }
 
-bool algorithm::matchDirect( const std::shared_ptr< Point >& point, const std::shared_ptr< Frame >& curFrame, Eigen::Vector2d& featurePose )
-{
-    const uint32_t patchSize     = 7;
-    const uint32_t halfPatchSize = patchSize / 2;
-    const uint32_t patchArea     = patchSize * patchSize;
-    std::shared_ptr< Feature > refFeature;
+// bool algorithm::matchDirect( const std::shared_ptr< Point >& point, const std::shared_ptr< Frame >& curFrame, Eigen::Vector2d& featurePose )
+// {
+//     const uint32_t patchSize     = 7;
+//     const uint32_t halfPatchSize = patchSize / 2;
+//     const uint32_t patchArea     = patchSize * patchSize;
+//     std::shared_ptr< Feature > refFeature;
 
-    if ( point->getCloseViewObservation( curFrame->cameraInWorld(), refFeature ) == false )
-        return false;
+//     if ( point->getCloseViewObservation( curFrame->cameraInWorld(), refFeature ) == false )
+//         return false;
 
-    // TODO: for sure, the point is visible in the referencePoint
-    // if ( refFeature->m_frame->m_camera->isInFrame( refFeature->m_feature, halfPatchSize ) == false )
-        // return false;
+//     // TODO: for sure, the point is visible in the referencePoint
+//     // if ( refFeature->m_frame->m_camera->isInFrame( refFeature->m_feature, halfPatchSize ) == false )
+//         // return false;
 
-    const Sophus::SE3d relativePose = algorithm::computeRelativePose( refFeature->m_frame, curFrame );
-    const double depth              = ( refFeature->m_frame->cameraInWorld() - point->m_position ).norm();
-    Eigen::Matrix2d affineWarp;
-    algorithm::getAffineWarp( refFeature->m_frame, curFrame, refFeature, relativePose, 7, depth, affineWarp );
+//     const Sophus::SE3d relativePose = algorithm::computeRelativePose( refFeature->m_frame, curFrame );
+//     const double depth              = ( refFeature->m_frame->cameraInWorld() - point->m_position ).norm();
+//     Eigen::Matrix2d affineWarp;
+//     algorithm::getAffineWarp( refFeature->m_frame, curFrame, refFeature, relativePose, 7, depth, affineWarp );
 
-    Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 > refPatchIntensities( patchArea );
-    algorithm::applyAffineWarp( refFeature->m_frame, refFeature->m_feature, halfPatchSize, Eigen::Matrix2d::Identity(), halfPatchSize + 1,
-                                refPatchIntensities );
+//     Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 > refPatchIntensities( patchArea );
+//     algorithm::applyAffineWarp( refFeature->m_frame, refFeature->m_feature, halfPatchSize, Eigen::Matrix2d::Identity(), halfPatchSize + 1,
+//                                 refPatchIntensities );
 
-    // TODO: optimize the pose
-    // if (i = 0)
-    // {
-    return true;
-    // }
-    return false;
-}
+//     // TODO: optimize the pose
+//     // if (i = 0)
+//     // {
+//     return true;
+//     // }
+//     return false;
+// }
 
 bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFrame,
                                          const std::shared_ptr< Frame >& curFrame,
@@ -414,10 +414,8 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
             return true;
         }
     }
-    else
-    {
-        return false;
-    }
+
+    return false;
 }
 
 void algorithm::triangulate3DWorldPoints( const std::shared_ptr< Frame >& refFrame,

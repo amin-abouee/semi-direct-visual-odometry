@@ -49,7 +49,7 @@ void applyAffineWarp( const std::shared_ptr< Frame >& frame,
 double computeScore( const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& refPatchIntensity,
                      const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 >& curPatchIntensity );
 
-bool matchDirect( const std::shared_ptr< Point >& point, const std::shared_ptr< Frame >& curFrame, Eigen::Vector2d& feature );
+// bool matchDirect( const std::shared_ptr< Point >& point, const std::shared_ptr< Frame >& curFrame, Eigen::Vector2d& feature );
 
 bool matchEpipolarConstraint( const std::shared_ptr< Frame >& refFrame,
                               const std::shared_ptr< Frame >& curFrame,

@@ -88,31 +88,31 @@ void Map::addKeyframe( std::shared_ptr< Frame >& frame )
     m_keyFrames.push_back( frame );
 }
 
-std::shared_ptr< Frame >& Map::getClosestKeyframe( std::shared_ptr< Frame >& frame ) const
+void Map::getClosestKeyframe( std::shared_ptr< Frame >& frame, std::shared_ptr<Frame>& closestKeyframe ) const
 {
-    std::shared_ptr< Frame > selectedKeyFrame{ nullptr };
+    // std::shared_ptr< Frame > selectedKeyFrame{ nullptr };
     std::vector< keyframeDistance > closeKeyframes;
     getCloseKeyframes( frame, closeKeyframes );
     if ( closeKeyframes.empty() )
     {
-        return selectedKeyFrame;
+        closestKeyframe = nullptr;
     }
-
-    // TODO: do std::sort instead of this one
-    double minDistance = std::numeric_limits< double >::max();
-    for ( auto& element : closeKeyframes )
+    else
     {
-        if ( element.first != frame )
+        // TODO: do std::sort instead of this one
+        double minDistance = std::numeric_limits< double >::max();
+        for ( auto& element : closeKeyframes )
         {
-            if ( element.second < minDistance )
+            if ( element.first != frame )
             {
-                minDistance      = element.second;
-                selectedKeyFrame = element.first;
+                if ( element.second < minDistance )
+                {
+                    minDistance      = element.second;
+                    closestKeyframe = element.first;
+                }
             }
         }
     }
-
-    return selectedKeyFrame;
 }
 
 void Map::getCloseKeyframes( const std::shared_ptr< Frame >& frame, std::vector< keyframeDistance >& closeKeyframes ) const
@@ -142,9 +142,8 @@ void Map::getCloseKeyframes( const std::shared_ptr< Frame >& frame, std::vector<
     //TODO: sort it here
 }
 
-std::shared_ptr< Frame >& Map::getFurthestKeyframe( const Eigen::Vector3d& pos )
+void Map::getFurthestKeyframe( const Eigen::Vector3d& pos, std::shared_ptr<Frame>& furthestKeyframe ) const
 {
-    std::shared_ptr< Frame > selectedKeyFrame{ nullptr };
     double maxDistance = 0.0;
     for ( auto& frame : m_keyFrames )
     {
@@ -152,11 +151,9 @@ std::shared_ptr< Frame >& Map::getFurthestKeyframe( const Eigen::Vector3d& pos )
         if ( dist > maxDistance )
         {
             maxDistance      = dist;
-            selectedKeyFrame = frame;
+            furthestKeyframe = frame;
         }
     }
-
-    return selectedKeyFrame;
 }
 
 bool Map::getFrameById( const uint64_t id, std::shared_ptr< Frame >& lookingFrame ) const

@@ -42,12 +42,12 @@ public:
 
     std::shared_ptr< FeatureSelection > m_featureSelection;
 
+    double m_newKeyframeMinDepth;
+    double m_newKeyframeMeanDepth;
     bool m_haltUpdatingDepthFilter;
     // bool m_haveDeletedKeyFrame;
     bool m_newKeyframeAdded;
     bool m_activeThread;
-    double m_newKeyframeMinDepth;
-    double m_newKeyframeMeanDepth;
     bool m_terminateThread;
 
     // C'tor

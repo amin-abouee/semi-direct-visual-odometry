@@ -76,6 +76,7 @@ double BundleAdjustment::optimizeStructure( std::shared_ptr< Frame >& frame, con
                       } );
 
     m_optimizer.m_numUnknowns = 3;
+    double error = 0.0;
     for ( uint32_t i( 0 ); i < setMaxNumerPoints; i++ )
     {
         auto& point                   = points[ i ];
@@ -88,7 +89,6 @@ double BundleAdjustment::optimizeStructure( std::shared_ptr< Frame >& frame, con
         auto lambdaUpdateFunctor = [ this ]( std::shared_ptr< Point >& point, const Eigen::Vector3d& dx ) -> void {
             updateStructure( point, dx );
         };
-        double error = 0.0;
         Optimizer::Status optimizationStatus;
 
         // t1 = std::chrono::high_resolution_clock::now();
@@ -99,6 +99,8 @@ double BundleAdjustment::optimizeStructure( std::shared_ptr< Frame >& frame, con
         std::tie( optimizationStatus, error ) =
           m_optimizer.optimizeGN< std::shared_ptr< Point > >( point, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor );
     }
+
+    return error;
 }
 
 void BundleAdjustment::computeJacobianPose( const std::shared_ptr< Frame >& frame )
@@ -225,7 +227,7 @@ void BundleAdjustment::computeJacobianStructure( const std::shared_ptr< Point >&
     for ( const auto& feature : point->m_features )
     {
         const auto& pos                      = point->m_position;
-        const Eigen::Vector2d projectedPoint = feature->m_frame->world2image( pos );
+        // const Eigen::Vector2d projectedPoint = feature->m_frame->world2image( pos );
         const auto& camera                   = feature->m_frame->m_camera;
         Eigen::Matrix< double, 2, 3 > imageJac;
         computeImageJacStructure( imageJac, pos, feature->m_frame->m_TransW2F.rotationMatrix(), camera->fx(), camera->fy() );

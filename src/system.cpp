@@ -45,7 +45,7 @@ void System::addImage( const cv::Mat& img, const double timestamp )
     {
         processFirstFrame();
     }
-    else if ( m_systemStatus == System::Status::Process_Relocalozation )
+    else if ( m_systemStatus == System::Status::Process_Relocalization )
     {
         System_Log( DEBUG ) << "Relocalizations";
     }
@@ -296,7 +296,8 @@ void System::processNewFrame()
 
     if (m_map->m_keyFrames.size() > 10)
     {
-        auto& furthestFrame = m_map->getFurthestKeyframe(m_curFrame->cameraInWorld());
+        std::shared_ptr<Frame> furthestFrame {nullptr};
+        m_map->getFurthestKeyframe(m_curFrame->cameraInWorld(), furthestFrame);
         m_depthEstimator->removeKeyframe(furthestFrame);
         m_map->removeFrame(furthestFrame);
     }
@@ -345,53 +346,10 @@ void System::reportSummaryPoints()
 {
 }
 
-void System::makeKeyframe( std::shared_ptr< Frame >& frame, const double& depthMean, const double& depthMin )
-{
-    frame->setKeyframe();
-    //     for(Features::iterator it=new_frame_->fts_.begin(); it!=new_frame_->fts_.end(); ++it)
-    //     if((*it)->point != NULL)
-    //       (*it)->point->addFrameRef(*it);
-    //   map_.point_candidates_.addCandidatePointToFrame(new_frame_);
-    for ( const auto& feature : frame->m_frameFeatures )
-    {
-        if ( feature->m_point != nullptr )
-        {
-            // feature->m_point->
-        }
-    }
-
-    // #ifdef USE_BUNDLE_ADJUSTMENT
-    // if(Config::lobaNumIter() > 0)
-    // {
-    //     SVO_START_TIMER("local_ba");
-    //     setCoreKfs(Config::coreNKfs());
-    //     size_t loba_n_erredges_init, loba_n_erredges_fin;
-    //     double loba_err_init, loba_err_fin;
-    //     ba::localBA(new_frame_.get(), &core_kfs_, &map_,
-    //                 loba_n_erredges_init, loba_n_erredges_fin,
-    //                 loba_err_init, loba_err_fin);
-    //     SVO_STOP_TIMER("local_ba");
-    //     SVO_LOG4(loba_n_erredges_init, loba_n_erredges_fin, loba_err_init, loba_err_fin);
-    //     SVO_DEBUG_STREAM("Local BA:\t RemovedEdges {"<<loba_n_erredges_init<<", "<<loba_n_erredges_fin<<"} \t "
-    //                         "Error {"<<loba_err_init<<", "<<loba_err_fin<<"}");
-    // }
-    // #endif
-
-    // init new depth-filters
-    // depth_filter_->addKeyframe(new_frame_, depth_mean, 0.5*depth_min);
-    // m_depthEstimator->addKeyframe( frame, depthMean, 0.5 * depthMin );
-
-    // if limited number of keyframes, remove the one furthest apart
-    if ( 10 > 2 && m_map->m_keyFrames.size() >= 10 )
-    {
-        auto futhrestFrame = m_map->getFurthestKeyframe( frame->cameraInWorld() );
-        // depth_filter_->removeKeyframe(futhrestFrame); // TODO this interrupts the mapper thread, maybe we can solve this better
-        m_map->removeFrame( futhrestFrame );
-    }
-
-    // add keyframe to map
-    m_map->addKeyframe( frame );
-}
+// void System::makeKeyframe( std::shared_ptr< Frame >& frame, const double& depthMean, const double& depthMin )
+// {
+//     return;
+// }
 
 bool System::needKeyframe( const double sceneDepthMean, const std::vector< frameSize >& overlapKeyFrames )
 {
