@@ -60,7 +60,7 @@ Optimizer::OptimizerResult Optimizer::optimizeGN(
     // bool stop                        = false;
     double chiSquaredError           = 0.0;
     double stepSize                  = 0.0;
-    double normDiffPose              = 0.0;
+    // double normDiffPose              = 0.0;
     uint32_t cntTotalProjectedPixels = 0;
 
     double preChiSquaredError = std::numeric_limits< double >::max();

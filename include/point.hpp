@@ -30,8 +30,8 @@ public:
     bool isNormalEstimated;
     std::vector< std::shared_ptr< Feature > > m_features;
     PointType m_type;
-    uint32_t m_lastPublishedTS;      //!< Timestamp of last publishing.
-    int32_t m_lastProjectedKFId;     //!< Flag for the reprojection: don't reproject a pt twice.
+    uint64_t m_lastPublishedTS;      //!< Timestamp of last publishing.
+    uint64_t m_lastProjectedKFId;     //!< Flag for the reprojection: don't reproject a pt twice.
     uint32_t m_failedProjection;     //!< Number of failed reprojections. Used to assess the quality of the point.
     uint32_t m_succeededProjection;  //!< Number of succeeded reprojections. Used to assess the quality of the point.
     uint32_t m_lastOptimizedTime;    //!< Timestamp of last point optimization

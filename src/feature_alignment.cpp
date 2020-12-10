@@ -48,7 +48,7 @@ double FeatureAlignment::align( const std::shared_ptr< Feature >& refFeature,
     };
     // t1 = std::chrono::high_resolution_clock::now();
     std::tie( optimizationStatus, error ) = m_optimizer.optimizeGN<Sophus::SE2d>( relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor );
-    pixelPos = relativePose * refFeature->m_feature;
+    pixelPos = relativePose * refFeature->m_pixelPosition;
     return error;
 }
 
@@ -58,7 +58,7 @@ void FeatureAlignment::computeJacobian( const std::shared_ptr< Feature >& refFea
     const int32_t border = m_halfPatchSize + 2;
     const cv::Mat& refImage = refFeature->m_frame->m_imagePyramid.getImageAtLevel( m_level );
     const algorithm::MapXRowConst refImageEigen( refImage.ptr< uint8_t >(), refImage.rows, refImage.cols );
-    const Eigen::Vector2d pixelPos = refFeature->m_feature;
+    const Eigen::Vector2d pixelPos = refFeature->m_pixelPosition;
 
     if ( refFeature->m_point == nullptr || refFeature->m_frame->m_camera->isInFrame(pixelPos, border))
     {
@@ -100,7 +100,7 @@ uint32_t FeatureAlignment::computeResiduals( const std::shared_ptr< Feature >& r
     const int32_t border = m_halfPatchSize + 2;
     const cv::Mat& curImage = curFrame->m_imagePyramid.getImageAtLevel( m_level );
     const algorithm::MapXRowConst curImageEigen( curImage.ptr< uint8_t >(), curImage.rows, curImage.cols );
-    const Eigen::Vector2d pixelPos = refFeature->m_feature;
+    const Eigen::Vector2d pixelPos = refFeature->m_pixelPosition;
     // const uint32_t stride            = curImage.cols;
 
     if ( m_refVisibility[ 0 ] == false )

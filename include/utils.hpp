@@ -10,13 +10,6 @@
 
 namespace utils
 {
-// namespace fs = std::experimental::filesystem;
-
-#ifdef CXX17 //if this is C++17
-namespace fs = std::filesystem;
-#else
-namespace fs = std::experimental::filesystem;
-#endif
 
 Eigen::IOFormat eigenFormat();
 

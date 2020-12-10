@@ -47,7 +47,10 @@ void System::addImage( const cv::Mat& img, const double timestamp )
     }
     else if ( m_systemStatus == System::Status::Process_Relocalization )
     {
-        System_Log( DEBUG ) << "Relocalizations";
+        std::shared_ptr<Frame> closestKeyframe {nullptr};
+        m_map->getClosestKeyframe(m_curFrame, closestKeyframe);
+        Sophus::SE3d pose;
+        relocalizeFrame(pose, closestKeyframe);
     }
 
     m_refFrame = std::move( m_curFrame );
@@ -126,8 +129,8 @@ void System::processSecondFrame()
     // t = -RC
     // In this formula, we assume, the W = K_{1}, means the m_refFrame->cameraInWorld() = (0, 0, 0)
     // first we compute the C, scale it and compute t
-    m_curFrame->m_TransW2F.translation() =
-      -m_curFrame->m_TransW2F.rotationMatrix() *
+    m_curFrame->m_absPose.translation() =
+      -m_curFrame->m_absPose.rotationMatrix() *
       ( m_refFrame->cameraInWorld() + scale * ( m_curFrame->cameraInWorld() - m_refFrame->cameraInWorld() ) );
 
     // scale current frame depth
@@ -137,29 +140,29 @@ void System::processSecondFrame()
     uint32_t cnt = 0;
     for ( std::size_t i( 0 ); i < numObserves; i++ )
     {
-        const Eigen::Vector2d refFeature = m_refFrame->m_frameFeatures[ i ]->m_feature;
-        const Eigen::Vector2d curFeature = m_curFrame->m_frameFeatures[ i ]->m_feature;
+        const Eigen::Vector2d refFeature = m_refFrame->m_features[ i ]->m_pixelPosition;
+        const Eigen::Vector2d curFeature = m_curFrame->m_features[ i ]->m_pixelPosition;
         if ( m_refFrame->m_camera->isInFrame( refFeature, 5.0 ) == true && m_curFrame->m_camera->isInFrame( curFeature, 5.0 ) == true &&
              pointsCurCamera.col( i ).z() > 0 )
         {
             std::shared_ptr< Point > point = std::make_shared< Point >( pointsWorld.col( i ) );
             //    std::cout << "3D points: " << point->m_position.format(utils::eigenFormat()) << std::endl;
-            m_refFrame->m_frameFeatures[ i ]->setPoint( point );
-            m_curFrame->m_frameFeatures[ i ]->setPoint( point );
-            point->addFeature( m_refFrame->m_frameFeatures[ i ] );
-            point->addFeature( m_curFrame->m_frameFeatures[ i ] );
+            m_refFrame->m_features[ i ]->setPoint( point );
+            m_curFrame->m_features[ i ]->setPoint( point );
+            point->addFeature( m_refFrame->m_features[ i ] );
+            point->addFeature( m_curFrame->m_features[ i ] );
             cnt++;
         }
     }
 
     // remove the features that doesn't have the 3D point
-    m_refFrame->m_frameFeatures.erase( std::remove_if( m_refFrame->m_frameFeatures.begin(), m_refFrame->m_frameFeatures.end(),
+    m_refFrame->m_features.erase( std::remove_if( m_refFrame->m_features.begin(), m_refFrame->m_features.end(),
                                                        []( const auto& feature ) { return feature->m_point == nullptr; } ),
-                                       m_refFrame->m_frameFeatures.end() );
+                                       m_refFrame->m_features.end() );
 
-    m_curFrame->m_frameFeatures.erase( std::remove_if( m_curFrame->m_frameFeatures.begin(), m_curFrame->m_frameFeatures.end(),
+    m_curFrame->m_features.erase( std::remove_if( m_curFrame->m_features.begin(), m_curFrame->m_features.end(),
                                                        []( const auto& feature ) { return feature->m_point == nullptr; } ),
-                                       m_curFrame->m_frameFeatures.end() );
+                                       m_curFrame->m_features.end() );
 
     System_Log( INFO ) << "Init Points: " << pointsWorld.cols() << ", ref obs: " << m_refFrame->numberObservation()
                        << ", cur obs: " << m_curFrame->numberObservation() << ", number of removed: " << pointsWorld.cols() - cnt;
@@ -176,7 +179,7 @@ void System::processSecondFrame()
     System_Log( INFO ) << "After SCALE, Median Depth: " << medianDepth << ", minDepth: " << minDepth << ", maxDepth: " << maxDepth;
 
     System_Log( INFO ) << "size observation: " << m_curFrame->numberObservation();
-    m_featureSelection->setExistingFeatures( m_curFrame->m_frameFeatures );
+    m_featureSelection->setExistingFeatures( m_curFrame->m_features );
     m_featureSelection->detectFeaturesInGrid( m_curFrame, 0.0 );
     System_Log( INFO ) << "size observation after detect: " << m_curFrame->numberObservation();
     // System_Log( INFO ) << "Number of Features: " << m_curFrame->numberObservation();
@@ -214,7 +217,7 @@ void System::processNewFrame()
     // std::cout << "counter ref: " << m_refFrame.use_count() << std::endl;
     // m_curFrame = std::make_shared< Frame >( m_camera, newImg, m_config->m_maxLevelImagePyramid + 1 );
     // std::cout << "counter cur: " << m_curFrame.use_count() << std::endl;
-    m_curFrame->m_TransW2F = m_refFrame->m_TransW2F;
+    m_curFrame->m_absPose = m_refFrame->m_absPose;
     System_Log( INFO ) << "Number of features, pre: " << m_refFrame->numberObservation() << ", cur: " << m_curFrame->numberObservation();
 
     // ImageAlignment match( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid, m_config->m_maxLevelImagePyramid, 6 );
@@ -242,7 +245,7 @@ void System::processNewFrame()
         // System_Log( INFO ) << "ref id: " << m_refFrame->m_id << ", cur id: " << m_curFrame->m_id;
     }
 
-    // for ( const auto& refFeatures : m_refFrame->m_frameFeatures )
+    // for ( const auto& refFeatures : m_refFrame->m_features )
     // {
     //     if ( refFeatures->m_point == nullptr )
     //     {
@@ -255,12 +258,18 @@ void System::processNewFrame()
     //     {
     //         std::shared_ptr< Feature > newFeature = std::make_shared< Feature >( m_curFrame, curFeature, 0.0 );
     //         m_curFrame->addFeature( newFeature );
-    //         m_curFrame->m_frameFeatures.back()->setPoint( refFeatures->m_point );
+    //         m_curFrame->m_features.back()->setPoint( refFeatures->m_point );
     //     }
     // }
     std::vector< frameSize > overlapKeyFrames;
     m_map->reprojectMap( m_curFrame, overlapKeyFrames );
     System_Log( INFO ) << "Number of Features: " << m_curFrame->numberObservation();
+
+    if (m_map->m_matches < 50)
+    {
+        m_curFrame->m_absPose = m_refFrame->m_absPose;
+        return;
+    }
 
     // select keyframe
     // core_kfs_.insert(new_frame_);
@@ -306,6 +315,17 @@ void System::processNewFrame()
 
 }
 
+void System::relocalizeFrame (Sophus::SE3d& pose, std::shared_ptr<Frame>& closestKeyframe)
+{
+    if (closestKeyframe == nullptr)
+    {
+        return;
+    }
+
+    m_alignment->align( closestKeyframe, m_curFrame );
+}
+
+
 void System::reportSummaryFrames()
 {
     //-------------------------------------------------------------------------------
@@ -332,7 +352,7 @@ void System::reportSummaryFeatures()
         std::cout << "|                                                                               |" << std::endl;
         std::cout << " -------------------------------- Frame ID: " << frame->m_id << " ---------------------------------- " << std::endl;
         std::cout << "|                                                                               |" << std::endl;
-        for ( const auto& feature : frame->m_frameFeatures )
+        for ( const auto& feature : frame->m_features )
         {
             std::cout << "| Feature ID: " << std::left << std::setw( 12 ) << feature->m_id << "Point ID: " << std::left << std::setw( 12 )
                       << feature->m_point->m_id << "Cnt Shared Pointer Point: " << std::left << std::setw( 6 )

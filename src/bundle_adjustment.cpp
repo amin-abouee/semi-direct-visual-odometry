@@ -32,7 +32,7 @@ double BundleAdjustment::optimizePose( std::shared_ptr< Frame >& frame )
     m_optimizer.initParameters( numFeatures * 2 );
     m_refVisibility.resize( numFeatures, false );
 
-    Sophus::SE3d absolutePose = frame->m_TransW2F;
+    Sophus::SE3d absolutePose = frame->m_absPose;
 
     auto lambdaUpdateFunctor = [ this ]( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) -> void { updatePose( pose, dx ); };
     double error             = 0.0;
@@ -48,9 +48,9 @@ double BundleAdjustment::optimizePose( std::shared_ptr< Frame >& frame )
     std::tie( optimizationStatus, error ) =
       m_optimizer.optimizeGN< Sophus::SE3d >( absolutePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor );
 
-    // curFrame->m_TransW2F = refFrame->m_TransW2F * relativePose;
-    frame->m_TransW2F = absolutePose;
-    Adjustment_Log( DEBUG ) << "Computed Pose: " << frame->m_TransW2F.params().transpose();
+    // curFrame->m_absPose = refFrame->m_absPose * relativePose;
+    frame->m_absPose = absolutePose;
+    Adjustment_Log( DEBUG ) << "Computed Pose: " << frame->m_absPose.params().transpose();
 
     return error;
 }
@@ -62,7 +62,7 @@ double BundleAdjustment::optimizeStructure( std::shared_ptr< Frame >& frame, con
 
     m_optimizer.setNumUnknowns(3);
     std::vector< std::shared_ptr< Point > > points;
-    for ( const auto& feature : frame->m_frameFeatures )
+    for ( const auto& feature : frame->m_features )
     {
         if ( feature->m_point == nullptr )
         {
@@ -84,7 +84,7 @@ double BundleAdjustment::optimizeStructure( std::shared_ptr< Frame >& frame, con
         m_optimizer.initParameters( numFeatures * 2 );
         m_refVisibility.resize( numFeatures, false );
 
-        Sophus::SE3d absolutePose = frame->m_TransW2F;
+        Sophus::SE3d absolutePose = frame->m_absPose;
 
         auto lambdaUpdateFunctor = [ this ]( std::shared_ptr< Point >& point, const Eigen::Vector3d& dx ) -> void {
             updateStructure( point, dx );
@@ -110,7 +110,7 @@ void BundleAdjustment::computeJacobianPose( const std::shared_ptr< Frame >& fram
     const double fy     = frame->m_camera->fy();
     uint32_t cntFeature = 0;
     uint32_t cntPoints  = 0;
-    for ( const auto& feature : frame->m_frameFeatures )
+    for ( const auto& feature : frame->m_features )
     {
         if ( feature->m_point == nullptr )
         {
@@ -135,7 +135,7 @@ uint32_t BundleAdjustment::computeResidualsPose( const std::shared_ptr< Frame >&
 {
     uint32_t cntFeature              = 0;
     uint32_t cntTotalProjectedPixels = 0;
-    for ( const auto& feature : frame->m_frameFeatures )
+    for ( const auto& feature : frame->m_features )
     {
         if ( m_refVisibility[ cntFeature ] == false )
         {
@@ -143,7 +143,7 @@ uint32_t BundleAdjustment::computeResidualsPose( const std::shared_ptr< Frame >&
             continue;
         }
 
-        const Eigen::Vector2d error = frame->camera2image( pose * feature->m_point->m_position ) - feature->m_feature;
+        const Eigen::Vector2d error = frame->camera2image( pose * feature->m_point->m_position ) - feature->m_pixelPosition;
         // ****
         // IF we compute the error of inverse compositional as r = T(x) - I(W), then we should solve (delta p) = -(JtWT).inverse() *
         // JtWr BUt if we take r = I(W) - T(x) a residual error, then (delta p) = (JtWT).inverse() * JtWr
@@ -230,7 +230,7 @@ void BundleAdjustment::computeJacobianStructure( const std::shared_ptr< Point >&
         // const Eigen::Vector2d projectedPoint = feature->m_frame->world2image( pos );
         const auto& camera                   = feature->m_frame->m_camera;
         Eigen::Matrix< double, 2, 3 > imageJac;
-        computeImageJacStructure( imageJac, pos, feature->m_frame->m_TransW2F.rotationMatrix(), camera->fx(), camera->fy() );
+        computeImageJacStructure( imageJac, pos, feature->m_frame->m_absPose.rotationMatrix(), camera->fx(), camera->fy() );
         m_optimizer.m_jacobian.block( 2 * cntFeature, 0, 2, 3 ) = imageJac;
         cntFeature++;
     }
@@ -274,7 +274,7 @@ uint32_t BundleAdjustment::computeResidualsStructure( const std::shared_ptr< Poi
     {
         const auto& pos                      = point->m_position;
         const Eigen::Vector2d projectedPoint = feature->m_frame->world2image( pos );
-        const Eigen::Vector2d error          = projectedPoint - feature->m_feature;
+        const Eigen::Vector2d error          = projectedPoint - feature->m_pixelPosition;
         // ****
         // IF we compute the error of inverse compositional as r = T(x) - I(W), then we should solve (delta p) = -(JtWT).inverse() *
         // JtWr BUt if we take r = I(W) - T(x) a residual error, then (delta p) = (JtWT).inverse() * JtWr

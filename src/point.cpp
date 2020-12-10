@@ -51,7 +51,7 @@ void Point::removeFrame( std::shared_ptr< Frame >& frame )
 void Point::computeNormal()
 {
     const auto& feature = m_features.back();
-    m_normal            = feature->m_frame->m_TransW2F.rotationMatrix().transpose() * ( -feature->m_bearingVec );
+    m_normal            = feature->m_frame->m_absPose.rotationMatrix().transpose() * ( -feature->m_bearingVec );
     m_normalCov =
       Eigen::DiagonalMatrix< double, 3, 3 >( std::pow( 20 / ( m_position - feature->m_frame->cameraInWorld() ).norm(), 2 ), 1.0, 1.0 );
     isNormalEstimated = true;

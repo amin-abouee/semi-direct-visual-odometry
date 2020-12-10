@@ -77,8 +77,8 @@ private:
     {
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         std::shared_ptr< Point > m_point;  //!< 3D point.
-        Eigen::Vector2d m_feature;         //!< projected 2D pixel location.
-        Candidate( const std::shared_ptr< Point >& point, const Eigen::Vector2d& feature ) : m_point( point ), m_feature( feature )
+        Eigen::Vector2d m_pixelPosition;         //!< projected 2D pixel location.
+        Candidate( const std::shared_ptr< Point >& point, const Eigen::Vector2d& feature ) : m_point( point ), m_pixelPosition( feature )
         {
         }
     };

@@ -34,8 +34,8 @@
 //     Eigen::Vector3d pointWorld;
 //     for ( std::size_t i( 0 ); i < featureSz; i++ )
 //     {
-//         refFeature = refFrame.m_frameFeatures[ i ]->m_feature;
-//         curFeature = curFrame.m_frameFeatures[ i ]->m_feature;
+//         refFeature = refFrame.m_features[ i ]->m_pixelPosition;
+//         curFeature = curFrame.m_features[ i ]->m_pixelPosition;
 //         triangulatePointDLT( refFrame, curFrame, refFeature, curFeature, pointWorld );
 //         pointsRefCamera.col( i ) = refFrame.world2camera( pointWorld );
 //     }
@@ -50,8 +50,8 @@
 //     Eigen::Vector3d pointWorld;
 //     for ( std::size_t i( 0 ); i < featureSz; i++ )
 //     {
-//         refFeature = refFrame.m_frameFeatures[ i ]->m_feature;
-//         curFeature = curFrame.m_frameFeatures[ i ]->m_feature;
+//         refFeature = refFrame.m_features[ i ]->m_pixelPosition;
+//         curFeature = curFrame.m_features[ i ]->m_pixelPosition;
 //         triangulatePointDLT( refFrame, curFrame, refFeature, curFeature, pointWorld );
 //         pointsCurCamera.col( i ) = curFrame.world2camera( pointWorld );
 //     }
@@ -68,17 +68,17 @@ void algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame, st
     const int maxIteration    = 30;
     const double epsilonError = 1e-4;
 
-    for ( const auto& features : refFrame->m_frameFeatures )
+    for ( const auto& features : refFrame->m_features )
     {
         refPoints.emplace_back(
-          cv::Point2f( static_cast< float >( features->m_feature.x() ), static_cast< float >( features->m_feature.y() ) ) );
+          cv::Point2f( static_cast< float >( features->m_pixelPosition.x() ), static_cast< float >( features->m_pixelPosition.y() ) ) );
         curPoints.emplace_back(
-          cv::Point2f( static_cast< float >( features->m_feature.x() ), static_cast< float >( features->m_feature.y() ) ) );
+          cv::Point2f( static_cast< float >( features->m_pixelPosition.x() ), static_cast< float >( features->m_pixelPosition.y() ) ) );
     }
 
     // std::transform(
-    //   refFrame.m_frameFeatures.cbegin(), refFrame.m_frameFeatures.cend(), std::back_inserter( refPoints ),
-    //   []( const auto& features ) { return cv::Point2f( features->m_feature.x(), features->m_feature.y() ); } );
+    //   refFrame.m_features.cbegin(), refFrame.m_features.cend(), std::back_inserter( refPoints ),
+    //   []( const auto& features ) { return cv::Point2f( features->m_pixelPosition.x(), features->m_pixelPosition.y() ); } );
 
     cv::TermCriteria termcrit( cv::TermCriteria::COUNT + cv::TermCriteria::EPS, maxIteration, epsilonError );
     cv::calcOpticalFlowPyrLK( refImg, curImg, refPoints, curPoints, status, err, cv::Size( patchSize, patchSize ), 3, termcrit,
@@ -99,8 +99,8 @@ void algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame, st
     auto isNotValid = [ &cnt, &status ]( const auto& feature ) { return status[ cnt++ ] ? false : true; };
 
     // https://en.wikipedia.org/wiki/Erase%E2%80%93remove_idiom
-    refFrame->m_frameFeatures.erase( std::remove_if( refFrame->m_frameFeatures.begin(), refFrame->m_frameFeatures.end(), isNotValid ),
-                                     refFrame->m_frameFeatures.end() );
+    refFrame->m_features.erase( std::remove_if( refFrame->m_features.begin(), refFrame->m_features.end(), isNotValid ),
+                                     refFrame->m_features.end() );
 
     Algorithm_Log( DEBUG ) << "observation refFrame: " << refFrame->numberObservation();
     Algorithm_Log( DEBUG ) << "observation curFrame: " << curFrame->numberObservation();
@@ -118,10 +118,10 @@ void algorithm::computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
 
     for ( std::size_t i( 0 ); i < featureSize; i++ )
     {
-        refPoints.emplace_back( cv::Point2f( static_cast< float >( refFrame->m_frameFeatures[ i ]->m_feature.x() ),
-                                             static_cast< float >( refFrame->m_frameFeatures[ i ]->m_feature.y() ) ) );
-        curPoints.emplace_back( cv::Point2f( static_cast< float >( curFrame->m_frameFeatures[ i ]->m_feature.x() ),
-                                             static_cast< float >( curFrame->m_frameFeatures[ i ]->m_feature.y() ) ) );
+        refPoints.emplace_back( cv::Point2f( static_cast< float >( refFrame->m_features[ i ]->m_pixelPosition.x() ),
+                                             static_cast< float >( refFrame->m_features[ i ]->m_pixelPosition.y() ) ) );
+        curPoints.emplace_back( cv::Point2f( static_cast< float >( curFrame->m_features[ i ]->m_pixelPosition.x() ),
+                                             static_cast< float >( curFrame->m_features[ i ]->m_pixelPosition.y() ) ) );
     }
 
     cv::Mat E_cv = cv::findEssentialMat( refPoints, curPoints, refFrame->m_camera->K_cv(), cv::RANSAC, 0.999, reproError, status );
@@ -143,8 +143,8 @@ void algorithm::computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
     };
 
     // https://en.wikipedia.org/wiki/Erase%E2%80%93remove_idiom
-    auto refResult = std::remove_if( refFrame->m_frameFeatures.begin(), refFrame->m_frameFeatures.end(), isNotValidRefFrame );
-    refFrame->m_frameFeatures.erase( refResult, refFrame->m_frameFeatures.end() );
+    auto refResult = std::remove_if( refFrame->m_features.begin(), refFrame->m_features.end(), isNotValidRefFrame );
+    refFrame->m_features.erase( refResult, refFrame->m_features.end() );
     // std::cout << "observation refFrame: " << refFrame.numberObservation() << std::endl;
 
     auto isNotValidCurFrame = [ &cnt, &status, &curFrame ]( const auto& feature ) {
@@ -154,8 +154,8 @@ void algorithm::computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
             return false;
     };
     cnt            = 0;
-    auto curResult = std::remove_if( curFrame->m_frameFeatures.begin(), curFrame->m_frameFeatures.end(), isNotValidCurFrame );
-    curFrame->m_frameFeatures.erase( curResult, curFrame->m_frameFeatures.end() );
+    auto curResult = std::remove_if( curFrame->m_features.begin(), curFrame->m_features.end(), isNotValidCurFrame );
+    curFrame->m_features.erase( curResult, curFrame->m_features.end() );
     // std::cout << "observation curFrame: " << curFrame.numberObservation() << std::endl;
 }
 
@@ -179,15 +179,15 @@ void algorithm::templateMatching( const std::shared_ptr< Frame >& refFrame,
     cv::Point2i minLoc, maxLoc;
     // cv::Mat template (cv::Size(patchSize, patchSize), CV_32F);
     // cv::Mat  (cv::Size(patchSize, patchSize), CV_32F);
-    for ( const auto& features : refFrame->m_frameFeatures )
+    for ( const auto& features : refFrame->m_features )
     {
-        px << static_cast< int32_t >( features->m_feature.x() ), static_cast< int32_t >( features->m_feature.y() );
+        px << static_cast< int32_t >( features->m_pixelPosition.x() ), static_cast< int32_t >( features->m_pixelPosition.y() );
         // std::cout << "px: " << px.transpose() << std::endl;
-        // std::cout << "refFrame.m_camera->isInFrame: " << refFrame.m_camera->isInFrame( features->m_feature,
+        // std::cout << "refFrame.m_camera->isInFrame: " << refFrame.m_camera->isInFrame( features->m_pixelPosition,
         // halfPatchRef ) << std::endl; std::cout << "curFrame.m_camera->isInFrame: " << curFrame.m_camera->isInFrame(
-        // features->m_feature, halfPatchRef ) << std::endl;
-        if ( refFrame->m_camera->isInFrame( features->m_feature, halfPatchRef ) &&
-             curFrame->m_camera->isInFrame( features->m_feature, halfPatchCur ) )
+        // features->m_pixelPosition, halfPatchRef ) << std::endl;
+        if ( refFrame->m_camera->isInFrame( features->m_pixelPosition, halfPatchRef ) &&
+             curFrame->m_camera->isInFrame( features->m_pixelPosition, halfPatchCur ) )
         {
             // std::cout << "px is inside the image " << std::endl;
             const cv::Rect ROITemplate( px.x() - halfPatchRef, px.y() - halfPatchRef, patchSzRef, patchSzRef );
@@ -227,9 +227,9 @@ void algorithm::getAffineWarp( const std::shared_ptr< Frame >& refFrame,
     // |-------------->                 |-------------->    ==> dvDiff = v' - c'
     // |------v------->                 |--------v'---->
 
-    const Eigen::Vector3d centerRefCamera = refFrame->image2camera( feature->m_feature, depth );
-    const Eigen::Vector3d duRefCamera     = refFrame->image2camera( feature->m_feature + Eigen::Vector2d( halfPatchSize, 0.0 ), depth );
-    const Eigen::Vector3d dvRefCamera     = refFrame->image2camera( feature->m_feature + Eigen::Vector2d( 0.0, halfPatchSize ), depth );
+    const Eigen::Vector3d centerRefCamera = refFrame->image2camera( feature->m_pixelPosition, depth );
+    const Eigen::Vector3d duRefCamera     = refFrame->image2camera( feature->m_pixelPosition + Eigen::Vector2d( halfPatchSize, 0.0 ), depth );
+    const Eigen::Vector3d dvRefCamera     = refFrame->image2camera( feature->m_pixelPosition + Eigen::Vector2d( 0.0, halfPatchSize ), depth );
 
     const Eigen::Vector2d centerCurImg = curFrame->camera2image( relativePose * centerRefCamera );
     const Eigen::Vector2d duCurImg     = curFrame->camera2image( relativePose * duRefCamera );
@@ -294,7 +294,7 @@ double algorithm::computeScore( const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 
 //         return false;
 
 //     // TODO: for sure, the point is visible in the referencePoint
-//     // if ( refFeature->m_frame->m_camera->isInFrame( refFeature->m_feature, halfPatchSize ) == false )
+//     // if ( refFeature->m_frame->m_camera->isInFrame( refFeature->m_pixelPosition, halfPatchSize ) == false )
 //         // return false;
 
 //     const Sophus::SE3d relativePose = algorithm::computeRelativePose( refFeature->m_frame, curFrame );
@@ -303,7 +303,7 @@ double algorithm::computeScore( const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 
 //     algorithm::getAffineWarp( refFeature->m_frame, curFrame, refFeature, relativePose, 7, depth, affineWarp );
 
 //     Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 > refPatchIntensities( patchArea );
-//     algorithm::applyAffineWarp( refFeature->m_frame, refFeature->m_feature, halfPatchSize, Eigen::Matrix2d::Identity(), halfPatchSize + 1,
+//     algorithm::applyAffineWarp( refFeature->m_frame, refFeature->m_pixelPosition, halfPatchSize, Eigen::Matrix2d::Identity(), halfPatchSize + 1,
 //                                 refPatchIntensities );
 
 //     // TODO: optimize the pose
@@ -330,9 +330,9 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
     const Sophus::SE3d relativePose = algorithm::computeRelativePose( refFrame, curFrame );
     const uint32_t thresholdZSSD    = patchArea * 128;
     const Eigen::Vector2d locationCenter =
-      curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_feature, initialDepth ) );
-    const Eigen::Vector2d locationMin = curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_feature, minDepth ) );
-    const Eigen::Vector2d locationMax = curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_feature, maxDepth ) );
+      curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_pixelPosition, initialDepth ) );
+    const Eigen::Vector2d locationMin = curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_pixelPosition, minDepth ) );
+    const Eigen::Vector2d locationMax = curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_pixelPosition, maxDepth ) );
 
     // FIXME: check with the original code. They don't project to the camera. Just project2d (x/z, y/z)
     const Eigen::Vector2d epipolarDirection = locationMax - locationMin;
@@ -344,7 +344,7 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
 
     Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 > refPatchIntensities( patchArea );
     refPatchIntensities.setZero();
-    algorithm::applyAffineWarp( refFrame, refFeature->m_feature, halfPatchSize, Eigen::Matrix2d::Identity(), halfPatchSize + 1,
+    algorithm::applyAffineWarp( refFrame, refFeature->m_pixelPosition, halfPatchSize, Eigen::Matrix2d::Identity(), halfPatchSize + 1,
                                 refPatchIntensities );
 
     if ( normEpipolar < 2.0 )
@@ -383,7 +383,7 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
 
     Algorithm_Log( DEBUG ) << "Epipolar Direction: " << epipolarDirection.transpose() << ", norm: " << normEpipolar
                            << ", Pixel step: " << pixelStep << ", Step 2D: " << step2D.transpose();
-    // Algorithm_Log( INFO ) << "Location in ref frame: " << refFeature->m_feature.transpose();
+    // Algorithm_Log( INFO ) << "Location in ref frame: " << refFeature->m_pixelPosition.transpose();
     // Algorithm_Log( INFO ) << "Ref patch intensities: " << refPatchIntensities.cast<int32_t>().transpose();
 
     // traverse over the epipolar line
@@ -426,8 +426,8 @@ void algorithm::triangulate3DWorldPoints( const std::shared_ptr< Frame >& refFra
     Eigen::Vector3d pointWorld;
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
-        const Eigen::Vector2d refFeature = refFrame->m_frameFeatures[ i ]->m_feature;
-        const Eigen::Vector2d curFeature = curFrame->m_frameFeatures[ i ]->m_feature;
+        const Eigen::Vector2d refFeature = refFrame->m_features[ i ]->m_pixelPosition;
+        const Eigen::Vector2d curFeature = curFrame->m_features[ i ]->m_pixelPosition;
         triangulatePointDLT( refFrame, curFrame, refFeature, curFeature, pointWorld );
         pointsWorld.col( i ) = pointWorld;
     }
@@ -471,7 +471,7 @@ void algorithm::normalizedDepthCamera( const std::shared_ptr< Frame >& frame, Ei
     const auto featureSz = frame->numberObservation();
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
-        normalizedDepthCamera( i ) = frame->world2camera( frame->m_frameFeatures[ i ]->m_point->m_position ).norm();
+        normalizedDepthCamera( i ) = frame->world2camera( frame->m_features[ i ]->m_point->m_position ).norm();
     }
 }
 
@@ -489,7 +489,7 @@ void algorithm::depthCamera( const std::shared_ptr< Frame >& frame, Eigen::Vecto
     const auto featureSz = frame->numberObservation();
     for ( std::size_t i( 0 ); i < featureSz; i++ )
     {
-        depthCamera( i ) = frame->world2camera( frame->m_frameFeatures[ i ]->m_point->m_position ).z();
+        depthCamera( i ) = frame->world2camera( frame->m_features[ i ]->m_point->m_position ).z();
     }
 }
 
@@ -500,8 +500,8 @@ void algorithm::triangulatePointHomogenousDLT( const std::shared_ptr< Frame >& r
                                                Eigen::Vector3d& point )
 {
     Eigen::MatrixXd A( 4, 4 );
-    const Eigen::Matrix< double, 3, 4 > P1 = refFrame->m_camera->K() * refFrame->m_TransW2F.matrix3x4();
-    const Eigen::Matrix< double, 3, 4 > P2 = curFrame->m_camera->K() * curFrame->m_TransW2F.matrix3x4();
+    const Eigen::Matrix< double, 3, 4 > P1 = refFrame->m_camera->K() * refFrame->m_absPose.matrix3x4();
+    const Eigen::Matrix< double, 3, 4 > P2 = curFrame->m_camera->K() * curFrame->m_absPose.matrix3x4();
 
     A.row( 0 ) = ( refFeature.x() * P1.row( 2 ) ) - P1.row( 0 );
     A.row( 1 ) = ( refFeature.y() * P1.row( 2 ) ) - P1.row( 1 );
@@ -540,9 +540,9 @@ void algorithm::triangulatePointDLT( const std::shared_ptr< Frame >& refFrame,
                                      Eigen::Vector3d& point )
 {
     Eigen::MatrixXd A( 4, 3 );
-    const Eigen::Matrix< double, 3, 4 > P1 = refFrame->m_camera->K() * refFrame->m_TransW2F.matrix3x4();
-    const Eigen::Matrix< double, 3, 4 > P2 = curFrame->m_camera->K() * curFrame->m_TransW2F.matrix3x4();
-    // Algorithm_Log(DEBUG) << "pose reference: " << curFrame->m_TransW2F.params().transpose();
+    const Eigen::Matrix< double, 3, 4 > P1 = refFrame->m_camera->K() * refFrame->m_absPose.matrix3x4();
+    const Eigen::Matrix< double, 3, 4 > P2 = curFrame->m_camera->K() * curFrame->m_absPose.matrix3x4();
+    // Algorithm_Log(DEBUG) << "pose reference: " << curFrame->m_absPose.params().transpose();
 
     A.row( 0 ) << P1( 0, 0 ) - refFeature.x() * P1( 2, 0 ), P1( 0, 1 ) - refFeature.x() * P1( 2, 1 ),
       P1( 0, 2 ) - refFeature.x() * P1( 2, 2 );
@@ -571,7 +571,7 @@ void algorithm::triangulatePointDLT( const std::shared_ptr< Frame >& refFrame,
     // std::cout << "3D -> Error in ref: " << (point - unproject1).norm()
     //   << ", Error in cur: " << (point - unproject2).norm() << std::endl;
 
-    Sophus::SE3d T_pre_cur      = refFrame.m_TransW2F.inverse() * curFrame.m_TransW2F;
+    Sophus::SE3d T_pre_cur      = refFrame.m_absPose.inverse() * curFrame.m_absPose;
     Eigen::Vector3d transferred = T_pre_cur * unproject1;
     // std::cout << "3D -> Error in relative: " << (transferred - unproject2).norm() << std::endl;
     // std::cout << "2D -> Error in relative: " << ( curFeature - curFrame.camera2image( transferred ) ).norm()
@@ -666,13 +666,13 @@ void algorithm::recoverPose( const Eigen::Matrix3d& E,
         Eigen::Vector3d point2;
 
         // ^{K}_{W}T = ^{K}_{K-1}T \, * \,^{K-1}_{W}T
-        curFrame->m_TransW2F = poses[ i ] * refFrame->m_TransW2F;
-        // Algorithm_Log(DEBUG) << "pose reference 1: " << curFrame->m_TransW2F.params().transpose();
-        // Algorithm_Log(DEBUG) << "pose reference 2: " << (poses[i] * refFrame->m_TransW2F).params().transpose();
+        curFrame->m_absPose = poses[ i ] * refFrame->m_absPose;
+        // Algorithm_Log(DEBUG) << "pose reference 1: " << curFrame->m_absPose.params().transpose();
+        // Algorithm_Log(DEBUG) << "pose reference 2: " << (poses[i] * refFrame->m_absPose).params().transpose();
 
-        triangulatePointDLT( refFrame, curFrame, refFrame->m_frameFeatures[ 0 ]->m_feature, curFrame->m_frameFeatures[ 0 ]->m_feature,
+        triangulatePointDLT( refFrame, curFrame, refFrame->m_features[ 0 ]->m_pixelPosition, curFrame->m_features[ 0 ]->m_pixelPosition,
                              point1 );
-        triangulatePointDLT( refFrame, curFrame, refFrame->m_frameFeatures[ 1 ]->m_feature, curFrame->m_frameFeatures[ 1 ]->m_feature,
+        triangulatePointDLT( refFrame, curFrame, refFrame->m_features[ 1 ]->m_pixelPosition, curFrame->m_features[ 1 ]->m_pixelPosition,
                              point2 );
         Eigen::Vector3d refProject1 = refFrame->world2camera( point1 );
         Eigen::Vector3d curProject1 = curFrame->world2camera( point1 );
@@ -695,10 +695,10 @@ void algorithm::recoverPose( const Eigen::Matrix3d& E,
 Sophus::SE3d algorithm::computeRelativePose( const std::shared_ptr< Frame >& refFrame, const std::shared_ptr< Frame >& curFrame )
 {
     // T_K-1_K = T_K-1_W * T_W_K
-    // return refFrame->m_TransW2F.inverse() * curFrame->m_TransW2F;
+    // return refFrame->m_absPose.inverse() * curFrame->m_absPose;
 
     // ^{K}_{K-1}T = ^{K}_{W}T \, * \,^{W}_{K-1}T = ^{K}_{W}T \, * \,^{K-1}_{W}T^{-1}
-    return curFrame->m_TransW2F * refFrame->m_TransW2F.inverse();
+    return curFrame->m_absPose * refFrame->m_absPose.inverse();
 }
 
 // bool algorithm::checkCheirality()

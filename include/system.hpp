@@ -40,10 +40,6 @@ public:
 
     void addImage( const cv::Mat& img, const double timestamp );
 
-    void processFirstFrame();
-    void processSecondFrame();
-    void processNewFrame();
-
     void reportSummaryFrames();
     void reportSummaryFeatures();
     void reportSummaryPoints();
@@ -52,6 +48,11 @@ private:
     bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs );
     bool needKeyframe( const double sceneDepthMean, const std::vector< frameSize >& overlapKeyFrames );
     // void makeKeyframe( std::shared_ptr< Frame >& frame, const double& depthMean, const double& depthMin );
+
+    void processFirstFrame();
+    void processSecondFrame();
+    void processNewFrame();
+    void relocalizeFrame (Sophus::SE3d& pose, std::shared_ptr<Frame>& closestKeyframe);
 
     std::shared_ptr< PinholeCamera > m_camera;
     std::shared_ptr< Frame > m_refFrame;

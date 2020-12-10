@@ -91,9 +91,9 @@ double ImageAlignment::align( std::shared_ptr< Frame >& refFrame, std::shared_pt
     // m_optimizer.m_timerUpdateParameters << std::endl; std::cout << "m_timerCheck: " << m_optimizer.m_timerCheck << std::endl; std::cout
     // << "m_timerFor: " << m_optimizer.m_timerFor << std::endl;
 
-    // curFrame->m_TransW2F = refFrame->m_TransW2F * relativePose;
-    curFrame->m_TransW2F = relativePose * refFrame->m_TransW2F;
-    Alignment_Log( DEBUG ) << "Computed Pose: " << curFrame->m_TransW2F.params().transpose();
+    // curFrame->m_absPose = refFrame->m_absPose * relativePose;
+    curFrame->m_absPose = relativePose * refFrame->m_absPose;
+    Alignment_Log( DEBUG ) << "Computed Pose: " << curFrame->m_absPose.params().transpose();
     return error;
 }
 
@@ -113,10 +113,10 @@ void ImageAlignment::computeJacobian( std::shared_ptr< Frame >& frame, uint32_t 
     const double fx             = frame->m_camera->fx() / levelDominator;
     const double fy             = frame->m_camera->fy() / levelDominator;
     uint32_t cntFeature         = 0;
-    for ( const auto& feature : frame->m_frameFeatures )
+    for ( const auto& feature : frame->m_features )
     {
-        const double u     = feature->m_feature.x() * scale;
-        const double v     = feature->m_feature.y() * scale;
+        const double u     = feature->m_pixelPosition.x() * scale;
+        const double v     = feature->m_pixelPosition.y() * scale;
         const int32_t uInt = static_cast< int32_t >( std::floor( u ) );
         const int32_t vInt = static_cast< int32_t >( std::floor( v ) );
         // std::cout << "index feature: " << cntFeature << ", loc [" << uInt << " , " << vInt << "]" << std::endl;
@@ -183,7 +183,7 @@ uint32_t ImageAlignment::computeResiduals( std::shared_ptr< Frame >& refFrame,
     const Eigen::Vector3d C          = refFrame->cameraInWorld();
     uint32_t cntFeature              = 0;
     uint32_t cntTotalProjectedPixels = 0;
-    for ( const auto& feature : refFrame->m_frameFeatures )
+    for ( const auto& feature : refFrame->m_features )
     {
         if ( m_refVisibility[ cntFeature ] == false )
         {

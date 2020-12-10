@@ -25,6 +25,46 @@ class Feature;
 
 /**
  * @brief This class contains the RGB image informations, the absolute pose and its covariance and the camera geometry data
+ * 
+ *                                                                             
+ *              Z                                                              
+                ^                                                              
+                |                                                              
+                | World                                                        
+                |                                                              
+                O------>X                                                      
+               / ^                                            ^                
+              /   \                                          /                 
+             v    |                                         /                  
+            Y      \                                       /                   
+                    \                                     /                    
+                     \                                   /                     
+                     |                   u              /                      
+                      \               +----->---------------------+            
+                       \              | Image                     |            
+                       |            v | Pixel                     |            
+                        \             v             x (cx, cy)    |            
+                       t \            |            /              |            
+                          \           |           /               |            
+                          |           |          /                |            
+                           \          +---------/-----------------+            
+    Trans W to C = [R|t]    \                  /                               
+                             \                /                                
+                             |               /                                 
+                              \             /                                  
+                               \           /                                   
+                               |          /                                    
+                                \        /                                     
+                                 \    Z /                                      
+                                  \    /                                       
+                                  |   /                                        
+                                   \ /                                         
+                                    O-------->X                                
+                                    |                                          
+                                    | Camera                                   
+                                    |                                          
+                                    v                                          
+                                    Y                                          
  *
  */
 class Frame final
@@ -33,12 +73,11 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     static uint64_t m_frameCounter;
     uint64_t m_id;
-    const std::shared_ptr< PinholeCamera > m_camera;
-    // std::reference_wrapper<PinholeCamera> m_camera;
-    Sophus::SE3d m_TransW2F;
+    std::shared_ptr< PinholeCamera > m_camera;
+    Sophus::SE3d m_absPose;
     Eigen::Matrix< double, 6, 6 > m_covPose;
     ImagePyramid m_imagePyramid;
-    std::vector< std::shared_ptr< Feature > > m_frameFeatures;
+    std::vector< std::shared_ptr< Feature > > m_features;
     bool m_keyFrame;
     double m_timestamp;
 
@@ -51,7 +90,7 @@ public:
     // Copy assignment operator
     Frame& operator=( const Frame& rhs ) = delete;  // non copyable
     // move assignment operator
-    Frame& operator=( Frame&& rhs ) = delete;  // non movable
+    Frame& operator=( Frame&& rhs ) = delete;  // movable
     // D'tor
     ~Frame() = default;
 

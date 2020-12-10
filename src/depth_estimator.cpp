@@ -182,7 +182,7 @@ void DepthEstimator::initializeFilters( std::shared_ptr< Frame >& frame )
     // m_haltUpdatingDepthFilter = true;
     // std::unique_lock< std::mutex > threadLocker( m_mutexFilter );
 
-    for ( auto& feature : frame->m_frameFeatures )
+    for ( auto& feature : frame->m_features )
     {
         m_depthFilters.push_back( MixedGaussianFilter( feature, m_newKeyframeMeanDepth, m_newKeyframeMinDepth ) );
     }
@@ -282,7 +282,7 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
         {
             // The feature detector should not initialize new seeds close to this location
             const Eigen::Vector2d newLocation =
-              frame->camera2image( relativePose * frame->image2camera( depthFilter.m_feature->m_feature, 1.0 / depthFilter.m_mu ) );
+              frame->camera2image( relativePose * frame->image2camera( depthFilter.m_feature->m_pixelPosition, 1.0 / depthFilter.m_mu ) );
             // TODO: we need to set the corresponding location in our grid
             m_featureSelection->setCellInGridOccupancy( newLocation );
         }
@@ -292,7 +292,7 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
         {
             // assert( it->ftr->point == NULL );  // TODO this should not happen anymore
             const Eigen::Vector3d pointInWorld =
-              depthFilter.m_feature->m_frame->image2world( depthFilter.m_feature->m_feature, 1.0 / depthFilter.m_mu );
+              depthFilter.m_feature->m_frame->image2world( depthFilter.m_feature->m_pixelPosition, 1.0 / depthFilter.m_mu );
             auto point                     = std::make_shared< Point >( pointInWorld, depthFilter.m_feature );
             depthFilter.m_feature->m_point = point;
 

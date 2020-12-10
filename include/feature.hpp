@@ -19,14 +19,15 @@ public:
     enum class FeatureType : uint32_t
     {
         CORNER,
-        EDGELET
+        EDGE,
+        DDEFAULT
     };
 
     static uint64_t m_featureCounter;
     uint64_t m_id;
     std::shared_ptr< Frame > m_frame;
     FeatureType m_type;
-    Eigen::Vector2d m_feature;
+    Eigen::Vector2d m_pixelPosition;
     Eigen::Vector3d m_homogenous;
     Eigen::Vector3d m_bearingVec;
     uint8_t m_level;
@@ -40,11 +41,11 @@ public:
                       const double gradientMagnitude,
                       const double m_gradientOrientation,
                       const uint8_t level );
-    Feature( const Feature& rhs );
-    Feature( Feature&& rhs );
-    Feature& operator=( const Feature& rhs );
-    Feature& operator=( Feature&& rhs );
-    // ~Feature()       = default;
+    Feature( const Feature& rhs ) = delete;
+    Feature( Feature&& rhs ) = delete;
+    Feature& operator=( const Feature& rhs ) = delete;
+    Feature& operator=( Feature&& rhs ) = delete;
+    ~Feature()       = default;
 
     void setPoint( std::shared_ptr< Point >& point );
 

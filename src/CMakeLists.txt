@@ -113,7 +113,7 @@ target_compile_options(visual_odometry PRIVATE "$<$<CONFIG:RELEASE>:-march=nativ
 # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
 
 # https://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
-target_compile_definitions(visual_odometry PRIVATE -DEIGEN_MAX_CPP_VER=17 -DELPP_THREAD_SAFE -DELPP_FORCE_USE_STD_THREAD -DELPP_STL_LOGGING -DELPP_FRESH_LOG_FILE )
+target_compile_definitions(visual_odometry PRIVATE -DEIGEN_MAX_CPP_VER=17 -DEIGEN_INITIALIZE_MATRICES_BY_ZERO -DELPP_THREAD_SAFE -DELPP_FORCE_USE_STD_THREAD -DELPP_STL_LOGGING -DELPP_FRESH_LOG_FILE )
 
 # https://stackoverflow.com/a/31969632/1804533
 # target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE})
@@ -128,7 +128,7 @@ target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nloh
 # http://www.brianlheim.com/2018/04/09/cmake-cheat-sheet.html
 # http://manpages.ubuntu.com/manpages/xenial/man7/cmake-generator-expressions.7.html
 # $<$<VERSION_LESS:$<CXX_COMPILER_VERSION>,4.2.0>:OLD_COMPILER>
-target_link_libraries(visual_odometry PRIVATE $<$<CXX_COMPILER_ID:GNU>:stdc++fs>)
+# target_link_libraries(visual_odometry PRIVATE $<$<CXX_COMPILER_ID:GNU>:stdc++fs>)
 # target_link_libraries(visual_odometry PRIVATE stdc++fs)
 
 # target_link_libraries (visual_odometry PRIVATE stdc++fs)

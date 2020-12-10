@@ -61,9 +61,9 @@ public:
     cv::Mat m_gradientMagnitude;
     cv::Mat m_gradientOrientation;
 
-    uint32_t m_cellSize;
-    uint32_t m_gridCols;
-    uint32_t m_gridRows;
+    int32_t m_cellSize;
+    int32_t m_gridRows;
+    int32_t m_gridCols;
     std::vector< bool > m_occupancyGrid;
 
 private:

@@ -356,7 +356,7 @@ void visualization::featurePoints(
     const auto szPoints = frame->numberObservation();
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
-        const auto& feature = frame->m_frameFeatures[ i ]->m_feature;
+        const auto& feature = frame->m_features[ i ]->m_pixelPosition;
         drawingFunctor( img, feature, radiusSize, colorRGB );
     }
 }
@@ -401,7 +401,7 @@ void visualization::project3DPoints(
     const auto szPoints = frame->numberObservation();
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
-        const Eigen::Vector3d& point = frame->m_frameFeatures[ i ]->m_point->m_position;
+        const Eigen::Vector3d& point = frame->m_features[ i ]->m_point->m_position;
         const auto& feature          = frame->world2image( point );
         drawingFunctor( img, feature, radiusSize, colorRGB );
     }
@@ -415,7 +415,7 @@ void visualization::projectPointsWithRelativePose(
   const std::string& color,
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >& drawingFunctor )
 {
-    // const Sophus::SE3d relativePose = refFrame->m_TransW2F.inverse() * curFrame->m_TransW2F;
+    // const Sophus::SE3d relativePose = refFrame->m_absPose.inverse() * curFrame->m_absPose;
     const Sophus::SE3d relativePose = algorithm::computeRelativePose( refFrame, curFrame );
     // const Eigen::Matrix3d E      = relativePose.rotationMatrix() * algorithm::hat( relativePose.translation() );
     // const Eigen::Matrix3d F = refFrame.m_camera->invK().transpose() * E * curFrame.m_camera->invK();
@@ -425,7 +425,7 @@ void visualization::projectPointsWithRelativePose(
     const Eigen::Vector3d C = refFrame->cameraInWorld();
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
-        const auto& feature    = refFrame->m_frameFeatures[ i ];
+        const auto& feature    = refFrame->m_features[ i ];
         const double depthNorm = ( feature->m_point->m_position - C ).norm();
         const Eigen::Vector3d refPoint( feature->m_bearingVec * depthNorm );
         const Eigen::Vector3d curPoint( relativePose * refPoint );
@@ -443,7 +443,7 @@ void visualization::projectLinesWithRelativePose(
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
     drawingFunctor )
 {
-    // const Sophus::SE3d relativePose = refFrame->m_TransW2F.inverse() * curFrame->m_TransW2F;
+    // const Sophus::SE3d relativePose = refFrame->m_absPose.inverse() * curFrame->m_absPose;
 
     const Sophus::SE3d relativePose = algorithm::computeRelativePose( refFrame, curFrame );
     const Eigen::Matrix3d E         = relativePose.rotationMatrix() * algorithm::hat( relativePose.translation() );
@@ -469,7 +469,7 @@ void visualization::projectLinesWithF(
     const auto szPoints = refFrame->numberObservation();
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
-        const auto& refHomogenous = refFrame->m_frameFeatures[ i ]->m_homogenous;
+        const auto& refHomogenous = refFrame->m_features[ i ]->m_homogenous;
         Eigen::Vector3d line      = F * refHomogenous;
         double nu                 = line( 0 ) * line( 0 ) + line( 1 ) * line( 1 );
         nu                        = 1 / std::sqrt( nu );
@@ -525,7 +525,7 @@ void visualization::projectDepthFilters(
             continue;
         }
 
-        // cv::circle( img, cv::Point2d( depthFilter.m_feature->m_feature.x(), depthFilter.m_feature->m_feature.y() ), radiusSize,
+        // cv::circle( img, cv::Point2d( depthFilter.m_feature->m_pixelPosition.x(), depthFilter.m_feature->m_pixelPosition.y() ), radiusSize,
                     // colors.at( "pink" ) );
         cv::circle( img, cv::Point2d( pointInCurImage.x(), pointInCurImage.y() ), radiusSize,
                     colors.at( "orange" ) );
@@ -569,7 +569,7 @@ void visualization::projectDepthFilters(
             continue;
         }
 
-        // cv::circle( img, cv::Point2d( depthFilter.m_feature->m_feature.x(), depthFilter.m_feature->m_feature.y() ), radiusSize,
+        // cv::circle( img, cv::Point2d( depthFilter.m_feature->m_pixelPosition.x(), depthFilter.m_feature->m_pixelPosition.y() ), radiusSize,
                     // colors.at( "pink" ) );
         cv::circle( img, cv::Point2d( pointInCurImage.x(), pointInCurImage.y() ), radiusSize,
                     colors.at( "orange" ) );

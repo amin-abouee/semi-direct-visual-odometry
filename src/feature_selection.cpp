@@ -62,26 +62,26 @@ void FeatureSelection::detectFeaturesInGrid( std::shared_ptr< Frame >& frame, co
 
     // std::cout << "rows: " << rows << ", cols: " << cols << std::endl;
 
-    for ( uint32_t r( 0 ); r < m_gridRows; r++ )
+    for ( int32_t r( 0 ); r < m_gridRows; r++ )
     {
-        for ( uint32_t c( 0 ); c < m_gridCols; c++ )
+        for ( int32_t c( 0 ); c < m_gridCols; c++ )
         {
             if ( m_occupancyGrid[r * m_gridCols + c] == true)
             {
                 continue;
             }
 
-            const uint32_t maxColIdx = ( c + 1 ) * m_cellSize < width ? m_cellSize : width - ( c * m_cellSize );
-            const uint32_t maxROwIdx = ( r + 1 ) * m_cellSize < height ? m_cellSize : height - ( r * m_cellSize );
+            const int32_t maxColIdx = ( c + 1 ) * m_cellSize < width ? m_cellSize : width - ( c * m_cellSize );
+            const int32_t maxROwIdx = ( r + 1 ) * m_cellSize < height ? m_cellSize : height - ( r * m_cellSize );
             const cv::Rect PatchROI( c * m_cellSize, r * m_cellSize, maxColIdx, maxROwIdx );
             // std::cout << "left corner: [" << r * m_cellSize << " , " << c * m_cellSize << "] -> ";
             const cv::Mat gradientPatch = imgGradientMagnitude( PatchROI );
             float max                   = 0.0;
-            uint32_t rowIdx             = 0;
-            uint32_t colIdx             = 0;
-            for ( uint32_t i( 0 ); i < maxROwIdx; i++ )
+            int32_t rowIdx             = 0;
+            int32_t colIdx             = 0;
+            for ( int32_t i( 0 ); i < maxROwIdx; i++ )
             {
-                for ( uint32_t j( 0 ); j < maxColIdx; j++ )
+                for ( int32_t j( 0 ); j < maxColIdx; j++ )
                 {
                     if ( gradientPatch.at< float >( i, j ) > max )
                     {
@@ -257,7 +257,7 @@ void FeatureSelection::setExistingFeatures (const std::vector<std::shared_ptr<Fe
 {
     for(const auto& feature : features)
     {
-        setCellInGridOccupancy(feature->m_feature);
+        setCellInGridOccupancy(feature->m_pixelPosition);
     }
 }
 

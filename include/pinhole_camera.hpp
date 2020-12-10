@@ -34,10 +34,10 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW
                             const cv::Mat& cameraMatrix,
                             const cv::Mat& distortionCoeffs );
 
-    PinholeCamera(const PinholeCamera& rhs) = default;
-    PinholeCamera(PinholeCamera&& rhs) =default;
-    PinholeCamera& operator=(const PinholeCamera& rhs) = default;
-    PinholeCamera& operator=(PinholeCamera&& rhs) = default;
+    PinholeCamera(const PinholeCamera& rhs) = delete;
+    PinholeCamera(PinholeCamera&& rhs) = delete;
+    PinholeCamera& operator=(const PinholeCamera& rhs) = delete;
+    PinholeCamera& operator=(PinholeCamera&& rhs) = delete;
     ~PinholeCamera() = default;
 
     /// project 3D points in camera coordinate to image coordinate

@@ -39,7 +39,7 @@ void Map::removeFrame( std::shared_ptr< Frame >& frame )
     {
         if ( fr == frame )
         {
-            for ( auto& feature : fr->m_frameFeatures )
+            for ( auto& feature : fr->m_features )
             {
                 if ( feature->m_point != nullptr )
                 {
@@ -121,8 +121,8 @@ void Map::getCloseKeyframes( const std::shared_ptr< Frame >& frame, std::vector<
     {
         if ( keyFrame == frame )
             continue;
-        // FIXME: m_frameFeatures -> features
-        for ( auto& feature : keyFrame->m_frameFeatures )
+        // FIXME: m_features -> features
+        for ( auto& feature : keyFrame->m_features )
         {
             if ( feature == nullptr )
             {
@@ -133,7 +133,7 @@ void Map::getCloseKeyframes( const std::shared_ptr< Frame >& frame, std::vector<
             {
                 // TODO: compute the relative pose and get the translation out of that
                 closeKeyframes.push_back(
-                  std::make_pair( keyFrame, ( frame->m_TransW2F.translation() - keyFrame->m_TransW2F.translation() ).norm() ) );
+                  std::make_pair( keyFrame, ( frame->m_absPose.translation() - keyFrame->m_absPose.translation() ).norm() ) );
                 break;
             }
         }
@@ -176,9 +176,9 @@ void Map::transform( const Eigen::Matrix3d& R, const Eigen::Vector3d& t, const d
     for ( auto& frame : m_keyFrames )
     {
         Eigen::Vector3d pos = s * R * ( frame->cameraInWorld() ) + t;
-        Eigen::Matrix3d rot = R * frame->m_TransW2F.rotationMatrix().inverse();
-        frame->m_TransW2F   = Sophus::SE3d( rot, pos ).inverse();
-        for ( auto& feature : frame->m_frameFeatures )
+        Eigen::Matrix3d rot = R * frame->m_absPose.rotationMatrix().inverse();
+        frame->m_absPose   = Sophus::SE3d( rot, pos ).inverse();
+        for ( auto& feature : frame->m_features )
         {
             // TODO: check the last published ts
             if ( feature->m_point == nullptr )
@@ -238,7 +238,7 @@ void Map::reprojectMap( std::shared_ptr< Frame >& frame, std::vector< frameSize 
     getCloseKeyframes( frame, closeKeyframes );
 
     // auto compare = [] (const std::pair< const std::shared_ptr< Frame >&, double >& lhs, const std::pair< const std::shared_ptr< Frame >&, double >& rhs) -> bool {
-        // return lhs.second < rhs.second;
+    //     return lhs.second < rhs.second;
     // };
 
     //TODO: Sort KFs with overlap according to their closeness
@@ -247,11 +247,11 @@ void Map::reprojectMap( std::shared_ptr< Frame >& frame, std::vector< frameSize 
     int32_t n = 0;
 
     // for ( const auto& kfDistance : closeKeyframes )
-    for (int32_t i(0); i < closeKeyframes.size() && n < 4; i++, n++)
+    for (uint32_t i(0); i < closeKeyframes.size() && n < 4; i++, n++)
     {
         const auto& kfDistance = closeKeyframes[i];
         overlapKeyFrames.push_back( std::make_pair( kfDistance.first, 0 ) );
-        for ( const auto& feature : kfDistance.first->m_frameFeatures )
+        for ( const auto& feature : kfDistance.first->m_features )
         {
             if ( feature->m_point == nullptr )
                 continue;
@@ -327,7 +327,7 @@ bool Map::reprojectCell( std::shared_ptr<Cell>& cell, std::shared_ptr< Frame >& 
             continue;
         }
         
-        double error = m_alignment->align(refFeature, frame, candidate.m_feature);
+        double error = m_alignment->align(refFeature, frame, candidate.m_pixelPosition);
         bool foundMatch = error < 0.3 ? true : false;
 
         if ( foundMatch == false )
@@ -351,7 +351,7 @@ bool Map::reprojectCell( std::shared_ptr<Cell>& cell, std::shared_ptr< Frame >& 
             candidate.m_point->m_type = Point::PointType::GOOD;
         }
 
-        std::shared_ptr< Feature > feature = std::make_shared< Feature >( frame, candidate.m_feature, 0 );
+        std::shared_ptr< Feature > feature = std::make_shared< Feature >( frame, candidate.m_pixelPosition, 0 );
         frame->addFeature( feature );
         // Here we add a reference in the feature to the 3D point, the other way
         // round is only done if this frame is selected as keyframe.
