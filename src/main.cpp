@@ -5,7 +5,6 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
-#include <chrono>
 #include <thread>
 
 #include <opencv2/core.hpp>
@@ -72,10 +71,10 @@ int main( int argc, char* argv[] )
 
     // Config::init(utils::findAbsoluteFilePath( configIOFile ));
     // Config* config = Config::getInstance();
-    Config config( utils::findAbsoluteFilePath( configIOFile ) );
+    std::shared_ptr< Config > config = std::make_shared< Config >( utils::findAbsoluteFilePath( configIOFile ) );
+    configLogger( config->m_logFilePath );
     System system( config );
-    configLogger( config.m_logFilePath );
-    Main_Log(DEBUG) << "Main thread id: " << std::this_thread::get_id();
+    Main_Log( DEBUG ) << "Main thread id: " << std::this_thread::get_id();
 
     // const cv::Mat refImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000000.png" ), cv::IMREAD_GRAYSCALE );
     // const cv::Mat curImg = cv::imread( utils::findAbsoluteFilePath( "input/0000000001.png" ), cv::IMREAD_GRAYSCALE );
@@ -108,7 +107,7 @@ int main( int argc, char* argv[] )
         // cv::waitKey( 0 );
         // cv::destroyAllWindows();
     }
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
     // system.reportSummaryFrames();
     // system.reportSummaryFeatures();
     return 0;

@@ -10,8 +10,7 @@
 #include "easylogging++.h"
 #define System_Log( LEVEL ) CLOG( LEVEL, "System" )
 
-// System::System( const Config& config )
-System::System( const Config& config ) : m_config( &config ), m_systemStatus( System::Status::Process_First_Frame )
+System::System( const std::shared_ptr< Config >& config ) : m_config( config ), m_systemStatus( System::Status::Process_First_Frame )
 {
     const std::string calibrationFile = utils::findAbsoluteFilePath( m_config->m_cameraCalibrationPath );
     cv::Mat cameraMatrix;
@@ -24,8 +23,6 @@ System::System( const Config& config ) : m_config( &config ), m_systemStatus( Sy
     m_depthEstimator   = std::make_unique< DepthEstimator >( m_featureSelection );
     m_map              = std::make_unique< Map >( m_camera, 32 );
     m_bundler          = std::make_shared< BundleAdjustment >( 0, 6 );
-
-    // cv::Mat initImg( m_camera->width(), m_camera->height(), CV_8U );
 }
 
 void System::addImage( const cv::Mat& img, const double timestamp )

@@ -31,7 +31,7 @@ class System final
     };
 
 public:
-    explicit System( const Config& config );
+    explicit System( const std::shared_ptr< Config >& config );
     System( const System& rhs ) = delete;
     System( System&& rhs )      = delete;
     System& operator=( const System& rhs ) = delete;
@@ -52,8 +52,9 @@ private:
     void processFirstFrame();
     void processSecondFrame();
     void processNewFrame();
-    void relocalizeFrame (Sophus::SE3d& pose, std::shared_ptr<Frame>& closestKeyframe);
+    void relocalizeFrame( Sophus::SE3d& pose, std::shared_ptr< Frame >& closestKeyframe );
 
+    const std::shared_ptr< Config > m_config;
     std::shared_ptr< PinholeCamera > m_camera;
     std::shared_ptr< Frame > m_refFrame;
     std::shared_ptr< Frame > m_curFrame;
@@ -63,8 +64,6 @@ private:
     std::unique_ptr< Map > m_map;
     std::shared_ptr< ImageAlignment > m_alignment;
     std::shared_ptr< BundleAdjustment > m_bundler;
-
-    const Config* m_config;
     Status m_systemStatus;
 };
 
