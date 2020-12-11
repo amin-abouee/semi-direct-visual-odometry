@@ -216,7 +216,7 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
     const double pixelNoise  = 1.0;
     // tan (theta/2) = W/(2*f) eq. 2.60, computer vision, algorithms and applications
     // here, W = 1 (pixel error). theta = arctan(1/2*f)*2
-    const double pixelErrorAngle = atan( pixelNoise / ( 2.0 * focalLength ) ) * 2.0;  // law of chord (sehnensatz)
+    const double pixelErrorAngle = atan( pixelNoise / ( 2.0 * focalLength ) ) * 2.0;  // law of chord
 
     Depth_Log( DEBUG ) << "Frame: " << frame->m_id << ", size its depthFilters " << m_depthFilters.size();
 

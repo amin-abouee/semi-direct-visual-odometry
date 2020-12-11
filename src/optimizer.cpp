@@ -439,7 +439,7 @@ bool Optimizer::updateParameters( const double preSquaredError, const double cur
 
     else if ( m_levenbergMethod == LevenbergMethod::Nielsen )
     {
-        // eference levenberg-marquardt equation (15)
+        // reference levenberg-marquardt equation (15)
         // gainRatio = diffSquaredError / ( dx.transpose() * ( lambda * dx + g ) );
         // if ( gainRatio > 1e-1 )
         if ( rho > 0.0 )

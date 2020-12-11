@@ -39,3 +39,6 @@ compile_commands.json
 /.vscode
 /output
 /docs/output
+
+/advisor
+/standalone_gui
