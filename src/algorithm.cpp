@@ -94,13 +94,18 @@ void algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame, st
         }
     }
 
-    uint32_t cnt = 0;
+    // uint32_t cnt = 0;
     /// if status[i] == true, it have to return false because we dont want to remove it from our container
-    auto isNotValid = [ &cnt, &status ]( const auto& feature ) { return status[ cnt++ ] ? false : true; };
+    // auto isNotValid = [ &cnt, &status ]( const auto& feature ) { return status[ cnt++ ] ? false : true; };
+    // TODO:Need to be tested
+    auto isNotValid = [ &refFrame, &status ]( const std::shared_ptr< Feature >& feature ) {
+        int32_t idx = feature.get() - refFrame->m_features.begin()->get();
+        return status[ idx ] ? false : true;
+    };
 
     // https://en.wikipedia.org/wiki/Erase%E2%80%93remove_idiom
     refFrame->m_features.erase( std::remove_if( refFrame->m_features.begin(), refFrame->m_features.end(), isNotValid ),
-                                     refFrame->m_features.end() );
+                                refFrame->m_features.end() );
 
     Algorithm_Log( DEBUG ) << "observation refFrame: " << refFrame->numberObservation();
     Algorithm_Log( DEBUG ) << "observation curFrame: " << curFrame->numberObservation();
@@ -133,6 +138,7 @@ void algorithm::computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
 
     // std::cout << "E: " << E << std::endl;
 
+    // https://stackoverflow.com/a/23123481/1804533
     uint32_t cnt = 0;
     /// if status[i] == true, it have to return false because we dont want to remove it from our container
     auto isNotValidRefFrame = [ &cnt, &status, &refFrame ]( const auto& feature ) {
@@ -228,8 +234,8 @@ void algorithm::getAffineWarp( const std::shared_ptr< Frame >& refFrame,
     // |------v------->                 |--------v'---->
 
     const Eigen::Vector3d centerRefCamera = refFrame->image2camera( feature->m_pixelPosition, depth );
-    const Eigen::Vector3d duRefCamera     = refFrame->image2camera( feature->m_pixelPosition + Eigen::Vector2d( halfPatchSize, 0.0 ), depth );
-    const Eigen::Vector3d dvRefCamera     = refFrame->image2camera( feature->m_pixelPosition + Eigen::Vector2d( 0.0, halfPatchSize ), depth );
+    const Eigen::Vector3d duRefCamera = refFrame->image2camera( feature->m_pixelPosition + Eigen::Vector2d( halfPatchSize, 0.0 ), depth );
+    const Eigen::Vector3d dvRefCamera = refFrame->image2camera( feature->m_pixelPosition + Eigen::Vector2d( 0.0, halfPatchSize ), depth );
 
     const Eigen::Vector2d centerCurImg = curFrame->camera2image( relativePose * centerRefCamera );
     const Eigen::Vector2d duCurImg     = curFrame->camera2image( relativePose * duRefCamera );
@@ -283,7 +289,8 @@ double algorithm::computeScore( const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 
     return sum;
 }
 
-// bool algorithm::matchDirect( const std::shared_ptr< Point >& point, const std::shared_ptr< Frame >& curFrame, Eigen::Vector2d& featurePose )
+// bool algorithm::matchDirect( const std::shared_ptr< Point >& point, const std::shared_ptr< Frame >& curFrame, Eigen::Vector2d&
+// featurePose )
 // {
 //     const uint32_t patchSize     = 7;
 //     const uint32_t halfPatchSize = patchSize / 2;
@@ -303,7 +310,8 @@ double algorithm::computeScore( const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 
 //     algorithm::getAffineWarp( refFeature->m_frame, curFrame, refFeature, relativePose, 7, depth, affineWarp );
 
 //     Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 > refPatchIntensities( patchArea );
-//     algorithm::applyAffineWarp( refFeature->m_frame, refFeature->m_pixelPosition, halfPatchSize, Eigen::Matrix2d::Identity(), halfPatchSize + 1,
+//     algorithm::applyAffineWarp( refFeature->m_frame, refFeature->m_pixelPosition, halfPatchSize, Eigen::Matrix2d::Identity(),
+//     halfPatchSize + 1,
 //                                 refPatchIntensities );
 
 //     // TODO: optimize the pose
@@ -331,8 +339,10 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
     const uint32_t thresholdZSSD    = patchArea * 128;
     const Eigen::Vector2d locationCenter =
       curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_pixelPosition, initialDepth ) );
-    const Eigen::Vector2d locationMin = curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_pixelPosition, minDepth ) );
-    const Eigen::Vector2d locationMax = curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_pixelPosition, maxDepth ) );
+    const Eigen::Vector2d locationMin =
+      curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_pixelPosition, minDepth ) );
+    const Eigen::Vector2d locationMax =
+      curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_pixelPosition, maxDepth ) );
 
     // FIXME: check with the original code. They don't project to the camera. Just project2d (x/z, y/z)
     const Eigen::Vector2d epipolarDirection = locationMax - locationMin;

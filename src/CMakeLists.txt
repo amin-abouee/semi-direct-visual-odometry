@@ -21,17 +21,17 @@ find_package(nlohmann_json REQUIRED)
 #   -DOpenMP_omp_LIBRARY=/usr/local/opt/libomp/lib/libomp.dylib \
 #   ..
 
-# if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-#     set (OpenMP_C_FLAGS "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
-#     set (OpenMP_C_LIB_NAMES "omp")
-#     set (OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
-#     set (OpenMP_CXX_LIB_NAMES "omp")
-#     set (OpenMP_omp_LIBRARY "/usr/local/opt/libomp/lib/libomp.dylib")
-# endif()
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set (OpenMP_C_FLAGS "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
+    set (OpenMP_C_LIB_NAMES "omp")
+    set (OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
+    set (OpenMP_CXX_LIB_NAMES "omp")
+    set (OpenMP_omp_LIBRARY "/usr/local/opt/libomp/lib/libomp.dylib")
+endif()
 
 # https://cliutils.gitlab.io/modern-cmake/chapters/packages/OpenMP.html
 # https://stackoverflow.com/questions/56202041/compiling-and-linking-against-openmp-with-appleclang-on-mac-os-x-mojave
-# find_package(OpenMP REQUIRED)
+find_package(OpenMP REQUIRED)
 
 # https://github.com/gabime/spdlog/blob/v1.x/example/CMakeLists.txt
 # find_package(spdlog)
@@ -41,8 +41,11 @@ find_package(Threads)
 # https://github.com/lava/matplotlib-cpp
 find_package(Python2 COMPONENTS Development NumPy)
 
-find_package(Doxygen)
 option(BUILD_DOC "Build documentation" OFF)
+if (BUILD_DOC)
+    find_package(Doxygen)
+endif (BUILD_DOC)
+
 
 # https://github.com/xianyi/OpenBLAS/wiki/Faq#debianlts
 # https://github.com/xianyi/OpenBLAS/issues/1394
@@ -112,30 +115,22 @@ target_compile_options(visual_odometry PRIVATE "$<$<CONFIG:RELEASE>:-march=nativ
 # target_compile_options(visual_odometry PRIVATE "$<$<CONFIG:RELEASE>:-stdlib=libc++ -lc++abi>")
 # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
 
-# https://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
-target_compile_definitions(visual_odometry PRIVATE -DEIGEN_MAX_CPP_VER=17 -DEIGEN_INITIALIZE_MATRICES_BY_ZERO -DELPP_THREAD_SAFE -DELPP_FORCE_USE_STD_THREAD -DELPP_STL_LOGGING -DELPP_FRESH_LOG_FILE )
-
-# https://stackoverflow.com/a/31969632/1804533
-# target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE})
 
 # add matplotlibcpp
 target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE} ${Python2_INCLUDE_DIRS} ${Python2_NumPy_INCLUDE_DIRS})
 
-# target_link_libraries (visual_odometry visualizer source)
-# spdlog::spdlog
-target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads)
-
 # http://www.brianlheim.com/2018/04/09/cmake-cheat-sheet.html
 # http://manpages.ubuntu.com/manpages/xenial/man7/cmake-generator-expressions.7.html
 # $<$<VERSION_LESS:$<CXX_COMPILER_VERSION>,4.2.0>:OLD_COMPILER>
-# target_link_libraries(visual_odometry PRIVATE $<$<CXX_COMPILER_ID:GNU>:stdc++fs>)
-# target_link_libraries(visual_odometry PRIVATE stdc++fs)
-
-# target_link_libraries (visual_odometry PRIVATE stdc++fs)
+target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads)
 target_link_libraries (visual_odometry PRIVATE Python2::Python Python2::NumPy)
 
+# https://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
+target_compile_definitions(visual_odometry PRIVATE -DEIGEN_MAX_CPP_VER=17 -DEIGEN_INITIALIZE_MATRICES_BY_ZERO -DELPP_THREAD_SAFE -DELPP_FORCE_USE_STD_THREAD -DELPP_STL_LOGGING -DELPP_FRESH_LOG_FILE -DELPP_FEATURE_PERFORMANCE_TRACKING)
+
+
 if(OpenMP_CXX_FOUND)
-    # target_link_libraries(visual_odometry PRIVATE OpenMP::OpenMP_CXX)
+    target_link_libraries(visual_odometry PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
 # https://stackoverflow.com/a/27558697/1804533
@@ -153,18 +148,18 @@ endif()
 # https://clang.llvm.org/docs/DiagnosticsReference.html
 # https://foonathan.net/2018/10/cmake-warnings/
 # http://www.brianlheim.com/2018/04/09/cmake-cheat-sheet.html
-
 # -Wall -Wextra -pedantic -Wconversion -Wsign-conversion
-
 target_compile_options(visual_odometry
   PRIVATE
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
         -Wall -Wextra -pedantic
     >
     $<$<CXX_COMPILER_ID:MSVC>:
-        W4
+        /W4 /WX
     >
 )
+
+
 # set_target_properties(visual_odometry PROPERTIES CMAKE_CXX_STANDARD_REQUIRED ON)
 # set_target_properties(visual_odometry PROPERTIES CMAKE_CXX_EXTENSIONS ON)
 # set_target_properties(visual_odometry PROPERTIES CXX_STANDARD 17)
@@ -173,12 +168,12 @@ target_compile_options(visual_odometry
 # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
 
 
-#*******
+###############################################################
+# C++17
 # https://cmake.org/cmake/help/latest/manual/cmake-compile-features.7.html
 # https://cmake.org/cmake/help/latest/prop_gbl/CMAKE_CXX_KNOWN_FEATURES.html#prop_gbl:CMAKE_CXX_KNOWN_FEATURES
-#*******
-
 # https://crascit.com/2015/03/28/enabling-cxx11-in-cmake/
+###############################################################
 target_compile_features(visual_odometry PUBLIC cxx_std_17)
 
 
@@ -189,21 +184,26 @@ else()
 	set_target_properties(visual_odometry PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RELEASE_DIR})
 endif()
 
+###############################################################
+# Doxygen Documentation
+###############################################################
 if (BUILD_DOC)
-   set(DOXYGEN_OUTPUT_FOLDER ${CMAKE_SOURCE_DIR}/docs/output)
+    if (DOXYGEN_FOUND)
+        set(DOXYGEN_OUTPUT_FOLDER ${CMAKE_SOURCE_DIR}/docs/output)
 
-    # set input and output files
-    set(DOXYGEN_IN ${CMAKE_SOURCE_DIR}/docs/doxyfile.in)
-    set(DOXYGEN_OUT ${DOXYGEN_OUTPUT_FOLDER}/doxyfile)
+        # set input and output files
+        set(DOXYGEN_IN ${CMAKE_SOURCE_DIR}/docs/doxyfile.in)
+        set(DOXYGEN_OUT ${DOXYGEN_OUTPUT_FOLDER}/doxyfile)
 
-    # request to configure the file
-    configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
-    # message("Doxygen build started")
+        # request to configure the file
+        configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
+        # message("Doxygen build started")
 
-    # note the option ALL which allows to build the docs together with the application
-    add_custom_target( doc_doxygen ALL
-        COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-        COMMENT "Generating HTML Documentation with Doxygen"
-        VERBATIM )
+        # note the option ALL which allows to build the docs together with the application
+        add_custom_target( doc_doxygen ALL
+            COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            COMMENT "Generating HTML Documentation with Doxygen"
+            VERBATIM )
+    endif (DOXYGEN_FOUND)
 endif (BUILD_DOC)

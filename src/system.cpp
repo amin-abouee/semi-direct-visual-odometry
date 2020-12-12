@@ -59,7 +59,7 @@ void System::processFirstFrame()
     // Frame refFrame( camera, refImg );
     // m_featureSelection = std::make_unique< FeatureSelection >( m_curFrame->m_imagePyramid.getBaseImage() );
     // FeatureSelection featureSelection( m_curFrame->m_imagePyramid.getBaseImage() );
-    m_featureSelection->detectFeaturesInGrid( m_curFrame, 0.0 );
+    m_featureSelection->gradientMagnitudeWithSSC(m_curFrame, 50.0f, 250, true);
     // FIXME: check the size of detected points. Less than threshold, re run again
 
     // visualize
@@ -177,7 +177,7 @@ void System::processSecondFrame()
 
     System_Log( INFO ) << "size observation: " << m_curFrame->numberObservation();
     m_featureSelection->setExistingFeatures( m_curFrame->m_features );
-    m_featureSelection->detectFeaturesInGrid( m_curFrame, 0.0 );
+    m_featureSelection->gradientMagnitudeWithSSC(m_curFrame, 50.0f, 250, true);
     System_Log( INFO ) << "size observation after detect: " << m_curFrame->numberObservation();
     // System_Log( INFO ) << "Number of Features: " << m_curFrame->numberObservation();
 

@@ -2,34 +2,38 @@
 
 uint64_t Feature::m_featureCounter;
 
-Feature::Feature( const std::shared_ptr< Frame >& frame, const Eigen::Vector2d& feature, const uint8_t level )
+Feature::Feature( const std::shared_ptr< Frame >& frame,
+                  const Eigen::Vector2d& pixelPosition,
+                  const uint8_t level,
+                  const FeatureType& type )
     : m_id( m_featureCounter++ )
     , m_frame( frame )
-    , m_type( FeatureType::EDGE )
-    , m_pixelPosition( feature )
-    , m_homogenous( feature.x(), feature.y(), 1.0 )
-    , m_bearingVec( m_frame->m_camera->inverseProject2d( feature ) )
-    , m_level( level )
-    , m_gradientOrientation( 0.0 )
+    , m_type( type )
+    , m_pixelPosition( pixelPosition )
+    , m_homogenous( pixelPosition.x(), pixelPosition.y(), 1.0 )
+    , m_bearingVec( m_frame->m_camera->inverseProject2d( pixelPosition ) )
     , m_gradientMagnitude( 1.0 )
+    , m_gradientOrientation( 0.0 )
+    , m_level( level )
     , m_point( nullptr )
 {
 }
 
 Feature::Feature( const std::shared_ptr< Frame >& frame,
-                  const Eigen::Vector2d& feature,
+                  const Eigen::Vector2d& pixelPosition,
                   const double gradientMagnitude,
                   const double gradientOrientation,
-                  const uint8_t level )
+                  const uint8_t level,
+                  const FeatureType& type )
     : m_id( m_featureCounter++ )
     , m_frame( frame )
-    , m_type( FeatureType::EDGE )
-    , m_pixelPosition( feature )
-    , m_homogenous( feature.x(), feature.y(), 1.0 )
-    , m_bearingVec( m_frame->m_camera->inverseProject2d( feature ) )
-    , m_level( level )
-    , m_gradientOrientation( gradientOrientation )
+    , m_type( type )
+    , m_pixelPosition( pixelPosition )
+    , m_homogenous( pixelPosition.x(), pixelPosition.y(), 1.0 )
+    , m_bearingVec( m_frame->m_camera->inverseProject2d( pixelPosition ) )
     , m_gradientMagnitude( gradientMagnitude )
+    , m_gradientOrientation( gradientOrientation )
+    , m_level( level )
     , m_point( nullptr )
 {
 }
