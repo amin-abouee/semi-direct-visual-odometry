@@ -69,6 +69,7 @@ set (LIBRARY_INCLUDE
     ${Sophus_INCLUDE_DIR}
     ${CMAKE_SOURCE_DIR}/3rd_party/easy_logging
     ${CMAKE_SOURCE_DIR}/3rd_party/matplotlib_cpp
+    ${CMAKE_SOURCE_DIR}/3rd_party/simd/include
     )
 
 set(LIBRARY_SOURCES
@@ -123,6 +124,7 @@ target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE} ${Python2_
 # http://manpages.ubuntu.com/manpages/xenial/man7/cmake-generator-expressions.7.html
 # $<$<VERSION_LESS:$<CXX_COMPILER_VERSION>,4.2.0>:OLD_COMPILER>
 target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads)
+target_link_libraries (visual_odometry PRIVATE ${CMAKE_SOURCE_DIR}/3rd_party/simd/lib/libSIMD.a)
 target_link_libraries (visual_odometry PRIVATE Python2::Python Python2::NumPy)
 
 # https://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html

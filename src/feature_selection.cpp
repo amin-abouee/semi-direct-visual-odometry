@@ -1,15 +1,17 @@
 #include "feature_selection.hpp"
 
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+#include <Eigen/Core>
+#define SIMD_OPENCV_ENABLE
+#include <Simd/SimdView.hpp>
+#include <Simd/SimdLib.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <memory>
 #include <vector>
-
-#include <opencv2/core.hpp>
-#include <opencv2/highgui.hpp>
-#include <opencv2/imgproc.hpp>
-
-#include <Eigen/Core>
 
 #include "easylogging++.h"
 #define Feature_Log( LEVEL ) CLOG( LEVEL, "Feature" )
@@ -252,30 +254,43 @@ void FeatureSelection::computeImageGradient(const cv::Mat& imgGray)
     // https://docs.opencv.org/2.4/doc/tutorials/imgproc/imgtrans/sobel_derivatives/sobel_derivatives.html
     // http://ninghang.blogspot.com/2012/11/list-of-mat-type-in-opencv.html
 
-    int ddepth     = CV_32F;
-    int ksize      = 1;
-    double scale   = 1.0;
-    double delta   = 0.0;
-    int borderType = cv::BORDER_DEFAULT;
+    TIMED_FUNC(timerObj);
 
-    cv::Mat dx;
-    cv::Mat dy;
+    // int ddepth     = CV_32F;
+    // int ksize      = 1;
+    // double scale   = 1.0;
+    // double delta   = 0.0;
+    // int borderType = cv::BORDER_DEFAULT;
+
+    // cv::Mat dx;
+    // cv::Mat dy;
 
     // const cv::Mat imgGray = frame.m_imagePyramid.getBaseImage();
     // auto t1 = std::chrono::high_resolution_clock::now();
     // cv::Mat dx, absDx;
-    cv::Sobel( imgGray, dx, ddepth, 1, 0, ksize, scale, delta, borderType );
+    // cv::Sobel( imgGray, dx, ddepth, 1, 0, ksize, scale, delta, borderType );
     // cv::convertScaleAbs( dx, absDx );
 
     // cv::Mat dy, absDy;
-    cv::Sobel( imgGray, dy, ddepth, 0, 1, ksize, scale, delta, borderType );
+    // cv::Sobel( imgGray, dy, ddepth, 0, 1, ksize, scale, delta, borderType );
 
     // m_dx = cv::Mat ( imgGray.size(), CV_32F );
     // m_dy = cv::Mat ( imgGray.size(), CV_32F );
     // computeGradient(imgGray, m_dx, m_dy);
 
     // cv::Mat mag, angle;
-    cv::cartToPolar( dx, dy, m_imgGradientMagnitude, m_imgGradientOrientation, true );
+    // cv::cartToPolar( dx, dy, m_imgGradientMagnitude, m_imgGradientOrientation, true );
+
+    m_imgGradientMagnitude = cv::Mat(imgGray.size(), CV_8U);
+    m_imgGradientOrientation = cv::Mat(imgGray.size(), CV_8U, cv::Scalar(0));
+    
+{
+    TIMED_BLOCK(timerSimd, "simd");
+    Simd::View<Simd::Allocator> src = imgGray;
+    Simd::View<Simd::Allocator> dst = m_imgGradientMagnitude;
+    Simd::AbsGradientSaturatedSum(src, dst);
+    // Simd::PrintInfo(std::cout);
+}
 }
 
 void FeatureSelection::setExistingFeatures (const std::vector<std::shared_ptr<Feature>>& features)

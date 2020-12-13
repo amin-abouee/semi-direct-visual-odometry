@@ -81,8 +81,8 @@ public:
     cv::Mat m_imgGradientMagnitude;       ///< Gradient magnitute of input image (base image)
     cv::Mat m_imgGradientOrientation;     ///< Gradient orientation of input image (base image)
     int32_t m_cellSize;                   ///< Cell size in pixel, when we have a grid
-    int32_t m_gridCols;                   ///< Number of grid columns
     int32_t m_gridRows;                   ///< Number of grid rows
+    int32_t m_gridCols;                   ///< Number of grid columns
     std::vector< bool > m_occupancyGrid;  ///< Grid of bool, when we have a feature in one cell, corresponding cell is 1, otherwise 0
 
 private:
