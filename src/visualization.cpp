@@ -230,7 +230,7 @@ void visualization::drawHistogram( std::map< std::string, std::any >& pack )
         }
 
         // std::cout << "res: " << residuals.size() << ", rug: " << yRugPlot.size() << std::endl;
-        std::unordered_map< std::string, std::string > keywords;
+        std::map< std::string, std::string > keywords;
         keywords[ "zorder" ] = "100";
         plt::subplot2grid( 9, 11, 0, 0, 4, 6 );
         keywords[ "c" ] = medianColor;

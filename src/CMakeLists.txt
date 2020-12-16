@@ -39,7 +39,7 @@ find_package(OpenMP REQUIRED)
 find_package(Threads)
 
 # https://github.com/lava/matplotlib-cpp
-find_package(Python2 COMPONENTS Development NumPy)
+find_package(Python3 COMPONENTS Development NumPy)
 
 option(BUILD_DOC "Build documentation" OFF)
 if (BUILD_DOC)
@@ -118,14 +118,14 @@ target_compile_options(visual_odometry PRIVATE "$<$<CONFIG:RELEASE>:-march=nativ
 
 
 # add matplotlibcpp
-target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE} ${Python2_INCLUDE_DIRS} ${Python2_NumPy_INCLUDE_DIRS})
+target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE})
 
 # http://www.brianlheim.com/2018/04/09/cmake-cheat-sheet.html
 # http://manpages.ubuntu.com/manpages/xenial/man7/cmake-generator-expressions.7.html
 # $<$<VERSION_LESS:$<CXX_COMPILER_VERSION>,4.2.0>:OLD_COMPILER>
 target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads)
 target_link_libraries (visual_odometry PRIVATE ${CMAKE_SOURCE_DIR}/3rd_party/simd/lib/libSIMD.a)
-target_link_libraries (visual_odometry PRIVATE Python2::Python Python2::NumPy)
+target_link_libraries (visual_odometry PRIVATE Python3::Python Python3::NumPy)
 
 # https://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
 target_compile_definitions(visual_odometry PRIVATE -DEIGEN_MAX_CPP_VER=17 -DEIGEN_INITIALIZE_MATRICES_BY_ZERO -DELPP_THREAD_SAFE -DELPP_FORCE_USE_STD_THREAD -DELPP_STL_LOGGING -DELPP_FRESH_LOG_FILE -DELPP_FEATURE_PERFORMANCE_TRACKING)
