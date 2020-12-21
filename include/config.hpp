@@ -36,16 +36,25 @@ public:
     // D'tor
     ~Config() = default;
 
-    nlohmann::json m_configJson;          ///< Json node to the head
+    nlohmann::json m_configJson;  ///< Json node to the head
+
     std::string m_logFilePath;            ///< Path of easylogging log file
     std::string m_cameraCalibrationPath;  ///< Path of camera calibration file
-    int32_t m_imgWidth;                   ///< Image width in pixel
-    int32_t m_imgHeight;                  ///< Image Height in pixel
-    int32_t m_cellPixelSize;              ///< Cell size in pixel for grid
-    int32_t m_patchSizeOpticalFlow;       ///< Patch size of optical flow
-    int32_t m_patchSizeImageAlignment;     ///< Patch size of image alignment
-    int32_t m_minLevelImagePyramid;       ///< Minimim level of image pyramid (0 = finest)
-    int32_t m_maxLevelImagePyramid;       ///< Maximim level of image pyramid (n = coarsest)
+
+    int32_t m_imgWidth;          ///< Image width in pixel
+    int32_t m_imgHeight;         ///< Image Height in pixel
+    bool m_enableVisualization;  ///< Enable visualization
+
+    int32_t m_patchSizeOpticalFlow;                     ///< Patch size of optical flow
+    int32_t m_thresholdGradientMagnitude;               ///< Minimum gradient magnitude threshold to select points
+    uint32_t m_minDetectedPointsSuccessInitialization;  ///< Minimum number points for success initialization
+    uint32_t m_desiredDetectedPointsForInitialization;  ///< Size of Desired detected points in initialization
+    double m_initMapScaleFactor;                        ///< Scale factor of initialize map
+
+    int32_t m_cellPixelSize;            ///< Cell size in pixel for grid
+    int32_t m_patchSizeImageAlignment;  ///< Patch size in pixel for image alignment
+    int32_t m_minLevelImagePyramid;     ///< Minimim level of image pyramid (0 = finest)
+    int32_t m_maxLevelImagePyramid;     ///< Maximim level of image pyramid (n = coarsest)
 
 private:
 };

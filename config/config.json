@@ -1,19 +1,26 @@
 {
     "file_paths": 
     {
+        "camera_calibration_file": "resource/kitti.yaml",
         "log_file" : "./config/log.conf"
     },
     "camera":
     {
-        "camera_calibration": "resource/kitti.yaml",
         "img_width" : 1242,
-        "img_height" : 375
+        "img_height" : 375,
+        "enable_visualization": true
+    },
+    "initialization":
+    {
+        "patch_size_optical_flow" : 11,
+        "threshold_gradient_magnitude" : 20,
+        "min_detected_points" : 100,
+        "desired_detected_points" : 200,
+        "map_scale_factor" : 1.0
     },
     "algorithm":
     {
-        "number_detected_features" : 20,
-        "cell_size_select_features" : 150,
-        "patch_size_optical_flow" : 11,
+        "cell_pixel_size" : 50,
         "patch_size_image_alignment" : 5,
         "min_level_image_pyramid": 0,
         "max_level_image_pyramid": 3

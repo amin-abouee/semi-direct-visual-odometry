@@ -98,6 +98,14 @@ void project3DPoints(
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >&
     drawingFunctor );
 
+///@brief
+///
+///@param img
+///@param frame
+///@param radiusSize
+///@param color
+void colormapDepth( cv::Mat& img, const std::shared_ptr< Frame >& frame, const u_int32_t radiusSize, const std::string& color );
+
 void projectPointsWithRelativePose(
   cv::Mat& img,
   const std::shared_ptr< Frame >& refFrame,

@@ -55,25 +55,24 @@ void System::addImage( const cv::Mat& img, const double timestamp )
 
 void System::processFirstFrame()
 {
-    // m_refFrame = std::make_shared< Frame >( m_camera, firstImg, m_config->m_maxLevelImagePyramid + 1 );
-    // Frame refFrame( camera, refImg );
-    // m_featureSelection = std::make_unique< FeatureSelection >( m_curFrame->m_imagePyramid.getBaseImage() );
-    // FeatureSelection featureSelection( m_curFrame->m_imagePyramid.getBaseImage() );
-    m_featureSelection->gradientMagnitudeWithSSC(m_curFrame, 50.0f, 250, true);
-    // FIXME: check the size of detected points. Less than threshold, re run again
+    TIMED_FUNC(timerFirstImage);
+    m_featureSelection->gradientMagnitudeWithSSC(m_curFrame, m_config->m_thresholdGradientMagnitude, m_config->m_desiredDetectedPointsForInitialization, true);
+    if ( m_curFrame->numberObservation() < m_config->m_minDetectedPointsSuccessInitialization )
+    {
+        System_Log( WARNING ) << "Not sufficient detected feature points!";
+    }
 
     // visualize
-    // {
-    //     cv::Mat gradient = m_featureSelection->m_gradientMagnitude.clone();
-    //     cv::normalize( gradient, gradient, 0, 255, cv::NORM_MINMAX, CV_8U );
-    //     cv::Mat refBGR = visualization::getBGRImage( gradient );
-    //     // cv::Mat refBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
-    //     visualization::featurePoints( refBGR, m_curFrame, 5, "pink", visualization::drawingRectangle );
-    //     visualization::imageGrid( refBGR, m_config->m_cellPixelSize, "amber" );
-    //     cv::imshow( "First Image", refBGR );
-    //     cv::waitKey( 0 );
-    //     // cv::destroyAllWindows();
-    // }
+    if (m_config->m_enableVisualization == true)
+    {
+        cv::Mat gradient = m_featureSelection->m_imgGradientMagnitude.clone();
+        cv::Mat refBGR = visualization::getBGRImage( gradient );
+        visualization::featurePoints( refBGR, m_curFrame, 5, "pink", visualization::drawingRectangle );
+        visualization::imageGrid( refBGR, m_config->m_cellPixelSize, "amber" );
+        cv::imshow( "First Image", refBGR );
+        cv::waitKey( 0 );
+        // cv::destroyAllWindows();
+    }
 
     m_curFrame->setKeyframe();
     m_map->addKeyframe( m_curFrame );
@@ -83,6 +82,7 @@ void System::processFirstFrame()
 
 void System::processSecondFrame()
 {
+    TIMED_FUNC(timerSecondImage);
     System_Log( DEBUG ) << "Number of Features: " << m_refFrame->numberObservation();
 
     Eigen::Matrix3d E;

@@ -1,12 +1,12 @@
 #include "feature_selection.hpp"
 
+#include <Eigen/Core>
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
-#include <Eigen/Core>
 #define SIMD_OPENCV_ENABLE
-#include <Simd/SimdView.hpp>
 #include <Simd/SimdLib.hpp>
+#include <Simd/SimdView.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -25,7 +25,7 @@ FeatureSelection::FeatureSelection( const int32_t width, const int32_t height, c
 }
 
 void FeatureSelection::gradientMagnitudeWithSSC( std::shared_ptr< Frame >& frame,
-                                                 const float detectionThreshold,
+                                                 const uint32_t detectionThreshold,
                                                  const uint32_t numberCandidate,
                                                  const bool useBucketing )
 {
@@ -42,10 +42,10 @@ void FeatureSelection::gradientMagnitudeWithSSC( std::shared_ptr< Frame >& frame
     {
         for ( int32_t j( 0 ); j < width; j++ )
         {
-            if ( m_imgGradientMagnitude.at< float >( i, j ) > detectionThreshold )
+            if ( m_imgGradientMagnitude.at< uint8_t >( i, j ) > detectionThreshold )
             {
-                keyPoints.emplace_back( cv::KeyPoint( cv::Point2i( j, i ), 1.0, m_imgGradientOrientation.at< float >( i, j ),
-                                                      m_imgGradientMagnitude.at< float >( i, j ) ) );
+                keyPoints.emplace_back( cv::KeyPoint( cv::Point2i( j, i ), 1.0, m_imgGradientOrientation.at< uint8_t >( i, j ),
+                                                      m_imgGradientMagnitude.at< uint8_t >( i, j ) ) );
             }
         }
     }
@@ -64,8 +64,8 @@ void FeatureSelection::gradientMagnitudeWithSSC( std::shared_ptr< Frame >& frame
         for ( unsigned int i = 0; i < resultVec.size(); i++ )
         {
             const auto& kp = keyPoints[ resultVec[ i ] ];
-            uint32_t idx   = static_cast< uint32_t >( kp.pt.x / m_cellSize );
-            uint32_t idy   = static_cast< uint32_t >( kp.pt.y / m_cellSize );
+            int32_t idx    = static_cast< int32_t >( kp.pt.x ) / m_cellSize;
+            int32_t idy    = static_cast< int32_t >( kp.pt.y ) / m_cellSize;
             if ( m_occupancyGrid[ idy * m_gridCols + idx ] == false )
             {
                 m_occupancyGrid[ idy * m_gridCols + idx ] = true;
@@ -89,7 +89,9 @@ void FeatureSelection::gradientMagnitudeWithSSC( std::shared_ptr< Frame >& frame
     }
 }
 
-void FeatureSelection::gradientMagnitudeByValue( std::shared_ptr< Frame >& frame, const float detectionThreshold, const bool useBucketing )
+void FeatureSelection::gradientMagnitudeByValue( std::shared_ptr< Frame >& frame,
+                                                 const uint32_t detectionThreshold,
+                                                 const bool useBucketing )
 {
     const int32_t width  = frame->m_camera->width();
     const int32_t height = frame->m_camera->height();
@@ -114,7 +116,7 @@ void FeatureSelection::gradientMagnitudeByValue( std::shared_ptr< Frame >& frame
                 const int32_t maxROwIdx = ( r + 1 ) * m_cellSize < height ? m_cellSize : height - ( r * m_cellSize );
                 const cv::Rect PatchROI( c * m_cellSize, r * m_cellSize, maxColIdx, maxROwIdx );
                 const cv::Mat gradientPatch = m_imgGradientMagnitude( PatchROI );
-                float max                   = 0.0f;
+                uint32_t max                 = 0;
                 int32_t rowIdx              = 0;
                 int32_t colIdx              = 0;
                 // for over all pixels of a cell
@@ -122,11 +124,11 @@ void FeatureSelection::gradientMagnitudeByValue( std::shared_ptr< Frame >& frame
                 {
                     for ( int32_t j( 0 ); j < maxColIdx; j++ )
                     {
-                        if ( gradientPatch.at< float >( i, j ) > max )
+                        if ( gradientPatch.at< uint8_t >( i, j ) > max )
                         {
                             rowIdx = r * m_cellSize + i;
                             colIdx = c * m_cellSize + j;
-                            max    = gradientPatch.at< float >( i, j );
+                            max    = gradientPatch.at< uint8_t >( i, j );
                         }
                     }
                 }
@@ -134,8 +136,8 @@ void FeatureSelection::gradientMagnitudeByValue( std::shared_ptr< Frame >& frame
                 if ( max > detectionThreshold )
                 {
                     std::shared_ptr< Feature > feature = std::make_shared< Feature >(
-                      frame, Eigen::Vector2d( colIdx, rowIdx ), m_imgGradientMagnitude.at< float >( rowIdx, colIdx ),
-                      m_imgGradientOrientation.at< float >( rowIdx, colIdx ), 0, Feature::FeatureType::EDGE );
+                      frame, Eigen::Vector2d( colIdx, rowIdx ), m_imgGradientMagnitude.at< uint8_t >( rowIdx, colIdx ),
+                      m_imgGradientOrientation.at< uint8_t >( rowIdx, colIdx ), 0, Feature::FeatureType::EDGE );
                     frame->addFeature( feature );
                 }
             }
@@ -152,8 +154,8 @@ void FeatureSelection::gradientMagnitudeByValue( std::shared_ptr< Frame >& frame
                 if ( m_imgGradientMagnitude.at< float >( r, c ) > detectionThreshold )
                 {
                     std::shared_ptr< Feature > feature =
-                      std::make_shared< Feature >( frame, Eigen::Vector2d( c, r ), m_imgGradientMagnitude.at< float >( r, c ),
-                                                   m_imgGradientOrientation.at< float >( r, c ), 0, Feature::FeatureType::EDGE );
+                      std::make_shared< Feature >( frame, Eigen::Vector2d( c, r ), m_imgGradientMagnitude.at< uint8_t >( r, c ),
+                                                   m_imgGradientOrientation.at< uint8_t >( r, c ), 0, Feature::FeatureType::EDGE );
                     frame->addFeature( feature );
                 }
             }
@@ -246,7 +248,7 @@ void FeatureSelection::SSC( const std::vector< cv::KeyPoint >& keyPoints,
     }
 }
 
-void FeatureSelection::computeImageGradient(const cv::Mat& imgGray)
+void FeatureSelection::computeImageGradient( const cv::Mat& imgGray )
 {
     // https://answers.opencv.org/question/199237/most-accurate-visual-representation-of-gradient-magnitude/
     // https://answers.opencv.org/question/136622/how-to-calculate-gradient-in-c-using-opencv/
@@ -254,63 +256,37 @@ void FeatureSelection::computeImageGradient(const cv::Mat& imgGray)
     // https://docs.opencv.org/2.4/doc/tutorials/imgproc/imgtrans/sobel_derivatives/sobel_derivatives.html
     // http://ninghang.blogspot.com/2012/11/list-of-mat-type-in-opencv.html
 
-    TIMED_FUNC(timerObj);
+    TIMED_FUNC( timerObj );
 
-    // int ddepth     = CV_32F;
-    // int ksize      = 1;
-    // double scale   = 1.0;
-    // double delta   = 0.0;
-    // int borderType = cv::BORDER_DEFAULT;
+    m_imgGradientMagnitude   = cv::Mat( imgGray.size(), CV_8U );
+    m_imgGradientOrientation = cv::Mat( imgGray.size(), CV_8U, cv::Scalar( 0 ) );
 
-    // cv::Mat dx;
-    // cv::Mat dy;
-
-    // const cv::Mat imgGray = frame.m_imagePyramid.getBaseImage();
-    // auto t1 = std::chrono::high_resolution_clock::now();
-    // cv::Mat dx, absDx;
-    // cv::Sobel( imgGray, dx, ddepth, 1, 0, ksize, scale, delta, borderType );
-    // cv::convertScaleAbs( dx, absDx );
-
-    // cv::Mat dy, absDy;
-    // cv::Sobel( imgGray, dy, ddepth, 0, 1, ksize, scale, delta, borderType );
-
-    // m_dx = cv::Mat ( imgGray.size(), CV_32F );
-    // m_dy = cv::Mat ( imgGray.size(), CV_32F );
-    // computeGradient(imgGray, m_dx, m_dy);
-
-    // cv::Mat mag, angle;
-    // cv::cartToPolar( dx, dy, m_imgGradientMagnitude, m_imgGradientOrientation, true );
-
-    m_imgGradientMagnitude = cv::Mat(imgGray.size(), CV_8U);
-    m_imgGradientOrientation = cv::Mat(imgGray.size(), CV_8U, cv::Scalar(0));
-
-{
-    TIMED_SCOPE(timerSimd, "simd");
-    Simd::View<Simd::Allocator> src = imgGray;
-    Simd::View<Simd::Allocator> dst = m_imgGradientMagnitude;
-    Simd::AbsGradientSaturatedSum(src, dst);
-    Simd::PrintInfo(std::cout);
-    // cv::imwrite("gradient.png", m_imgGradientMagnitude);
-}
-}
-
-void FeatureSelection::setExistingFeatures (const std::vector<std::shared_ptr<Feature>>& features)
-{
-    for(const auto& feature : features)
     {
-        setCellInGridOccupancy(feature->m_pixelPosition);
+        TIMED_SCOPE( timerSimd, "simd" );
+        Simd::View< Simd::Allocator > src = imgGray;
+        Simd::View< Simd::Allocator > dst = m_imgGradientMagnitude;
+        Simd::AbsGradientSaturatedSum( src, dst );
+        // Simd::PrintInfo(std::cout);
+        // cv::imwrite("gradient.png", m_imgGradientMagnitude);
     }
 }
 
-
-void FeatureSelection::setCellInGridOccupancy(const Eigen::Vector2d& location)
+void FeatureSelection::setExistingFeatures( const std::vector< std::shared_ptr< Feature > >& features )
 {
-    uint32_t idx = location.x() / m_cellSize;
-    uint32_t idy = location.y() / m_cellSize;
-    m_occupancyGrid[idy * m_gridCols + idx] = true;
+    for ( const auto& feature : features )
+    {
+        setCellInGridOccupancy( feature->m_pixelPosition );
+    }
 }
 
-void FeatureSelection::resetGridOccupancy ()
+void FeatureSelection::setCellInGridOccupancy( const Eigen::Vector2d& location )
 {
-    std::fill(m_occupancyGrid.begin(), m_occupancyGrid.end(), false);
+    uint32_t idx                              = location.x() / m_cellSize;
+    uint32_t idy                              = location.y() / m_cellSize;
+    m_occupancyGrid[ idy * m_gridCols + idx ] = true;
+}
+
+void FeatureSelection::resetGridOccupancy()
+{
+    std::fill( m_occupancyGrid.begin(), m_occupancyGrid.end(), false );
 }

@@ -57,7 +57,7 @@ public:
     ///@param[in] numberCandidate Maximum number of candidate
     ///@param[in] useBucketing enable/disable bucketing algorithm (grid)
     void gradientMagnitudeWithSSC( std::shared_ptr< Frame >& frame,
-                                   const float detectionThreshold,
+                                   const uint32_t detectionThreshold,
                                    const uint32_t numberCandidate,
                                    const bool useBucketing = true );
 
@@ -66,7 +66,7 @@ public:
     ///@param[in, out] frame Frame object
     ///@param[in] detectionThreshold Threshold for gradient magnitude
     ///@param[in] useBucketing enable/disable bucketing algorithm (grid)
-    void gradientMagnitudeByValue( std::shared_ptr< Frame >& frame, const float detectionThreshold, const bool useBucketing = true );
+    void gradientMagnitudeByValue( std::shared_ptr< Frame >& frame, const uint32_t detectionThreshold, const bool useBucketing = true );
 
     ///@brief Set the Existing feature in corresponding cell
     ///

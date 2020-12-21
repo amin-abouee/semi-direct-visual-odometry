@@ -407,6 +407,59 @@ void visualization::project3DPoints(
     }
 }
 
+void visualization::colormapDepth( cv::Mat& img,
+                                   const std::shared_ptr< Frame >& frame,
+                                   const u_int32_t radiusSize,
+                                   const std::string& color )
+{
+    cv::Scalar colorRGB;
+    if ( colors.find( color ) != colors.end() )
+        colorRGB = colors.at( color );
+    else
+        colorRGB = colors.at( "white" );
+
+    // const Eigen::Vector3d C = frame->cameraInWorld();
+    const auto szPoints     = frame->numberObservation();
+    std::vector< double > depths( szPoints, 0.0 );
+    double minDepth = std::numeric_limits< double >::max();
+    double maxDepth = 0.0;
+    for ( std::size_t i( 0 ); i < szPoints; i++ )
+    {
+        const auto& feature = frame->m_features[ i ];
+        const double depth  = ( frame->m_absPose * feature->m_point->m_position ).z();
+        depths[ i ]         = depth;
+        minDepth            = depth < minDepth ? depth : minDepth;
+        maxDepth            = depth > maxDepth ? depth : maxDepth;
+    }
+    const double rangeDepth = maxDepth - minDepth;
+    Visualization_Log( DEBUG ) << "depth min: " << minDepth << ", max: " << maxDepth << ", range: " << rangeDepth;
+
+    cv::Mat normMag, imgBGR, imgHSV;
+    cv::normalize( img, img, 0, 255, cv::NORM_MINMAX, CV_8UC1 );
+    cv::cvtColor( img, imgBGR, cv::COLOR_GRAY2BGR );
+    cv::cvtColor( imgBGR, imgHSV, cv::COLOR_BGR2HSV );
+
+    for ( std::size_t i( 0 ); i < szPoints; i++ )
+    {
+        // if (depths[i] < 1.0)
+        // {
+        const auto& feature   = frame->m_features[ i ];
+        // cv::Vec3b& px         = imgHSV.at< cv::Vec3b >( cv::Point( feature->m_pixelPosition.y(), feature->m_pixelPosition.x() ) );
+        const double fraction = ( depths[ i ] ) - minDepth / ( rangeDepth );
+        const uint8_t hue     = static_cast< uint8_t >( fraction * 240 );
+        Visualization_Log( DEBUG ) << "hue: " << uint32_t(hue);
+        cv::Scalar color( 88, 71, 6 );
+        cv::rectangle( imgHSV, cv::Point2d( feature->m_pixelPosition.x() - radiusSize, feature->m_pixelPosition.y() - radiusSize ),
+                       cv::Point2d( feature->m_pixelPosition.x() + radiusSize, feature->m_pixelPosition.y() + radiusSize ), color, 2 );
+        // px[ 0 ]          = static_cast< uint8_t >( color[ 0 ] );
+        // px[ 1 ]          = static_cast< uint8_t >( color[ 1 ] );
+        // px[ 2 ]          = static_cast< uint8_t >( color[ 2 ] );
+        // }
+    }
+    cv::cvtColor( imgHSV, imgBGR, cv::COLOR_HSV2BGR );
+    img = imgBGR;
+}
+
 void visualization::projectPointsWithRelativePose(
   cv::Mat& img,
   const std::shared_ptr< Frame >& refFrame,
