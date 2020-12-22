@@ -12,7 +12,7 @@
 
 DepthEstimator::DepthEstimator( std::shared_ptr< FeatureSelection >& featureSelection )
     : m_deletedKeyframe( nullptr )
-    , m_featureSelection( featureSelection )
+    , m_featureSelector( featureSelection )
     , m_newKeyframeMinDepth( 0.0 )
     , m_newKeyframeMeanDepth( 0.0 )
     , m_haltUpdatingDepthFilter( false )
@@ -284,7 +284,7 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
             const Eigen::Vector2d newLocation =
               frame->camera2image( relativePose * frame->image2camera( depthFilter.m_feature->m_pixelPosition, 1.0 / depthFilter.m_mu ) );
             // TODO: we need to set the corresponding location in our grid
-            m_featureSelection->setCellInGridOccupancy( newLocation );
+            m_featureSelector->setCellInGridOccupancy( newLocation );
         }
 
         // if the filter has converged, we initialize a new candidate point and remove the seed

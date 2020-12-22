@@ -67,7 +67,7 @@ option(COMPILE_WITH_OFAST "Compile with -Ofast optimization" OFF)
 set (LIBRARY_INCLUDE
     ${CMAKE_SOURCE_DIR}/include
     ${Sophus_INCLUDE_DIR}
-    ${CMAKE_SOURCE_DIR}/3rd_party/easy_logging
+    ${CMAKE_SOURCE_DIR}/3rd_party/easy_logging/include
     ${CMAKE_SOURCE_DIR}/3rd_party/matplotlib_cpp
     ${CMAKE_SOURCE_DIR}/3rd_party/simd/include
     )
@@ -123,7 +123,8 @@ target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE})
 # http://www.brianlheim.com/2018/04/09/cmake-cheat-sheet.html
 # http://manpages.ubuntu.com/manpages/xenial/man7/cmake-generator-expressions.7.html
 # $<$<VERSION_LESS:$<CXX_COMPILER_VERSION>,4.2.0>:OLD_COMPILER>
-target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads)
+# target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads ${CMAKE_SOURCE_DIR}/3rd_party/simd/lib/libSIMD.a ${CMAKE_SOURCE_DIR}/3rd_party/easy_logging/lib/libeasylogging.a)
+target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads ${CMAKE_SOURCE_DIR}/3rd_party/simd/lib/libSIMD.a)
 target_link_libraries (visual_odometry PRIVATE ${CMAKE_SOURCE_DIR}/3rd_party/simd/lib/libSIMD.a)
 target_link_libraries (visual_odometry PRIVATE Python3::Python Python3::NumPy)
 

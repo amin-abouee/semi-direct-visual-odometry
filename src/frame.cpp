@@ -3,7 +3,7 @@
 
 uint64_t Frame::m_frameCounter = 0;
 
-Frame::Frame( const std::shared_ptr< PinholeCamera >& camera, const cv::Mat& img, const uint32_t maxImagePyramid, const double timestamp )
+Frame::Frame( const std::shared_ptr< PinholeCamera >& camera, const cv::Mat& img, const uint32_t maxImagePyramid, const uint64_t timestamp )
     : m_id( m_frameCounter++ )
     , m_camera( camera )
     , m_absPose( Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero() )

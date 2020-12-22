@@ -40,7 +40,7 @@ public:
     std::queue< std::shared_ptr< Frame > > m_queueFrames;
     std::vector< MixedGaussianFilter > m_depthFilters;
 
-    std::shared_ptr< FeatureSelection > m_featureSelection;
+    std::shared_ptr< FeatureSelection > m_featureSelector;
 
     double m_newKeyframeMinDepth;
     double m_newKeyframeMeanDepth;

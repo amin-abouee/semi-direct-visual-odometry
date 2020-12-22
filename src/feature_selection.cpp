@@ -261,14 +261,11 @@ void FeatureSelection::computeImageGradient( const cv::Mat& imgGray )
     m_imgGradientMagnitude   = cv::Mat( imgGray.size(), CV_8U );
     m_imgGradientOrientation = cv::Mat( imgGray.size(), CV_8U, cv::Scalar( 0 ) );
 
-    {
-        TIMED_SCOPE( timerSimd, "simd" );
-        Simd::View< Simd::Allocator > src = imgGray;
-        Simd::View< Simd::Allocator > dst = m_imgGradientMagnitude;
-        Simd::AbsGradientSaturatedSum( src, dst );
-        // Simd::PrintInfo(std::cout);
-        // cv::imwrite("gradient.png", m_imgGradientMagnitude);
-    }
+    Simd::View< Simd::Allocator > src = imgGray;
+    Simd::View< Simd::Allocator > dst = m_imgGradientMagnitude;
+    Simd::AbsGradientSaturatedSum( src, dst );
+    // Simd::PrintInfo(std::cout);
+
 }
 
 void FeatureSelection::setExistingFeatures( const std::vector< std::shared_ptr< Feature > >& features )

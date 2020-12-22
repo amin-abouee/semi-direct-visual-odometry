@@ -25,46 +25,20 @@
 // | CV_64F |  6 | 14 | 22 | 30 |   38 |   46 |   54 |   62 |
 // +--------+----+----+----+----+------+------+------+------+
 
-// void algorithm::pointsRefCamera( const std::shared_ptr<Frame>& refFrame, const std::shared_ptr<Frame>& curFrame, Eigen::MatrixXd&
-// pointsRefCamera )
-// {
-//     const auto featureSz = refFrame.numberObservation();
-//     Eigen::Vector2d refFeature;
-//     Eigen::Vector2d curFeature;
-//     Eigen::Vector3d pointWorld;
-//     for ( std::size_t i( 0 ); i < featureSz; i++ )
-//     {
-//         refFeature = refFrame.m_features[ i ]->m_pixelPosition;
-//         curFeature = curFrame.m_features[ i ]->m_pixelPosition;
-//         triangulatePointDLT( refFrame, curFrame, refFeature, curFeature, pointWorld );
-//         pointsRefCamera.col( i ) = refFrame.world2camera( pointWorld );
-//     }
-// }
-
-// void algorithm::pointsCurCamera( const std::shared_ptr<Frame>& refFrame, const std::shared_ptr<Frame>& curFrame, Eigen::MatrixXd&
-// pointsCurCamera )
-// {
-//     const auto featureSz = refFrame.numberObservation();
-//     Eigen::Vector2d refFeature;
-//     Eigen::Vector2d curFeature;
-//     Eigen::Vector3d pointWorld;
-//     for ( std::size_t i( 0 ); i < featureSz; i++ )
-//     {
-//         refFeature = refFrame.m_features[ i ]->m_pixelPosition;
-//         curFeature = curFrame.m_features[ i ]->m_pixelPosition;
-//         triangulatePointDLT( refFrame, curFrame, refFeature, curFeature, pointWorld );
-//         pointsCurCamera.col( i ) = curFrame.world2camera( pointWorld );
-//     }
-// }
-
 void algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame, std::shared_ptr< Frame >& curFrame, const uint32_t patchSize )
 {
-    const cv::Mat& refImg = refFrame->m_imagePyramid.getBaseImage();
-    const cv::Mat& curImg = curFrame->m_imagePyramid.getBaseImage();
+    TIMED_FUNC( timerOpticalFlow );
+    const cv::Mat& refImg         = refFrame->m_imagePyramid.getBaseImage();
+    const cv::Mat& curImg         = curFrame->m_imagePyramid.getBaseImage();
+    const uint64_t refObservation = refFrame->numberObservation();
     std::vector< cv::Point2f > refPoints;
+    refPoints.reserve( refObservation );
     std::vector< cv::Point2f > curPoints;
+    curPoints.reserve( refObservation );
     std::vector< uchar > status;
-    std::vector< float > err;
+    status.reserve( refObservation );
+    std::vector< float > errors;
+    errors.reserve( refObservation );
     const int maxIteration    = 30;
     const double epsilonError = 1e-4;
 
@@ -76,14 +50,12 @@ void algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame, st
           cv::Point2f( static_cast< float >( features->m_pixelPosition.x() ), static_cast< float >( features->m_pixelPosition.y() ) ) );
     }
 
-    // std::transform(
-    //   refFrame.m_features.cbegin(), refFrame.m_features.cend(), std::back_inserter( refPoints ),
-    //   []( const auto& features ) { return cv::Point2f( features->m_pixelPosition.x(), features->m_pixelPosition.y() ); } );
-
     cv::TermCriteria termcrit( cv::TermCriteria::COUNT + cv::TermCriteria::EPS, maxIteration, epsilonError );
-    cv::calcOpticalFlowPyrLK( refImg, curImg, refPoints, curPoints, status, err, cv::Size( patchSize, patchSize ), 3, termcrit,
+    cv::calcOpticalFlowPyrLK( refImg, curImg, refPoints, curPoints, status, errors, cv::Size( patchSize, patchSize ), 3, termcrit,
                               cv::OPTFLOW_USE_INITIAL_FLOW );
 
+    std::vector< double > disparity;
+    disparity.reserve( refObservation );
     for ( std::size_t i( 0 ); i < curPoints.size(); i++ )
     {
         if ( status[ i ] == true )
@@ -91,19 +63,30 @@ void algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame, st
             std::shared_ptr< Feature > newFeature =
               std::make_shared< Feature >( curFrame, Eigen::Vector2d( curPoints[ i ].x, curPoints[ i ].y ), 0.0, 0.0, 0 );
             curFrame->addFeature( newFeature );
+
+            disparity.push_back( Eigen::Vector2d( refPoints[ i ].x - curPoints[ i ].x, refPoints[ i ].y - curPoints[ i ].y ).norm() );
         }
     }
 
-    // uint32_t cnt = 0;
+    Eigen::Map< Eigen::Matrix< double, 1, Eigen::Dynamic > > mapDisparity( disparity.data(), disparity.size() );
+    double medianDisparity = algorithm::computeMedian( mapDisparity );
+    Algorithm_Log( DEBUG ) << "disparity: " << medianDisparity;
+
+    uint32_t cnt = 0;
     /// if status[i] == true, it have to return false because we dont want to remove it from our container
-    // auto isNotValid = [ &cnt, &status ]( const auto& feature ) { return status[ cnt++ ] ? false : true; };
-    // TODO:Need to be tested
-    auto isNotValid = [ &refFrame, &status ]( const std::shared_ptr< Feature >& feature ) {
-        int32_t idx = feature.get() - refFrame->m_features.begin()->get();
-        return status[ idx ] ? false : true;
+    auto isNotValid = [ &cnt, &status ]( const auto& feature ) {
+        if ( feature != nullptr && status[ cnt++ ] == 1 )
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
     };
 
     // https://en.wikipedia.org/wiki/Erase%E2%80%93remove_idiom
+    // removed non-tracked points from reference frame
     refFrame->m_features.erase( std::remove_if( refFrame->m_features.begin(), refFrame->m_features.end(), isNotValid ),
                                 refFrame->m_features.end() );
 

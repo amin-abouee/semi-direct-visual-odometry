@@ -30,6 +30,13 @@ class System final
         Process_Paused         = 5
     };
 
+    enum class Result : uint8_t
+    {
+        Success = 0,
+        Failed = 1,
+        Keyframe = 2
+    };
+
 public:
     explicit System( const std::shared_ptr< Config >& config );
     System( const System& rhs ) = delete;
@@ -38,7 +45,7 @@ public:
     System& operator=( System&& rhs ) = delete;
     ~System()                         = default;
 
-    void addImage( const cv::Mat& img, const double timestamp );
+    void addImage( const cv::Mat& img, const uint64_t timestamp );
 
     void reportSummaryFrames();
     void reportSummaryFeatures();
@@ -49,16 +56,16 @@ private:
     bool needKeyframe( const double sceneDepthMean, const std::vector< frameSize >& overlapKeyFrames );
     // void makeKeyframe( std::shared_ptr< Frame >& frame, const double& depthMean, const double& depthMin );
 
-    void processFirstFrame();
-    void processSecondFrame();
-    void processNewFrame();
-    void relocalizeFrame( Sophus::SE3d& pose, std::shared_ptr< Frame >& closestKeyframe );
+    Result processFirstFrame();
+    Result processSecondFrame();
+    Result processNewFrame();
+    Result relocalizeFrame( Sophus::SE3d& pose, std::shared_ptr< Frame >& closestKeyframe );
 
     const std::shared_ptr< Config > m_config;
     std::shared_ptr< PinholeCamera > m_camera;
     std::shared_ptr< Frame > m_refFrame;
     std::shared_ptr< Frame > m_curFrame;
-    std::shared_ptr< FeatureSelection > m_featureSelection;
+    std::shared_ptr< FeatureSelection > m_featureSelector;
     std::vector< std::shared_ptr< Frame > > m_keyFrames;
     std::unique_ptr< DepthEstimator > m_depthEstimator;
     std::unique_ptr< Map > m_map;

@@ -16,73 +16,76 @@ System::System( const std::shared_ptr< Config >& config ) : m_config( config ), 
     cv::Mat cameraMatrix;
     cv::Mat distortionCoeffs;
     loadCameraIntrinsics( calibrationFile, cameraMatrix, distortionCoeffs );
-    m_camera           = std::make_shared< PinholeCamera >( m_config->m_imgWidth, m_config->m_imgHeight, cameraMatrix, distortionCoeffs );
-    m_alignment        = std::make_shared< ImageAlignment >( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid,
+    m_camera          = std::make_shared< PinholeCamera >( m_config->m_imgWidth, m_config->m_imgHeight, cameraMatrix, distortionCoeffs );
+    m_alignment       = std::make_shared< ImageAlignment >( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid,
                                                       m_config->m_maxLevelImagePyramid, 6 );
-    m_featureSelection = std::make_shared< FeatureSelection >( m_config->m_imgWidth, m_config->m_imgHeight, m_config->m_cellPixelSize );
-    m_depthEstimator   = std::make_unique< DepthEstimator >( m_featureSelection );
-    m_map              = std::make_unique< Map >( m_camera, 32 );
-    m_bundler          = std::make_shared< BundleAdjustment >( 0, 6 );
+    m_featureSelector = std::make_shared< FeatureSelection >( m_config->m_imgWidth, m_config->m_imgHeight, m_config->m_cellPixelSize );
+    m_depthEstimator  = std::make_unique< DepthEstimator >( m_featureSelector );
+    m_map             = std::make_unique< Map >( m_camera, 32 );
+    m_bundler         = std::make_shared< BundleAdjustment >( 0, 6 );
 }
 
-void System::addImage( const cv::Mat& img, const double timestamp )
+void System::addImage( const cv::Mat& img, const uint64_t timestamp )
 {
     m_curFrame = std::make_shared< Frame >( m_camera, img, m_config->m_maxLevelImagePyramid + 1, timestamp );
     System_Log( INFO ) << "Processing frame id: " << m_curFrame->m_id;
+    System::Result res;
 
     if ( m_systemStatus == System::Status::Procese_New_Frame )
     {
-        processNewFrame();
+        res = processNewFrame();
     }
     else if ( m_systemStatus == System::Status::Process_Second_Frame )
     {
-        processSecondFrame();
+        res = processSecondFrame();
     }
     else if ( m_systemStatus == System::Status::Process_First_Frame )
     {
-        processFirstFrame();
+        res = processFirstFrame();
     }
     else if ( m_systemStatus == System::Status::Process_Relocalization )
     {
-        std::shared_ptr<Frame> closestKeyframe {nullptr};
-        m_map->getClosestKeyframe(m_curFrame, closestKeyframe);
+        std::shared_ptr< Frame > closestKeyframe{ nullptr };
+        m_map->getClosestKeyframe( m_curFrame, closestKeyframe );
         Sophus::SE3d pose;
-        relocalizeFrame(pose, closestKeyframe);
+        res = relocalizeFrame( pose, closestKeyframe );
     }
 
     m_refFrame = std::move( m_curFrame );
 }
 
-void System::processFirstFrame()
+System::Result System::processFirstFrame()
 {
-    TIMED_FUNC(timerFirstImage);
-    m_featureSelection->gradientMagnitudeWithSSC(m_curFrame, m_config->m_thresholdGradientMagnitude, m_config->m_desiredDetectedPointsForInitialization, true);
+    TIMED_FUNC( timerFirstImage );
+    m_featureSelector->gradientMagnitudeWithSSC( m_curFrame, m_config->m_thresholdGradientMagnitude,
+                                                 m_config->m_desiredDetectedPointsForInitialization, true );
+    // m_featureSelector->gradientMagnitudeByValue(m_curFrame, m_config->m_thresholdGradientMagnitude, true);
     if ( m_curFrame->numberObservation() < m_config->m_minDetectedPointsSuccessInitialization )
     {
         System_Log( WARNING ) << "Not sufficient detected feature points!";
+        return Result::Failed;
     }
 
     // visualize
-    if (m_config->m_enableVisualization == true)
+    if ( m_config->m_enableVisualization == true )
     {
-        cv::Mat gradient = m_featureSelection->m_imgGradientMagnitude.clone();
-        cv::Mat refBGR = visualization::getBGRImage( gradient );
+        cv::Mat gradient = m_featureSelector->m_imgGradientMagnitude.clone();
+        cv::Mat refBGR   = visualization::getBGRImage( gradient );
         visualization::featurePoints( refBGR, m_curFrame, 5, "pink", visualization::drawingRectangle );
         visualization::imageGrid( refBGR, m_config->m_cellPixelSize, "amber" );
         cv::imshow( "First Image", refBGR );
-        cv::waitKey( 0 );
-        // cv::destroyAllWindows();
     }
 
     m_curFrame->setKeyframe();
     m_map->addKeyframe( m_curFrame );
     System_Log( DEBUG ) << "Number of Features: " << m_curFrame->numberObservation();
     m_systemStatus = System::Status::Process_Second_Frame;
+    return Result::Success;
 }
 
-void System::processSecondFrame()
+System::Result System::processSecondFrame()
 {
-    TIMED_FUNC(timerSecondImage);
+    TIMED_FUNC( timerSecondImage );
     System_Log( DEBUG ) << "Number of Features: " << m_refFrame->numberObservation();
 
     Eigen::Matrix3d E;
@@ -93,7 +96,6 @@ void System::processSecondFrame()
     // we find teh corresponding point in curFrame and create feature for them
     algorithm::computeOpticalFlowSparse( m_refFrame, m_curFrame, m_config->m_patchSizeOpticalFlow );
     algorithm::computeEssentialMatrix( m_refFrame, m_curFrame, 1.0, E );
-    // F = m_curFrame->m_camera->invK().transpose() * E * m_refFrame->m_camera->invK();
 
     // TODO: check the number of matched!!!
 
@@ -113,7 +115,6 @@ void System::processSecondFrame()
     algorithm::transferPointsWorldToCam( m_curFrame, pointsWorld, pointsCurCamera );
     algorithm::depthCamera( m_curFrame, pointsWorld, depthCurFrame );
     double medianDepth = algorithm::computeMedian( depthCurFrame );
-    // System_Log( DEBUG ) << "Median depth in current frame: " << medianDepth;
     {
         const double minDepth = depthCurFrame.minCoeff();
         const double maxDepth = depthCurFrame.maxCoeff();
@@ -121,7 +122,7 @@ void System::processSecondFrame()
     }
 
     // scale the depth
-    const double scale = 1.0 / medianDepth;
+    const double scale = m_config->m_initMapScaleFactor / medianDepth;
 
     // t = -RC
     // In this formula, we assume, the W = K_{1}, means the m_refFrame->cameraInWorld() = (0, 0, 0)
@@ -154,12 +155,12 @@ void System::processSecondFrame()
 
     // remove the features that doesn't have the 3D point
     m_refFrame->m_features.erase( std::remove_if( m_refFrame->m_features.begin(), m_refFrame->m_features.end(),
-                                                       []( const auto& feature ) { return feature->m_point == nullptr; } ),
-                                       m_refFrame->m_features.end() );
+                                                  []( const auto& feature ) { return feature->m_point == nullptr; } ),
+                                  m_refFrame->m_features.end() );
 
     m_curFrame->m_features.erase( std::remove_if( m_curFrame->m_features.begin(), m_curFrame->m_features.end(),
-                                                       []( const auto& feature ) { return feature->m_point == nullptr; } ),
-                                       m_curFrame->m_features.end() );
+                                                  []( const auto& feature ) { return feature->m_point == nullptr; } ),
+                                  m_curFrame->m_features.end() );
 
     System_Log( INFO ) << "Init Points: " << pointsWorld.cols() << ", ref obs: " << m_refFrame->numberObservation()
                        << ", cur obs: " << m_curFrame->numberObservation() << ", number of removed: " << pointsWorld.cols() - cnt;
@@ -173,42 +174,51 @@ void System::processSecondFrame()
     medianDepth           = algorithm::computeMedian( newCurDepths );
     const double minDepth = newCurDepths.minCoeff();
     const double maxDepth = newCurDepths.maxCoeff();
-    System_Log( INFO ) << "After SCALE, Median Depth: " << medianDepth << ", minDepth: " << minDepth << ", maxDepth: " << maxDepth;
+    System_Log( INFO ) << "After scale, Median depth: " << medianDepth << ", minDepth: " << minDepth << ", maxDepth: " << maxDepth;
 
-    System_Log( INFO ) << "size observation: " << m_curFrame->numberObservation();
-    m_featureSelection->setExistingFeatures( m_curFrame->m_features );
-    m_featureSelection->gradientMagnitudeWithSSC(m_curFrame, 50.0f, 250, true);
-    System_Log( INFO ) << "size observation after detect: " << m_curFrame->numberObservation();
-    // System_Log( INFO ) << "Number of Features: " << m_curFrame->numberObservation();
+    System_Log( INFO ) << "Size observation: " << m_curFrame->numberObservation();
+    m_featureSelector->setExistingFeatures( m_curFrame->m_features );
+    m_featureSelector->gradientMagnitudeWithSSC( m_curFrame, m_config->m_thresholdGradientMagnitude,
+                                                 m_config->m_desiredDetectedPointsForInitialization, true );
+    // m_featureSelector->gradientMagnitudeByValue(m_curFrame, m_config->m_thresholdGradientMagnitude, true);
+
+    System_Log( INFO ) << "Size observation after detect: " << m_curFrame->numberObservation();
 
     m_depthEstimator->addKeyframe( m_curFrame, medianDepth, 0.5 * minDepth );
     // m_keyFrames.emplace_back( m_curFrame );
     // m_depthEstimator->addKeyframe(m_curFrame, medianDepth, 0.5 * minDepth);
     m_map->addKeyframe( m_curFrame );
-    m_systemStatus = System::Status::Procese_New_Frame;
 
-    // {
-    // cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
-    // cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
-    //     visualization::featurePoints( refBGR, m_refFrame, 8, "pink", visualization::drawingRectangle );
-    //     // visualization::featurePointsInGrid(curBGR, curFrame, 50);
-    //     // visualization::featurePoints(newBGR, newFrame);
-    //     // visualization::project3DPoints(curBGR, curFrame);
-    //     visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 8, "orange", visualization::drawingRectangle );
-    //     cv::Mat stickImg;
-    //     visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
-    //     std::stringstream ss;
-    //     ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
-    //     cv::imshow( ss.str(), stickImg );
-    // cv::imshow("relative_1_2", curBGR);
-    // cv::waitKey( 0 );
-    //     // cv::destroyAllWindows();
-    //     // System_Log( INFO ) << "ref id: " << m_refFrame->m_id << ", cur id: " << m_curFrame->m_id;
-    // }
+    if ( m_config->m_enableVisualization == true )
+    {
+        cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
+        cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
+        visualization::featurePoints( refBGR, m_refFrame, 8, "pink", visualization::drawingRectangle );
+        visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 8, "orange", visualization::drawingCircle );
+        cv::Mat stickImg;
+        visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
+        cv::Mat curBGR2 = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
+        visualization::featurePoints( curBGR2, m_curFrame, 8, "cyan", visualization::drawingCircle );
+        cv::Mat stickBigImg;
+        visualization::stickTwoImageHorizontally( stickImg, curBGR2, stickBigImg );
+
+        std::stringstream ss;
+        ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
+        cv::imshow( ss.str(), stickImg );
+        cv::imshow( "relative_1_2", curBGR );
+
+        cv::Mat imageDepth = m_featureSelector->m_imgGradientMagnitude.clone();
+        visualization::colormapDepth( imageDepth, m_curFrame, 7, "amber" );
+        cv::imshow( "depth", imageDepth );
+    }
+
+    m_systemStatus = System::Status::Procese_New_Frame;
+    return Result::Success;
 }
 
-void System::processNewFrame()
+System::Result System::processNewFrame()
 {
+    TIMED_FUNC( timerNewFrame );
     // https://docs.microsoft.com/en-us/cpp/cpp/how-to-create-and-use-shared-ptr-instances?view=vs-2019
     // m_refFrame = std::move( m_curFrame );
     // std::cout << "counter ref: " << m_refFrame.use_count() << std::endl;
@@ -262,10 +272,10 @@ void System::processNewFrame()
     m_map->reprojectMap( m_curFrame, overlapKeyFrames );
     System_Log( INFO ) << "Number of Features: " << m_curFrame->numberObservation();
 
-    if (m_map->m_matches < 50)
+    if ( m_map->m_matches < 50 )
     {
         m_curFrame->m_absPose = m_refFrame->m_absPose;
-        return;
+        return Result::Failed;
     }
 
     // select keyframe
@@ -287,41 +297,41 @@ void System::processNewFrame()
     const double depthMean = algorithm::computeMedian( newCurDepths );
     const double depthMin  = newCurDepths.minCoeff();
 
-    if ( needKeyframe(depthMean, overlapKeyFrames) )
+    if ( needKeyframe( depthMean, overlapKeyFrames ) )
     {
         m_depthEstimator->addFrame( m_curFrame );
-        return;
+        return Result::Success;
     }
     m_curFrame->setKeyframe();
 
-    //TODO: add candidatepoint to map
+    // TODO: add candidatepoint to map
 
-    //TODO: use bundle adjustment
+    // TODO: use bundle adjustment
 
-    m_depthEstimator->addKeyframe ( m_curFrame, depthMean, depthMin * 0.5 );
+    m_depthEstimator->addKeyframe( m_curFrame, depthMean, depthMin * 0.5 );
 
-    if (m_map->m_keyFrames.size() > 10)
+    if ( m_map->m_keyFrames.size() > 10 )
     {
-        std::shared_ptr<Frame> furthestFrame {nullptr};
-        m_map->getFurthestKeyframe(m_curFrame->cameraInWorld(), furthestFrame);
-        m_depthEstimator->removeKeyframe(furthestFrame);
-        m_map->removeFrame(furthestFrame);
+        std::shared_ptr< Frame > furthestFrame{ nullptr };
+        m_map->getFurthestKeyframe( m_curFrame->cameraInWorld(), furthestFrame );
+        m_depthEstimator->removeKeyframe( furthestFrame );
+        m_map->removeFrame( furthestFrame );
     }
 
-    m_map->addKeyframe (m_curFrame);
-
+    m_map->addKeyframe( m_curFrame );
+    return Result::Keyframe;
 }
 
-void System::relocalizeFrame (Sophus::SE3d& pose, std::shared_ptr<Frame>& closestKeyframe)
+System::Result System::relocalizeFrame( Sophus::SE3d& pose, std::shared_ptr< Frame >& closestKeyframe )
 {
-    if (closestKeyframe == nullptr)
+    if ( closestKeyframe == nullptr )
     {
-        return;
+        return Result::Failed;
     }
 
     m_alignment->align( closestKeyframe, m_curFrame );
+    return Result::Success;
 }
-
 
 void System::reportSummaryFrames()
 {

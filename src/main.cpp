@@ -1,25 +1,21 @@
-// #define EIGEN_DEFAULT_DENSE_INDEX_TYPE long
-// #define EIGEN_DEFAULT_IO_FORMAT Eigen::IOFormat( 10, Eigen::DontAlignCols, ", ", " , ", "[", "]", "[", "]" )
+#include "algorithm.hpp"
+#include "system.hpp"
+#include "utils.hpp"
+
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgcodecs.hpp>
+
+#include <Eigen/Core>
+
+#include <nlohmann/json.hpp>
+#include <easylogging++.h>
 
 #include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <iostream>
 #include <thread>
-
-#include <opencv2/core.hpp>
-#include <opencv2/highgui.hpp>
-#include <opencv2/imgcodecs.hpp>
-// #include <opencv2/core/eigen.hpp>
-
-#include <Eigen/Core>
-
-#include "algorithm.hpp"
-#include "system.hpp"
-#include "utils.hpp"
-
-#include <nlohmann/json.hpp>
-#include "easylogging++.h"
 
 INITIALIZE_EASYLOGGINGPP
 #define Main_Log( LEVEL ) CLOG( LEVEL, "Main" )
@@ -99,12 +95,19 @@ int main( int argc, char* argv[] )
         ss << "input/000000000" << i << ".png";
         Main_Log( INFO ) << "filename: " << ss.str();
         cv::Mat newImg = cv::imread( utils::findAbsoluteFilePath( ss.str() ), cv::IMREAD_GRAYSCALE );
-        auto t1        = std::chrono::high_resolution_clock::now();
-        system.addImage( newImg, i );
-        auto t2 = std::chrono::high_resolution_clock::now();
-        Main_Log( DEBUG ) << "Elapsed time for matching: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
-                          << " milli sec";
-        // cv::waitKey( 0 );
+        // auto t1        = std::chrono::high_resolution_clock::now();
+        {
+            TIMED_SCOPE(timernewImage, "New Image");
+            system.addImage( newImg, i );
+        }
+        // auto t2 = std::chrono::high_resolution_clock::now();
+        // Main_Log( DEBUG ) << "Elapsed time for matching: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
+                        //   << " milli sec";
+
+        if ( config->m_enableVisualization == true )
+        {
+            cv::waitKey( 0 );
+        }
         // cv::destroyAllWindows();
     }
     std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
