@@ -29,12 +29,27 @@ cv::Mat visualization::getGrayImage( const cv::Mat& img )
     // cv::convertScaleAbs(mag, absMag);
     // cv::imshow("grad_mag_scale", absMag);
 
-    cv::Mat normMag;
-    cv::normalize( img, normMag, 0, 255, cv::NORM_MINMAX, CV_8UC1 );
-    return normMag;
+    cv::Mat imgGray;
+    // inputImage is color
+    if ( img.channels() == 3 )
+    {
+        cv::cvtColor( img, imgGray, cv::COLOR_BGR2GRAY );
+    }
+    cv::normalize( imgGray, imgGray, 0, 255, cv::NORM_MINMAX, CV_8UC1 );
+    return imgGray;
 }
 
-cv::Mat visualization::getHSVImage( const cv::Mat& img )
+cv::Mat visualization::getColorImage( const cv::Mat& img )
+{
+    cv::Mat imgBGR;
+    if ( img.channels() == 1 )
+        cv::cvtColor( img, imgBGR, cv::COLOR_GRAY2BGR );
+    else
+        imgBGR = img.clone();
+    return imgBGR;
+}
+
+cv::Mat visualization::getHSVImageWithMagnitude( const cv::Mat& img, const uint8_t minMagnitude )
 {
     // https://realpython.com/python-opencv-color-spaces/
     // https://stackoverflow.com/questions/23001512/c-and-opencv-get-and-set-pixel-color-to-mat
@@ -46,38 +61,42 @@ cv::Mat visualization::getHSVImage( const cv::Mat& img )
     // https://docs.opencv.org/3.4/d4/dee/tutorial_optical_flow.html
 
     cv::Mat normMag, imgBGR, imgHSV;
-    cv::normalize( img, normMag, 0, 255, cv::NORM_MINMAX, CV_8UC1 );
-    cv::cvtColor( normMag, imgBGR, cv::COLOR_GRAY2BGR );
-    cv::cvtColor( imgBGR, imgHSV, cv::COLOR_BGR2HSV );
-
-    const float minMagnitude = 75.0;
-    for ( int i( 0 ); i < imgHSV.rows; i++ )
+    // check type of image, gray or color
+    if ( img.channels() == 1 )
     {
-        for ( int j( 0 ); j < imgHSV.cols; j++ )
+        cv::normalize( img, img, 0, 255, cv::NORM_MINMAX, CV_8UC1 );
+        cv::cvtColor( img, imgBGR, cv::COLOR_GRAY2BGR );
+        cv::cvtColor( imgBGR, imgHSV, cv::COLOR_BGR2HSV );
+    }
+    else
+    {
+        cv::cvtColor( img, imgHSV, cv::COLOR_BGR2HSV );
+    }
+
+    for ( int32_t i( 0 ); i < imgHSV.rows; i++ )
+    {
+        for ( int32_t j( 0 ); j < imgHSV.cols; j++ )
         {
-            if ( img.at< float >( i, j ) >= minMagnitude )
+            if ( img.at< uint8_t >( i, j ) >= minMagnitude )
             {
                 cv::Vec3b& px    = imgHSV.at< cv::Vec3b >( cv::Point( j, i ) );
-                cv::Scalar color = generateColor( minMagnitude, 255.0f, img.at< float >( i, j ) - minMagnitude );
-                px[ 0 ]          = static_cast< uchar >( color[ 0 ] );
-                px[ 1 ]          = static_cast< uchar >( color[ 1 ] );
-                px[ 2 ]          = static_cast< uchar >( color[ 2 ] );
+                cv::Scalar color = generateColor( minMagnitude, 255, img.at< uint8_t >( i, j ));
+                px[ 0 ]          = static_cast< uint8_t >( color[ 0 ] );
+                px[ 1 ]          = static_cast< uint8_t >( color[ 1 ] );
+                px[ 2 ]          = static_cast< uint8_t >( color[ 2 ] );
             }
         }
     }
-    cv::Mat imgBGRofHSV;
-    cv::cvtColor( imgHSV, imgBGRofHSV, cv::COLOR_HSV2BGR );
-    return imgBGRofHSV;
+
+    cv::cvtColor( imgHSV, imgBGR, cv::COLOR_HSV2BGR );
+    return imgBGR;
 }
 
-cv::Mat visualization::getBGRImage( const cv::Mat& img )
+cv::Scalar visualization::generateColor( const uint8_t min, const uint8_t max, const uint8_t value )
 {
-    cv::Mat imgBGR;
-    if ( img.channels() == 1 )
-        cv::cvtColor( img, imgBGR, cv::COLOR_GRAY2BGR );
-    else
-        imgBGR = img.clone();
-    return imgBGR;
+    const int32_t diff = value - min;
+    const double hue = diff * (120.0 / ( max - min ) );
+    return cv::Scalar( hue, 100.0, 100.0 );
 }
 
 void visualization::templatePatches( const cv::Mat& patches,
@@ -168,12 +187,6 @@ cv::Mat visualization::residualsPatches( const Eigen::VectorXd& residuals,
     // cv::normalize( outputImg, visPatches, 0, 255, cv::NORM_MINMAX, CV_8U );
     // return visPatches;
     return outputImg;
-}
-
-cv::Scalar visualization::generateColor( const float min, const float max, const float value )
-{
-    uint8_t hue = static_cast< uint8_t >( ( 120.f / ( max - min ) ) * value );
-    return cv::Scalar( hue, 100, 100 );
 }
 
 void visualization::drawHistogram( std::map< std::string, std::any >& pack )
@@ -356,8 +369,15 @@ void visualization::featurePoints(
     const auto szPoints = frame->numberObservation();
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
-        const auto& feature = frame->m_features[ i ]->m_pixelPosition;
-        drawingFunctor( img, feature, radiusSize, colorRGB );
+        const auto& feature = frame->m_features[ i ];
+        if (feature->m_point != nullptr)
+        {
+            drawingFunctor( img, feature->m_pixelPosition, radiusSize, colorRGB );
+        }
+        else
+        {
+            drawingFunctor( img, feature->m_pixelPosition, radiusSize, colors.at( "yellow" ) );
+        }
     }
 }
 
@@ -401,9 +421,12 @@ void visualization::project3DPoints(
     const auto szPoints = frame->numberObservation();
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
-        const Eigen::Vector3d& point = frame->m_features[ i ]->m_point->m_position;
-        const auto& feature          = frame->world2image( point );
-        drawingFunctor( img, feature, radiusSize, colorRGB );
+        if (frame->m_features[i]->m_point != nullptr)
+        {
+            const Eigen::Vector3d& point = frame->m_features[ i ]->m_point->m_position;
+            const auto& feature          = frame->world2image( point );
+            drawingFunctor( img, feature, radiusSize, colorRGB );
+        }
     }
 }
 
@@ -419,42 +442,62 @@ void visualization::colormapDepth( cv::Mat& img,
         colorRGB = colors.at( "white" );
 
     // const Eigen::Vector3d C = frame->cameraInWorld();
-    const auto szPoints     = frame->numberObservation();
-    std::vector< double > depths( szPoints, 0.0 );
+    const auto szPoints = frame->numberObservation();
+    std::vector< double > depths;
+    depths.reserve( szPoints );
     double minDepth = std::numeric_limits< double >::max();
     double maxDepth = 0.0;
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
         const auto& feature = frame->m_features[ i ];
-        const double depth  = ( frame->m_absPose * feature->m_point->m_position ).z();
-        depths[ i ]         = depth;
-        minDepth            = depth < minDepth ? depth : minDepth;
-        maxDepth            = depth > maxDepth ? depth : maxDepth;
+        if ( feature->m_point != nullptr )
+        {
+            const double depth = ( frame->m_absPose * feature->m_point->m_position ).z();
+            depths.push_back( depth );
+            minDepth = depth < minDepth ? depth : minDepth;
+            maxDepth = depth > maxDepth ? depth : maxDepth;
+        }
     }
     const double rangeDepth = maxDepth - minDepth;
-    Visualization_Log( DEBUG ) << "depth min: " << minDepth << ", max: " << maxDepth << ", range: " << rangeDepth;
+    const double stepColor  = rangeDepth / 35.0;
+    Visualization_Log( DEBUG ) << "depth min: " << minDepth << ", max: " << maxDepth << ", range: " << rangeDepth
+                               << ", step color: " << stepColor;
 
     cv::Mat normMag, imgBGR, imgHSV;
     cv::normalize( img, img, 0, 255, cv::NORM_MINMAX, CV_8UC1 );
     cv::cvtColor( img, imgBGR, cv::COLOR_GRAY2BGR );
     cv::cvtColor( imgBGR, imgHSV, cv::COLOR_BGR2HSV );
 
+    int32_t cnt = 0;
     for ( std::size_t i( 0 ); i < szPoints; i++ )
     {
-        // if (depths[i] < 1.0)
-        // {
-        const auto& feature   = frame->m_features[ i ];
-        // cv::Vec3b& px         = imgHSV.at< cv::Vec3b >( cv::Point( feature->m_pixelPosition.y(), feature->m_pixelPosition.x() ) );
-        const double fraction = ( depths[ i ] ) - minDepth / ( rangeDepth );
-        const uint8_t hue     = static_cast< uint8_t >( fraction * 240 );
-        Visualization_Log( DEBUG ) << "hue: " << uint32_t(hue);
-        cv::Scalar color( 88, 71, 6 );
-        cv::rectangle( imgHSV, cv::Point2d( feature->m_pixelPosition.x() - radiusSize, feature->m_pixelPosition.y() - radiusSize ),
-                       cv::Point2d( feature->m_pixelPosition.x() + radiusSize, feature->m_pixelPosition.y() + radiusSize ), color, 2 );
-        // px[ 0 ]          = static_cast< uint8_t >( color[ 0 ] );
-        // px[ 1 ]          = static_cast< uint8_t >( color[ 1 ] );
-        // px[ 2 ]          = static_cast< uint8_t >( color[ 2 ] );
-        // }
+        const auto& feature = frame->m_features[ i ];
+        // Visualization_Log( DEBUG ) << "depth: " << depths[ cnt ];
+        if ( feature->m_point != nullptr )
+        {
+            // if (depths[ cnt ] < 1.0)
+            // {
+            // Visualization_Log( DEBUG ) << "depth: " << depths[ cnt ];
+            // cv::Vec3b& px         = imgHSV.at< cv::Vec3b >( cv::Point( feature->m_pixelPosition.y(), feature->m_pixelPosition.x() ) );
+            // const double fraction = depths[ cnt ] - minDepth / ( rangeDepth );
+            const int32_t fraction = depths[ cnt ] / stepColor;
+            // Visualization_Log( DEBUG ) << "fraction: " << fraction;
+            const uint8_t hue = static_cast< uint8_t >( fraction * 35 );
+            cv::Scalar color( hue, 100, 100 );
+            if ( fraction == 1 )
+            {
+                Visualization_Log( DEBUG ) << "depth: " << depths[ cnt ] << ", hue: " << uint32_t( hue );
+                cv::rectangle( imgHSV, cv::Point2d( feature->m_pixelPosition.x() - radiusSize, feature->m_pixelPosition.y() - radiusSize ),
+                               cv::Point2d( feature->m_pixelPosition.x() + radiusSize, feature->m_pixelPosition.y() + radiusSize ), color,
+                               2 );
+            }
+            // px[ 0 ]          = static_cast< uint8_t >( color[ 0 ] );
+            // px[ 1 ]          = static_cast< uint8_t >( color[ 1 ] );
+            // px[ 2 ]          = static_cast< uint8_t >( color[ 2 ] );
+            // }
+            // }
+            cnt++;
+        }
     }
     cv::cvtColor( imgHSV, imgBGR, cv::COLOR_HSV2BGR );
     img = imgBGR;
@@ -468,11 +511,7 @@ void visualization::projectPointsWithRelativePose(
   const std::string& color,
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >& drawingFunctor )
 {
-    // const Sophus::SE3d relativePose = refFrame->m_absPose.inverse() * curFrame->m_absPose;
     const Sophus::SE3d relativePose = algorithm::computeRelativePose( refFrame, curFrame );
-    // const Eigen::Matrix3d E      = relativePose.rotationMatrix() * algorithm::hat( relativePose.translation() );
-    // const Eigen::Matrix3d F = refFrame.m_camera->invK().transpose() * E * curFrame.m_camera->invK();
-    // projectPointsWithF(img, refFrame, F);
 
     const auto szPoints     = refFrame->numberObservation();
     const Eigen::Vector3d C = refFrame->cameraInWorld();
@@ -578,10 +617,9 @@ void visualization::projectDepthFilters(
             continue;
         }
 
-        // cv::circle( img, cv::Point2d( depthFilter.m_feature->m_pixelPosition.x(), depthFilter.m_feature->m_pixelPosition.y() ), radiusSize,
-                    // colors.at( "pink" ) );
-        cv::circle( img, cv::Point2d( pointInCurImage.x(), pointInCurImage.y() ), radiusSize,
-                    colors.at( "orange" ) );
+        // cv::circle( img, cv::Point2d( depthFilter.m_feature->m_pixelPosition.x(), depthFilter.m_feature->m_pixelPosition.y() ),
+        // radiusSize, colors.at( "pink" ) );
+        cv::circle( img, cv::Point2d( pointInCurImage.x(), pointInCurImage.y() ), radiusSize, colors.at( "orange" ) );
 
         // inverse representation of depth
         const double inverseMinDepth = depthFilter.m_mu + depthFilter.m_var;
@@ -609,7 +647,7 @@ void visualization::projectDepthFilters(
 {
     // const uint32_t imgWidth = frame->m_camera->width();
     std::cout << "updatedDepths.size(): " << updatedDepths.size() << ", depthFilters.size(): " << depthFilters.size() << std::endl;
-    assert(updatedDepths.size() == depthFilters.size());
+    assert( updatedDepths.size() == depthFilters.size() );
     uint32_t idx = 0;
     for ( auto& depthFilter : depthFilters )
     {
@@ -622,15 +660,13 @@ void visualization::projectDepthFilters(
             continue;
         }
 
-        // cv::circle( img, cv::Point2d( depthFilter.m_feature->m_pixelPosition.x(), depthFilter.m_feature->m_pixelPosition.y() ), radiusSize,
-                    // colors.at( "pink" ) );
-        cv::circle( img, cv::Point2d( pointInCurImage.x(), pointInCurImage.y() ), radiusSize,
-                    colors.at( "orange" ) );
+        // cv::circle( img, cv::Point2d( depthFilter.m_feature->m_pixelPosition.x(), depthFilter.m_feature->m_pixelPosition.y() ),
+        // radiusSize, colors.at( "pink" ) );
+        cv::circle( img, cv::Point2d( pointInCurImage.x(), pointInCurImage.y() ), radiusSize, colors.at( "orange" ) );
 
-        const Eigen::Vector2d updatedLocationInCurImage = frame->camera2image ( relativePose * (depthFilter.m_feature->m_bearingVec * updatedDepths[idx++]));
-        cv::circle( img, cv::Point2d( updatedLocationInCurImage.x(), updatedLocationInCurImage.y() ), radiusSize,
-                    colors.at( "purple" ) );
-
+        const Eigen::Vector2d updatedLocationInCurImage =
+          frame->camera2image( relativePose * ( depthFilter.m_feature->m_bearingVec * updatedDepths[ idx++ ] ) );
+        cv::circle( img, cv::Point2d( updatedLocationInCurImage.x(), updatedLocationInCurImage.y() ), radiusSize, colors.at( "purple" ) );
 
         // inverse representation of depth
         const double inverseMinDepth = depthFilter.m_mu + depthFilter.m_var;

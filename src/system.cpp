@@ -3,11 +3,12 @@
 #include "utils.hpp"
 #include "visualization.hpp"
 
-#include <chrono>
+#include <easylogging++.h>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/highgui.hpp>
 
-#include "easylogging++.h"
+#include <chrono>
+
 #define System_Log( LEVEL ) CLOG( LEVEL, "System" )
 
 System::System( const std::shared_ptr< Config >& config ) : m_config( config ), m_systemStatus( System::Status::Process_First_Frame )
@@ -56,7 +57,7 @@ void System::addImage( const cv::Mat& img, const uint64_t timestamp )
 
 System::Result System::processFirstFrame()
 {
-    TIMED_FUNC( timerFirstImage );
+    TIMED_FUNC( timerFirstFrame );
     m_featureSelector->gradientMagnitudeWithSSC( m_curFrame, m_config->m_thresholdGradientMagnitude,
                                                  m_config->m_desiredDetectedPointsForInitialization, true );
     // m_featureSelector->gradientMagnitudeByValue(m_curFrame, m_config->m_thresholdGradientMagnitude, true);
@@ -70,10 +71,17 @@ System::Result System::processFirstFrame()
     if ( m_config->m_enableVisualization == true )
     {
         cv::Mat gradient = m_featureSelector->m_imgGradientMagnitude.clone();
-        cv::Mat refBGR   = visualization::getBGRImage( gradient );
+        cv::Mat refBGR   = visualization::getColorImage( gradient );
         visualization::featurePoints( refBGR, m_curFrame, 5, "pink", visualization::drawingRectangle );
         visualization::imageGrid( refBGR, m_config->m_cellPixelSize, "amber" );
-        cv::imshow( "First Image", refBGR );
+        if ( m_config->m_savingType == "LiveShow" )
+        {
+            cv::imshow( "First Image", refBGR );
+        }
+        else if ( m_config->m_savingType == "File" )
+        {
+            cv::imwrite( "../output/images/features_first_image.png", refBGR );
+        }
     }
 
     m_curFrame->setKeyframe();
@@ -85,22 +93,26 @@ System::Result System::processFirstFrame()
 
 System::Result System::processSecondFrame()
 {
-    TIMED_FUNC( timerSecondImage );
-    System_Log( DEBUG ) << "Number of Features: " << m_refFrame->numberObservation();
+    TIMED_FUNC( timerSecondFrame );
 
     Eigen::Matrix3d E;
-    Eigen::Matrix3d F;
     Eigen::Matrix3d R;
     Eigen::Vector3d t;
 
-    // we find teh corresponding point in curFrame and create feature for them
+    // we find the corresponding point in curFrame and create feature for them
     algorithm::computeOpticalFlowSparse( m_refFrame, m_curFrame, m_config->m_patchSizeOpticalFlow );
     algorithm::computeEssentialMatrix( m_refFrame, m_curFrame, 1.0, E );
 
     // TODO: check the number of matched!!!
 
     // decompose essential matrix to R and t and set the absolute pose of reference frame
-    algorithm::recoverPose( E, m_refFrame, m_curFrame, R, t );
+    bool resRecoverPose = algorithm::recoverPose( E, m_refFrame, m_curFrame, R, t );
+    if ( resRecoverPose == false )
+    {
+        System_Log( WARNING ) << "Pose recovering failed";
+        return Result::Failed;
+    }
+
     System_Log( DEBUG ) << "Initial R: " << R.format( utils::eigenFormat() );
     System_Log( DEBUG ) << "Initial t: " << t.format( utils::eigenFormat() );
 
@@ -144,7 +156,6 @@ System::Result System::processSecondFrame()
              pointsCurCamera.col( i ).z() > 0 )
         {
             std::shared_ptr< Point > point = std::make_shared< Point >( pointsWorld.col( i ) );
-            //    std::cout << "3D points: " << point->m_position.format(utils::eigenFormat()) << std::endl;
             m_refFrame->m_features[ i ]->setPoint( point );
             m_curFrame->m_features[ i ]->setPoint( point );
             point->addFeature( m_refFrame->m_features[ i ] );
@@ -191,25 +202,49 @@ System::Result System::processSecondFrame()
 
     if ( m_config->m_enableVisualization == true )
     {
-        cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
-        cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
-        visualization::featurePoints( refBGR, m_refFrame, 8, "pink", visualization::drawingRectangle );
-        visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 8, "orange", visualization::drawingCircle );
+        cv::Mat refBGR = visualization::getColorImage( m_refFrame->m_imagePyramid.getBaseGradientImage() );
+        visualization::featurePoints( refBGR, m_refFrame, 6, "pink", visualization::drawingRectangle );
+
+        cv::Mat curBGR = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
+        visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 6, "orange", visualization::drawingCircle );
+
         cv::Mat stickImg;
-        visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
-        cv::Mat curBGR2 = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
-        visualization::featurePoints( curBGR2, m_curFrame, 8, "cyan", visualization::drawingCircle );
-        cv::Mat stickBigImg;
-        visualization::stickTwoImageHorizontally( stickImg, curBGR2, stickBigImg );
+        visualization::stickTwoImageVertically( refBGR, curBGR, stickImg );
 
-        std::stringstream ss;
-        ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
-        cv::imshow( ss.str(), stickImg );
-        cv::imshow( "relative_1_2", curBGR );
+        cv::Mat curBGR2 = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
+        visualization::featurePoints( curBGR2, m_curFrame, 6, "cyan", visualization::drawingCircle );
 
-        cv::Mat imageDepth = m_featureSelector->m_imgGradientMagnitude.clone();
-        visualization::colormapDepth( imageDepth, m_curFrame, 7, "amber" );
-        cv::imshow( "depth", imageDepth );
+        visualization::stickTwoImageVertically( stickImg, curBGR2, stickImg );
+
+        cv::Mat curBGR3 = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
+        visualization::project3DPoints( curBGR3, m_curFrame, 6, "red", visualization::drawingCircle );
+
+        // cv::Mat stickBigImg;
+        visualization::stickTwoImageVertically( stickImg, curBGR3, stickImg );
+
+        if ( m_config->m_savingType == "LiveShow" )
+        {
+            std::stringstream ss;
+            ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
+            cv::imshow( ss.str(), stickImg );
+        }
+        else if ( m_config->m_savingType == "File" )
+        {
+            cv::imwrite( "../output/images/realtive_1_2.png", stickImg );
+        }
+
+        // cv::Mat imageDepth = m_featureSelector->m_imgGradientMagnitude.clone();
+        // visualization::colormapDepth( imageDepth, m_curFrame, 7, "amber" );
+        // cv::imshow( "depth", imageDepth );
+
+        // if ( m_config->m_savingType == "LiveShow" )
+        // {
+        //     cv::imshow( "depth", imageDepth );
+        // }
+        // else if ( m_config->m_savingType == "File" )
+        // {
+        //     cv::imwrite( "../output/images/depth.png", imageDepth );
+        // }
     }
 
     m_systemStatus = System::Status::Procese_New_Frame;
@@ -234,8 +269,8 @@ System::Result System::processNewFrame()
     System_Log( INFO ) << "Elapsed time for alignment: " << std::chrono::duration_cast< std::chrono::microseconds >( t2 - t1 ).count()
                        << " micro sec";
     {
-        // cv::Mat refBGR = visualization::getBGRImage( m_refFrame->m_imagePyramid.getBaseImage() );
-        // cv::Mat curBGR = visualization::getBGRImage( m_curFrame->m_imagePyramid.getBaseImage() );
+        // cv::Mat refBGR = visualization::getColorImage( m_refFrame->m_imagePyramid.getBaseImage() );
+        // cv::Mat curBGR = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseImage() );
         // visualization::featurePoints( refBGR, m_refFrame, 8, "pink", visualization::drawingRectangle );
         // // visualization::featurePointsInGrid(curBGR, curFrame, 50);
         // // visualization::featurePoints(newBGR, newFrame);

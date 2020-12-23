@@ -45,9 +45,8 @@ auto inline drawingCircle = []( cv::Mat& img, const Eigen::Vector2d& point, cons
 };
 
 auto inline drawingRectangle = []( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) -> void {
-    const u_int32_t halfPatch = size / 2;
-    cv::rectangle( img, cv::Point2d( point.x() - halfPatch, point.y() - halfPatch ),
-                   cv::Point2d( point.x() + halfPatch, point.y() + halfPatch ), color );
+    cv::rectangle( img, cv::Point2d( point.x() - size, point.y() - size ),
+                   cv::Point2d( point.x() + size, point.y() + size ), color );
 };
 
 auto inline drawingLine = [](
@@ -57,9 +56,11 @@ auto inline drawingLine = [](
 
 cv::Mat getGrayImage( const cv::Mat& img );
 
-cv::Mat getHSVImage( const cv::Mat& img );
+cv::Mat getColorImage( const cv::Mat& img );
 
-cv::Mat getBGRImage( const cv::Mat& img );
+cv::Mat getHSVImageWithMagnitude( const cv::Mat& img, const uint8_t minMagnitude );
+
+cv::Scalar generateColor( const uint8_t min, const uint8_t max, const uint8_t value );
 
 void templatePatches( const cv::Mat& patches,
                       const uint32_t numberPatches,
@@ -74,8 +75,6 @@ cv::Mat residualsPatches( const Eigen::VectorXd& residuals,
                           const uint32_t horizontalMargin,
                           const uint32_t verticalMargin,
                           const uint32_t maxPatchInRow );
-
-cv::Scalar generateColor( const float min, const float max, const float value );
 
 void drawHistogram( std::map< std::string, std::any >& pack );
 

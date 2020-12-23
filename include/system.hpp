@@ -54,7 +54,6 @@ public:
 private:
     bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs );
     bool needKeyframe( const double sceneDepthMean, const std::vector< frameSize >& overlapKeyFrames );
-    // void makeKeyframe( std::shared_ptr< Frame >& frame, const double& depthMean, const double& depthMin );
 
     Result processFirstFrame();
     Result processSecondFrame();

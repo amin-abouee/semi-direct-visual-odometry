@@ -41,9 +41,11 @@ public:
     std::string m_logFilePath;            ///< Path of easylogging log file
     std::string m_cameraCalibrationPath;  ///< Path of camera calibration file
 
-    int32_t m_imgWidth;          ///< Image width in pixel
-    int32_t m_imgHeight;         ///< Image Height in pixel
+    int32_t m_imgWidth;   ///< Image width in pixel
+    int32_t m_imgHeight;  ///< Image Height in pixel
+
     bool m_enableVisualization;  ///< Enable visualization
+    std::string m_savingType;    ///< Type of visualization type, File, LiveShow
 
     int32_t m_patchSizeOpticalFlow;                     ///< Patch size of optical flow
     int32_t m_thresholdGradientMagnitude;               ///< Minimum gradient magnitude threshold to select points

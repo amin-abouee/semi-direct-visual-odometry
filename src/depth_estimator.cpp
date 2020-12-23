@@ -192,7 +192,7 @@ void DepthEstimator::initializeFilters( std::shared_ptr< Frame >& frame )
 
     // if (m_depthFilters.size() > 0)
     // {
-    //     cv::Mat refBGR = visualization::getBGRImage( m_depthFilters[0].m_feature->m_frame->m_imagePyramid.getBaseImage() );
+    //     cv::Mat refBGR = visualization::getColorImageImage( m_depthFilters[0].m_feature->m_frame->m_imagePyramid.getBaseImage() );
     //     visualization::projectDepthFilters(refBGR, frame, m_depthFilters, 4, "lime", visualization::drawingLine);
     //     std::stringstream ss;
     //     ss << "create depth for frame " << frame->m_id;
@@ -222,8 +222,8 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
 
     // if ( m_depthFilters.size() > 0 )
     // {
-    //     cv::Mat refBGR = visualization::getBGRImage( frame->m_imagePyramid.getBaseImage() );
-    //     // cv::Mat curBGR = visualization::getBGRImage( frame->m_imagePyramid.getBaseImage() );
+    //     cv::Mat refBGR = visualization::getColorImageImage( frame->m_imagePyramid.getBaseImage() );
+    //     // cv::Mat curBGR = visualization::getColorImageImage( frame->m_imagePyramid.getBaseImage() );
     //     // cv::Mat stickImg;
     //     // visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
     //     visualization::projectDepthFilters( refBGR, frame, m_depthFilters, 4, "lime", visualization::drawingLine );
@@ -324,9 +324,9 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
 
     // if ( m_depthFilters.size() > 0 )
     // {
-    //     cv::Mat refBGR = visualization::getBGRImage( m_depthFilters[ 0 ].m_feature->m_frame->m_imagePyramid.getBaseImage() );
+    //     cv::Mat refBGR = visualization::getColorImageImage( m_depthFilters[ 0 ].m_feature->m_frame->m_imagePyramid.getBaseImage() );
     //     visualization::featurePoints( refBGR, m_depthFilters[ 0 ].m_feature->m_frame, 8, "pink", visualization::drawingRectangle );
-    //     cv::Mat curBGR = visualization::getBGRImage( frame->m_imagePyramid.getBaseImage() );
+    //     cv::Mat curBGR = visualization::getColorImageImage( frame->m_imagePyramid.getBaseImage() );
     //     visualization::projectDepthFilters( curBGR, frame, m_depthFilters, updatedDepths, 4, "lime", visualization::drawingLine );
     //     cv::Mat stickImg;
     //     visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );

@@ -74,7 +74,6 @@ void FeatureSelection::gradientMagnitudeWithSSC( std::shared_ptr< Frame >& frame
                 frame->addFeature( feature );
             }
         }
-
         resetGridOccupancy();
     }
     else

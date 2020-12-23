@@ -8,8 +8,8 @@
 
 #include <Eigen/Core>
 
-#include <nlohmann/json.hpp>
 #include <easylogging++.h>
+#include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -97,18 +97,20 @@ int main( int argc, char* argv[] )
         cv::Mat newImg = cv::imread( utils::findAbsoluteFilePath( ss.str() ), cv::IMREAD_GRAYSCALE );
         // auto t1        = std::chrono::high_resolution_clock::now();
         {
-            TIMED_SCOPE(timernewImage, "New Image");
+            TIMED_SCOPE( timernewImage, "New Image" );
             system.addImage( newImg, i );
         }
         // auto t2 = std::chrono::high_resolution_clock::now();
         // Main_Log( DEBUG ) << "Elapsed time for matching: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
-                        //   << " milli sec";
+        //   << " milli sec";
 
         if ( config->m_enableVisualization == true )
         {
-            cv::waitKey( 0 );
+            if ( config->m_savingType == "LiveShow" )
+            {
+                cv::waitKey( 0 );
+            }
         }
-        // cv::destroyAllWindows();
     }
     std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
     // system.reportSummaryFrames();

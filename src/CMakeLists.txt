@@ -129,7 +129,7 @@ target_link_libraries (visual_odometry PRIVATE ${CMAKE_SOURCE_DIR}/3rd_party/sim
 target_link_libraries (visual_odometry PRIVATE Python3::Python Python3::NumPy)
 
 # https://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
-target_compile_definitions(visual_odometry PRIVATE -DEIGEN_MAX_CPP_VER=17 -DEIGEN_INITIALIZE_MATRICES_BY_ZERO -DELPP_THREAD_SAFE -DELPP_FORCE_USE_STD_THREAD -DELPP_STL_LOGGING -DELPP_FRESH_LOG_FILE -DELPP_FEATURE_PERFORMANCE_TRACKING)
+target_compile_definitions(visual_odometry PRIVATE -DEIGEN_MAX_CPP_VER=17 -DEIGEN_INITIALIZE_MATRICES_BY_ZERO -DELPP_THREAD_SAFE -DELPP_FORCE_USE_STD_THREAD -DELPP_STL_LOGGING -DELPP_FRESH_LOG_FILE -DELPP_NO_DEFAULT_LOG_FILE -DELPP_FEATURE_PERFORMANCE_TRACKING)
 
 
 if(OpenMP_CXX_FOUND)

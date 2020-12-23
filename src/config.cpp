@@ -28,21 +28,6 @@ Config::Config( const std::string& configFile )
         CONFIG_LOG( FATAL ) << "JSON Parser Error:" << e.what();
     }
 
-    // const nlohmann::json& filePathJson = m_configJson[ "file_paths" ];
-    // m_logFilePath = filePathJson[ "log_file" ].get<std::string>();
-
-    // const nlohmann::json& cameraJson = m_configJson[ "camera" ];
-    // m_cameraCalibrationPath = cameraJson[ "camera_calibration" ].get< std::string >();
-    // m_imgWidth              = cameraJson[ "img_width" ].get< int32_t >();
-    // m_imgHeight             = cameraJson[ "img_height" ].get< int32_t >();
-
-    // const nlohmann::json& algoJson = m_configJson[ "algorithm" ];
-    // m_cellPixelSize                = algoJson[ "cell_size_select_features" ].get< uint32_t >();
-    // m_patchSizeOpticalFlow         = algoJson[ "patch_size_optical_flow" ].get< uint32_t >();
-    // m_patchSizeImageAlignment      = algoJson[ "patch_size_image_alignment" ].get< uint32_t >();
-    // m_minLevelImagePyramid         = algoJson[ "min_level_image_pyramid" ].get< uint32_t >();
-    // m_maxLevelImagePyramid         = algoJson[ "max_level_image_pyramid" ].get< uint32_t >();
-
     // read file paths params
     const nlohmann::json& filePathJson = m_configJson[ "file_paths" ];
 
@@ -61,8 +46,11 @@ Config::Config( const std::string& configFile )
     m_imgHeight = cameraJson[ "img_height" ].get< int32_t >();
     CONFIG_LOG_IF( m_imgHeight <= 0, FATAL ) << "image height is <= 0. Please update your camera calibration json file";
 
-    m_enableVisualization = cameraJson[ "enable_visualization" ].get< bool >();
-    // CONFIG_LOG_IF( m_enableVisualization <= 0, FATAL ) << "image height is <= 0. Please update your camera calibration json file";
+    // read visualization params
+    const nlohmann::json& visJson = m_configJson[ "visualization" ];
+    
+    m_enableVisualization         = visJson[ "enable_visualization" ].get< bool >();
+    m_savingType                  = visJson[ "saving_type" ].get< std::string >();
 
     // read initialization params
     const nlohmann::json& initJson = m_configJson[ "initialization" ];

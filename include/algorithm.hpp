@@ -23,10 +23,20 @@ void computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
                              const double reproError,
                              Eigen::Matrix3d& E );
 
-void templateMatching( const std::shared_ptr< Frame >& refFrame,
-                       std::shared_ptr< Frame >& curFrame,
-                       const uint16_t patchSzRef,
-                       const uint16_t patchSzCur );
+// https://paperpile.com/app/p/5bafd339-43e6-0f8e-b976-951e527f7a45
+// Multi view geometry, Result 9.19, page 259
+void decomposeEssentialMatrix( const Eigen::Matrix3d& E, Eigen::Matrix3d& R1, Eigen::Matrix3d& R2, Eigen::Vector3d& t );
+
+bool recoverPose( const Eigen::Matrix3d& E,
+                  const std::shared_ptr< Frame >& refFrame,
+                  std::shared_ptr< Frame >& curFrame,
+                  Eigen::Matrix3d& R,
+                  Eigen::Vector3d& t );
+
+// void templateMatching( const std::shared_ptr< Frame >& refFrame,
+//                        std::shared_ptr< Frame >& curFrame,
+//                        const uint16_t patchSzRef,
+//                        const uint16_t patchSzCur );
 
 void getAffineWarp( const std::shared_ptr< Frame >& refFrame,
                     const std::shared_ptr< Frame >& curFrame,
@@ -92,16 +102,6 @@ bool depthFromTriangulation( const Sophus::SE3d& relativePose,
                              const Eigen::Vector3d& refBearingVec,
                              const Eigen::Vector3d& curBearingVec,
                              double& depth );
-
-// https://paperpile.com/app/p/5bafd339-43e6-0f8e-b976-951e527f7a45
-// Multi view geometry, Result 9.19, page 259
-void decomposeEssentialMatrix( const Eigen::Matrix3d& E, Eigen::Matrix3d& R1, Eigen::Matrix3d& R2, Eigen::Vector3d& t );
-
-void recoverPose( const Eigen::Matrix3d& E,
-                  const std::shared_ptr< Frame >& refFrame,
-                  std::shared_ptr< Frame >& curFrame,
-                  Eigen::Matrix3d& R,
-                  Eigen::Vector3d& t );
 
 Sophus::SE3d computeRelativePose( const std::shared_ptr< Frame >& refFrame, const std::shared_ptr< Frame >& curFrame );
 

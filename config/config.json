@@ -7,13 +7,17 @@
     "camera":
     {
         "img_width" : 1242,
-        "img_height" : 375,
-        "enable_visualization": false
+        "img_height" : 375
+    },
+    "visualization":
+    {
+        "enable_visualization": true,
+        "saving_type": "File"        
     },
     "initialization":
     {
         "patch_size_optical_flow" : 11,
-        "threshold_gradient_magnitude" : 20,
+        "threshold_gradient_magnitude" : 50,
         "min_detected_points" : 100,
         "desired_detected_points" : 250,
         "map_scale_factor" : 1.0

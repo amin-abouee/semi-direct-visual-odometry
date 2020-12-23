@@ -28,6 +28,7 @@
 void algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame, std::shared_ptr< Frame >& curFrame, const uint32_t patchSize )
 {
     TIMED_FUNC( timerOpticalFlow );
+
     const cv::Mat& refImg         = refFrame->m_imagePyramid.getBaseImage();
     const cv::Mat& curImg         = curFrame->m_imagePyramid.getBaseImage();
     const uint64_t refObservation = refFrame->numberObservation();
@@ -70,7 +71,7 @@ void algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame, st
 
     Eigen::Map< Eigen::Matrix< double, 1, Eigen::Dynamic > > mapDisparity( disparity.data(), disparity.size() );
     double medianDisparity = algorithm::computeMedian( mapDisparity );
-    Algorithm_Log( DEBUG ) << "disparity: " << medianDisparity;
+    Algorithm_Log( DEBUG ) << "Disparity: " << medianDisparity;
 
     uint32_t cnt = 0;
     /// if status[i] == true, it have to return false because we dont want to remove it from our container
@@ -90,8 +91,8 @@ void algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame, st
     refFrame->m_features.erase( std::remove_if( refFrame->m_features.begin(), refFrame->m_features.end(), isNotValid ),
                                 refFrame->m_features.end() );
 
-    Algorithm_Log( DEBUG ) << "observation refFrame: " << refFrame->numberObservation();
-    Algorithm_Log( DEBUG ) << "observation curFrame: " << curFrame->numberObservation();
+    Algorithm_Log( DEBUG ) << "Observation refFrame: " << refFrame->numberObservation();
+    Algorithm_Log( DEBUG ) << "Observation curFrame: " << curFrame->numberObservation();
 }
 
 void algorithm::computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
@@ -99,6 +100,8 @@ void algorithm::computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
                                         const double reproError,
                                         Eigen::Matrix3d& E )
 {
+    TIMED_FUNC( timerComputeEssentialMatrix );
+
     std::vector< cv::Point2f > refPoints;
     std::vector< cv::Point2f > curPoints;
     std::vector< uchar > status;
@@ -114,12 +117,9 @@ void algorithm::computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
 
     cv::Mat E_cv = cv::findEssentialMat( refPoints, curPoints, refFrame->m_camera->K_cv(), cv::RANSAC, 0.999, reproError, status );
 
-    // std::cout << "type E_cv: " << E_cv.type() << std::endl;
     double* essential = E_cv.ptr< double >( 0 );
     E << essential[ 0 ], essential[ 1 ], essential[ 2 ], essential[ 3 ], essential[ 4 ], essential[ 5 ], essential[ 6 ], essential[ 7 ],
       essential[ 8 ];
-
-    // std::cout << "E: " << E << std::endl;
 
     // https://stackoverflow.com/a/23123481/1804533
     uint32_t cnt = 0;
@@ -134,68 +134,147 @@ void algorithm::computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
     // https://en.wikipedia.org/wiki/Erase%E2%80%93remove_idiom
     auto refResult = std::remove_if( refFrame->m_features.begin(), refFrame->m_features.end(), isNotValidRefFrame );
     refFrame->m_features.erase( refResult, refFrame->m_features.end() );
-    // std::cout << "observation refFrame: " << refFrame.numberObservation() << std::endl;
 
+    cnt                     = 0;
     auto isNotValidCurFrame = [ &cnt, &status, &curFrame ]( const auto& feature ) {
         if ( feature->m_frame == curFrame )
             return status[ cnt++ ] ? false : true;
         else
             return false;
     };
-    cnt            = 0;
     auto curResult = std::remove_if( curFrame->m_features.begin(), curFrame->m_features.end(), isNotValidCurFrame );
     curFrame->m_features.erase( curResult, curFrame->m_features.end() );
-    // std::cout << "observation curFrame: " << curFrame.numberObservation() << std::endl;
 }
 
-void algorithm::templateMatching( const std::shared_ptr< Frame >& refFrame,
-                                  std::shared_ptr< Frame >& curFrame,
-                                  const uint16_t patchSzRef,
-                                  const uint16_t patchSzCur )
+// 9.6.2 Extraction of cameras from the essential matrix, multi view geometry
+// https://github.com/opencv/opencv/blob/a74fe2ec01d9218d06cb7675af633fc3f409a6a2/modules/calib3d/src/five-point.cpp
+void algorithm::decomposeEssentialMatrix( const Eigen::Matrix3d& E, Eigen::Matrix3d& R1, Eigen::Matrix3d& R2, Eigen::Vector3d& t )
 {
-    // const std::uint32_t numFeature = refFrame.numberObservation();
-    const cv::Mat& refImg = refFrame->m_imagePyramid.getBaseImage();
-    const cv::Mat& curImg = curFrame->m_imagePyramid.getBaseImage();
-    // std::cout << "ref type: " << refImg.type() << ", size: " << refImg.size() << std::endl;
-    // std::cout << "cur type: " << curImg.type() << ", size: " << curImg.size() << std::endl;
-    const uint16_t halfPatchRef = patchSzRef / 2;
-    const uint16_t halfPatchCur = patchSzCur / 2;
-    Eigen::Vector2i px( 0.0, 0.0 );
-    const int32_t offset = patchSzCur - patchSzRef;
-    cv::Mat result( cv::Size( offset, offset ), CV_32F );
+    Eigen::JacobiSVD< Eigen::Matrix3d > svd_E( E, Eigen::ComputeFullV | Eigen::ComputeFullU );
+    // TODO: check why this W
+    Eigen::Matrix3d W;
+    W << 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0;
+    R1 = svd_E.matrixU() * W * svd_E.matrixV().transpose();
+    if ( R1.determinant() < 0 )
+        R1 *= -1;
+    // std::cout << "R1: " << R1.format( utils::eigenFormat() ) << std::endl;
 
-    double minVal, maxVal;
-    cv::Point2i minLoc, maxLoc;
-    // cv::Mat template (cv::Size(patchSize, patchSize), CV_32F);
-    // cv::Mat  (cv::Size(patchSize, patchSize), CV_32F);
-    for ( const auto& features : refFrame->m_features )
+    R2 = svd_E.matrixU() * W.transpose() * svd_E.matrixV().transpose();
+    if ( R2.determinant() < 0 )
+        R2 *= -1;
+    // std::cout << "R2: " << R2.format( utils::eigenFormat() ) << std::endl;
+
+    t = svd_E.matrixU().col( 2 );
+    // std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
+}
+
+bool algorithm::recoverPose( const Eigen::Matrix3d& E,
+                             const std::shared_ptr< Frame >& refFrame,
+                             std::shared_ptr< Frame >& curFrame,
+                             Eigen::Matrix3d& R,
+                             Eigen::Vector3d& t )
+{
+    TIMED_FUNC( timerRecoverPose );
+
+    Eigen::Matrix3d R1;
+    Eigen::Matrix3d R2;
+    Eigen::Vector3d tm;
+    decomposeEssentialMatrix( E, R1, R2, tm );
+    // Algorithm_Log( DEBUG ) << "R1: " << R1.format( utils::eigenFormat() );
+    // Algorithm_Log( DEBUG ) << "R2: " << R2.format( utils::eigenFormat() );
+    // Algorithm_Log( DEBUG ) << "tm: " << tm.format( utils::eigenFormat() );
+
+    // Eigen::Vector2d topLeftCorner(1.0, 1.0);
+    // Eigen::Vector2d downRightCorner(refFrame.m_camera->width(), refFrame.m_camera->height());
+
+    std::vector< Sophus::SE3d, Eigen::aligned_allocator< Sophus::SE3d > > poses;
+    poses.reserve( 4 );
+    Eigen::AngleAxisd temp( R1 );  // Re-orthogonality
+    poses.emplace_back( Sophus::SE3d( temp.toRotationMatrix(), tm ) );
+    poses.emplace_back( Sophus::SE3d( temp.toRotationMatrix(), -tm ) );
+    temp = Eigen::AngleAxisd( R2 );
+    poses.emplace_back( Sophus::SE3d( temp.toRotationMatrix(), tm ) );
+    poses.emplace_back( Sophus::SE3d( temp.toRotationMatrix(), -tm ) );
+
+    Eigen::Vector3d point1;
+    Eigen::Vector3d point2;
+    for ( std::size_t i( 0 ); i < 4; i++ )
     {
-        px << static_cast< int32_t >( features->m_pixelPosition.x() ), static_cast< int32_t >( features->m_pixelPosition.y() );
-        // std::cout << "px: " << px.transpose() << std::endl;
-        // std::cout << "refFrame.m_camera->isInFrame: " << refFrame.m_camera->isInFrame( features->m_pixelPosition,
-        // halfPatchRef ) << std::endl; std::cout << "curFrame.m_camera->isInFrame: " << curFrame.m_camera->isInFrame(
-        // features->m_pixelPosition, halfPatchRef ) << std::endl;
-        if ( refFrame->m_camera->isInFrame( features->m_pixelPosition, halfPatchRef ) &&
-             curFrame->m_camera->isInFrame( features->m_pixelPosition, halfPatchCur ) )
+        // T{K}_{W} = T{K}_{K-1} * T{K-1}_{W}
+        curFrame->m_absPose = poses[ i ] * refFrame->m_absPose;
+
+        triangulatePointDLT( refFrame, curFrame, refFrame->m_features[ 0 ]->m_pixelPosition, curFrame->m_features[ 0 ]->m_pixelPosition,
+                             point1 );
+        triangulatePointDLT( refFrame, curFrame, refFrame->m_features[ 1 ]->m_pixelPosition, curFrame->m_features[ 1 ]->m_pixelPosition,
+                             point2 );
+        Eigen::Vector3d refProject1 = refFrame->world2camera( point1 );
+        Eigen::Vector3d curProject1 = curFrame->world2camera( point1 );
+        Eigen::Vector3d refProject2 = refFrame->world2camera( point2 );
+        Eigen::Vector3d curProject2 = curFrame->world2camera( point2 );
+
+        // Algorithm_Log (DEBUG) << "refProject1: " << refProject1.transpose();
+        // Algorithm_Log (DEBUG) << "refProject2: " << refProject2.transpose();
+        // Algorithm_Log (DEBUG) << "curProject1: " << curProject1.transpose();
+        // Algorithm_Log (DEBUG) << "curProject2: " << curProject2.transpose();
+
+        if ( refProject1.z() > 0 && refProject2.z() > 0 && curProject1.z() > 0 && curProject2.z() > 0 )
         {
-            // std::cout << "px is inside the image " << std::endl;
-            const cv::Rect ROITemplate( px.x() - halfPatchRef, px.y() - halfPatchRef, patchSzRef, patchSzRef );
-            const cv::Rect ROIImage( px.x() - halfPatchCur, px.y() - halfPatchCur, patchSzCur, patchSzCur );
-            const cv::Mat templatePatch = refImg( ROITemplate );
-            const cv::Mat imagePatch    = curImg( ROIImage );
-            cv::matchTemplate( imagePatch, templatePatch, result, cv::TM_SQDIFF_NORMED );
-            normalize( result, result, 0, 1, cv::NORM_MINMAX, -1, cv::Mat() );
-            minMaxLoc( result, &minVal, &maxVal, &minLoc, &maxLoc, cv::Mat() );
-            // matchLoc = minLoc;
-            // std::cout << "corresponding loc: " << matchLoc << std::endl;
-            Eigen::Vector2d newLoc;
-            newLoc.x()                            = static_cast< double >( px.x() + offset + minLoc.x );
-            newLoc.y()                            = static_cast< double >( px.y() + offset + minLoc.y );
-            std::shared_ptr< Feature > newFeature = std::make_shared< Feature >( curFrame, newLoc, 0.0, 0.0, 0 );
-            curFrame->addFeature( newFeature );
+            R = poses[ i ].rotationMatrix();
+            t = poses[ i ].translation();
+            return true;
         }
     }
+    return false;
 }
+
+// void algorithm::templateMatching( const std::shared_ptr< Frame >& refFrame,
+//                                   std::shared_ptr< Frame >& curFrame,
+//                                   const uint16_t patchSzRef,
+//                                   const uint16_t patchSzCur )
+// {
+//     // const std::uint32_t numFeature = refFrame.numberObservation();
+//     const cv::Mat& refImg = refFrame->m_imagePyramid.getBaseImage();
+//     const cv::Mat& curImg = curFrame->m_imagePyramid.getBaseImage();
+//     // std::cout << "ref type: " << refImg.type() << ", size: " << refImg.size() << std::endl;
+//     // std::cout << "cur type: " << curImg.type() << ", size: " << curImg.size() << std::endl;
+//     const uint16_t halfPatchRef = patchSzRef / 2;
+//     const uint16_t halfPatchCur = patchSzCur / 2;
+//     Eigen::Vector2i px( 0.0, 0.0 );
+//     const int32_t offset = patchSzCur - patchSzRef;
+//     cv::Mat result( cv::Size( offset, offset ), CV_32F );
+
+//     double minVal, maxVal;
+//     cv::Point2i minLoc, maxLoc;
+//     // cv::Mat template (cv::Size(patchSize, patchSize), CV_32F);
+//     // cv::Mat  (cv::Size(patchSize, patchSize), CV_32F);
+//     for ( const auto& features : refFrame->m_features )
+//     {
+//         px << static_cast< int32_t >( features->m_pixelPosition.x() ), static_cast< int32_t >( features->m_pixelPosition.y() );
+//         // std::cout << "px: " << px.transpose() << std::endl;
+//         // std::cout << "refFrame.m_camera->isInFrame: " << refFrame.m_camera->isInFrame( features->m_pixelPosition,
+//         // halfPatchRef ) << std::endl; std::cout << "curFrame.m_camera->isInFrame: " << curFrame.m_camera->isInFrame(
+//         // features->m_pixelPosition, halfPatchRef ) << std::endl;
+//         if ( refFrame->m_camera->isInFrame( features->m_pixelPosition, halfPatchRef ) &&
+//              curFrame->m_camera->isInFrame( features->m_pixelPosition, halfPatchCur ) )
+//         {
+//             // std::cout << "px is inside the image " << std::endl;
+//             const cv::Rect ROITemplate( px.x() - halfPatchRef, px.y() - halfPatchRef, patchSzRef, patchSzRef );
+//             const cv::Rect ROIImage( px.x() - halfPatchCur, px.y() - halfPatchCur, patchSzCur, patchSzCur );
+//             const cv::Mat templatePatch = refImg( ROITemplate );
+//             const cv::Mat imagePatch    = curImg( ROIImage );
+//             cv::matchTemplate( imagePatch, templatePatch, result, cv::TM_SQDIFF_NORMED );
+//             normalize( result, result, 0, 1, cv::NORM_MINMAX, -1, cv::Mat() );
+//             minMaxLoc( result, &minVal, &maxVal, &minLoc, &maxLoc, cv::Mat() );
+//             // matchLoc = minLoc;
+//             // std::cout << "corresponding loc: " << matchLoc << std::endl;
+//             Eigen::Vector2d newLoc;
+//             newLoc.x()                            = static_cast< double >( px.x() + offset + minLoc.x );
+//             newLoc.y()                            = static_cast< double >( px.y() + offset + minLoc.y );
+//             std::shared_ptr< Feature > newFeature = std::make_shared< Feature >( curFrame, newLoc, 0.0, 0.0, 0 );
+//             curFrame->addFeature( newFeature );
+//         }
+//     }
+// }
 
 void algorithm::getAffineWarp( const std::shared_ptr< Frame >& refFrame,
                                const std::shared_ptr< Frame >& curFrame,
@@ -211,7 +290,7 @@ void algorithm::getAffineWarp( const std::shared_ptr< Frame >& refFrame,
     // .--patch_size-->                 .-------------->
     // |-------------->                 |-----------u'->    ==> duDiff = u' - c'
     // |-------------->                 |-------------->
-    // |------c-------u     ====>       |---c'--------->
+    // |------c-------u     ====>       |---c'--------->                            ==> affineWarp = [duDiff, dvDiff]
     // |-------------->                 |-------------->
     // |-------------->                 |-------------->    ==> dvDiff = v' - c'
     // |------v------->                 |--------v'---->
@@ -594,95 +673,6 @@ bool algorithm::depthFromTriangulation( const Sophus::SE3d& relativePose,
     Algorithm_Log( DEBUG ) << "depths: " << depths.transpose();
     depth = std::fabs( depths.x() );
     return true;
-}
-
-// 9.6.2 Extraction of cameras from the essential matrix, multi view geometry
-// https://github.com/opencv/opencv/blob/a74fe2ec01d9218d06cb7675af633fc3f409a6a2/modules/calib3d/src/five-point.cpp
-void algorithm::decomposeEssentialMatrix( const Eigen::Matrix3d& E, Eigen::Matrix3d& R1, Eigen::Matrix3d& R2, Eigen::Vector3d& t )
-{
-    Eigen::JacobiSVD< Eigen::Matrix3d > svd_E( E, Eigen::ComputeFullV | Eigen::ComputeFullU );
-    Eigen::Matrix3d W;
-    W << 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0;
-    R1 = svd_E.matrixU() * W * svd_E.matrixV().transpose();
-    if ( R1.determinant() < 0 )
-        R1 *= -1;
-    // std::cout << "R1: " << R1.format( utils::eigenFormat() ) << std::endl;
-
-    R2 = svd_E.matrixU() * W.transpose() * svd_E.matrixV().transpose();
-    if ( R2.determinant() < 0 )
-        R2 *= -1;
-    // std::cout << "R2: " << R2.format( utils::eigenFormat() ) << std::endl;
-
-    t = svd_E.matrixU().col( 2 );
-    // std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
-
-    // cv::Mat R2c;
-    // cv::Mat R1c;
-    // cv::Mat tc;
-    // cv::Mat Ec;
-    // cv::eigen2cv(E, Ec);
-    // cv::decomposeEssentialMat(Ec, R1c, R2c, tc);
-    // std::cout << "R1: " << R1c << std::endl;
-    // std::cout << "R2: " << R2c << std::endl;
-    // std::cout << "t: " << tc << std::endl;
-}
-
-void algorithm::recoverPose( const Eigen::Matrix3d& E,
-                             const std::shared_ptr< Frame >& refFrame,
-                             std::shared_ptr< Frame >& curFrame,
-                             Eigen::Matrix3d& R,
-                             Eigen::Vector3d& t )
-{
-    Eigen::Matrix3d R1;
-    Eigen::Matrix3d R2;
-    Eigen::Vector3d tm;
-    decomposeEssentialMatrix( E, R1, R2, tm );
-    // std::cout << "R1: " << R1.format( utils::eigenFormat() ) << std::endl;
-    // std::cout << "R2: " << R2.format( utils::eigenFormat() ) << std::endl;
-    // std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
-
-    // Eigen::Vector2d topLeftCorner(1.0, 1.0);
-    // Eigen::Vector2d downRightCorner(refFrame.m_camera->width(), refFrame.m_camera->height());
-
-    std::vector< Sophus::SE3d, Eigen::aligned_allocator< Sophus::SE3d > > poses;
-    poses.reserve( 4 );
-    Eigen::AngleAxisd temp( R1 );  // Re-orthogonality
-    poses.emplace_back( Sophus::SE3d( temp.toRotationMatrix(), tm ) );
-    poses.emplace_back( Sophus::SE3d( temp.toRotationMatrix(), -tm ) );
-    temp = Eigen::AngleAxisd( R2 );
-    poses.emplace_back( Sophus::SE3d( temp.toRotationMatrix(), tm ) );
-    poses.emplace_back( Sophus::SE3d( temp.toRotationMatrix(), -tm ) );
-
-    for ( std::size_t i( 0 ); i < 4; i++ )
-    {
-        Eigen::Vector3d point1;
-        Eigen::Vector3d point2;
-
-        // ^{K}_{W}T = ^{K}_{K-1}T \, * \,^{K-1}_{W}T
-        curFrame->m_absPose = poses[ i ] * refFrame->m_absPose;
-        // Algorithm_Log(DEBUG) << "pose reference 1: " << curFrame->m_absPose.params().transpose();
-        // Algorithm_Log(DEBUG) << "pose reference 2: " << (poses[i] * refFrame->m_absPose).params().transpose();
-
-        triangulatePointDLT( refFrame, curFrame, refFrame->m_features[ 0 ]->m_pixelPosition, curFrame->m_features[ 0 ]->m_pixelPosition,
-                             point1 );
-        triangulatePointDLT( refFrame, curFrame, refFrame->m_features[ 1 ]->m_pixelPosition, curFrame->m_features[ 1 ]->m_pixelPosition,
-                             point2 );
-        Eigen::Vector3d refProject1 = refFrame->world2camera( point1 );
-        Eigen::Vector3d curProject1 = curFrame->world2camera( point1 );
-        Eigen::Vector3d refProject2 = refFrame->world2camera( point2 );
-        Eigen::Vector3d curProject2 = curFrame->world2camera( point2 );
-        // std::cout << "output projct left corner, ref: " << refProject1.z() << ", cur: " << curProject1.z() <<
-        // std::endl; std::cout << "output projct right corner, ref: " << refProject2.z() << ", cur: " <<
-        // curProject2.z() << std::endl;
-        if ( refProject1.z() > 0 && refProject2.z() > 0 && curProject1.z() > 0 && curProject2.z() > 0 )
-        {
-            R = poses[ i ].rotationMatrix();
-            t = poses[ i ].translation();
-            // std::cout << "R: " << R.format( utils::eigenFormat() ) << std::endl;
-            // std::cout << "t: " << t.format( utils::eigenFormat() ) << std::endl;
-            break;
-        }
-    }
 }
 
 Sophus::SE3d algorithm::computeRelativePose( const std::shared_ptr< Frame >& refFrame, const std::shared_ptr< Frame >& curFrame )
