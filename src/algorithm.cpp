@@ -25,7 +25,10 @@
 // | CV_64F |  6 | 14 | 22 | 30 |   38 |   46 |   54 |   62 |
 // +--------+----+----+----+----+------+------+------+------+
 
-void algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame, std::shared_ptr< Frame >& curFrame, const uint32_t patchSize )
+bool algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame,
+                                          std::shared_ptr< Frame >& curFrame,
+                                          const uint32_t patchSize,
+                                          const double disparityThreshold )
 {
     TIMED_FUNC( timerOpticalFlow );
 
@@ -72,6 +75,10 @@ void algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame, st
     Eigen::Map< Eigen::Matrix< double, 1, Eigen::Dynamic > > mapDisparity( disparity.data(), disparity.size() );
     double medianDisparity = algorithm::computeMedian( mapDisparity );
     Algorithm_Log( DEBUG ) << "Disparity: " << medianDisparity;
+    if ( medianDisparity < disparityThreshold )
+    {
+        return false;
+    }
 
     uint32_t cnt = 0;
     /// if status[i] == true, it have to return false because we dont want to remove it from our container
@@ -93,6 +100,7 @@ void algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame, st
 
     Algorithm_Log( DEBUG ) << "Observation refFrame: " << refFrame->numberObservation();
     Algorithm_Log( DEBUG ) << "Observation curFrame: " << curFrame->numberObservation();
+    return true;
 }
 
 void algorithm::computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
@@ -776,6 +784,17 @@ float algorithm::bilinearInterpolation( const MapXRowConst& image, const double 
     const int y2  = y1 + 1;
     const float a = ( x2 - x ) * image( y1, x1 ) + ( x - x1 ) * image( y1, x2 );
     const float b = ( x2 - x ) * image( y2, x1 ) + ( x - x1 ) * image( y2, x2 );
+    return ( ( y2 - y ) * a + ( y - y1 ) * b );
+}
+
+double algorithm::bilinearInterpolationDouble( const MapXRowConst& image, const double x, const double y )
+{
+    const int32_t x1  = static_cast< int32_t >( x );
+    const int32_t y1  = static_cast< int32_t >( y );
+    const int32_t x2  = x1 + 1;
+    const int32_t y2  = y1 + 1;
+    const double a = ( x2 - x ) * image( y1, x1 ) + ( x - x1 ) * image( y1, x2 );
+    const double b = ( x2 - x ) * image( y2, x1 ) + ( x - x1 ) * image( y2, x2 );
     return ( ( y2 - y ) * a + ( y - y1 ) * b );
 }
 

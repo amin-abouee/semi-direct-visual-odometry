@@ -20,7 +20,8 @@
         "threshold_gradient_magnitude" : 50,
         "min_detected_points" : 100,
         "desired_detected_points" : 250,
-        "map_scale_factor" : 1.0
+        "map_scale_factor" : 1.0,
+        "disparity_threshold" : 10
     },
     "algorithm":
     {

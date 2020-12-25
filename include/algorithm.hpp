@@ -16,7 +16,10 @@ namespace algorithm
 using MapXRow      = Eigen::Map< Eigen::Matrix< uint8_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor > >;
 using MapXRowConst = Eigen::Map< const Eigen::Matrix< uint8_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor > >;
 
-void computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame, std::shared_ptr< Frame >& curFrame, const uint32_t patchSize );
+bool computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame,
+                               std::shared_ptr< Frame >& curFrame,
+                               const uint32_t patchSize,
+                               const double disparityThreshold );
 
 void computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
                              std::shared_ptr< Frame >& curFrame,
@@ -118,6 +121,8 @@ double computeSigma( const Eigen::VectorXd& input, const uint32_t numValidPoints
 float bilinearInterpolation( const MapXRow& image, const double x, const double y );
 
 float bilinearInterpolation( const MapXRowConst& image, const double x, const double y );
+
+double bilinearInterpolationDouble( const MapXRowConst& image, const double x, const double y );
 
 double computeNormalDistribution( const double mu, const double sigma, const double x );
 

@@ -48,7 +48,7 @@ Config::Config( const std::string& configFile )
 
     // read visualization params
     const nlohmann::json& visJson = m_configJson[ "visualization" ];
-    
+
     m_enableVisualization         = visJson[ "enable_visualization" ].get< bool >();
     m_savingType                  = visJson[ "saving_type" ].get< std::string >();
 
@@ -70,7 +70,10 @@ Config::Config( const std::string& configFile )
       << "Size of Desired detected points in initialization is <= 0. Please update your params.json";
 
     m_initMapScaleFactor = initJson[ "map_scale_factor" ].get< double >();
-    CONFIG_LOG_IF( m_initMapScaleFactor <= 0, FATAL ) << "Map scale factor for initialization is <= 0. Please update your params.json";
+    CONFIG_LOG_IF( m_initMapScaleFactor <= 0.0, FATAL ) << "Map scale factor for initialization is <= 0. Please update your params.json";
+
+    m_disparityThreshold = initJson[ "disparity_threshold" ].get< double >();
+    CONFIG_LOG_IF( m_disparityThreshold <= 0.0, FATAL ) << "Disparity threshold is <= 0. Please update your params.json";
 
     // read algorithm params
     const nlohmann::json& algoJson = m_configJson[ "algorithm" ];

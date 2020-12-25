@@ -3,11 +3,11 @@
 #include "utils.hpp"
 #include "visualization.hpp"
 
+#include <opencv2/highgui.hpp>
+#include <easylogging++.h>
+
 #include <random>
 
-#include <opencv2/highgui.hpp>
-
-#include "easylogging++.h"
 #define Depth_Log( LEVEL ) CLOG( LEVEL, "Depth" )
 
 DepthEstimator::DepthEstimator( std::shared_ptr< FeatureSelection >& featureSelection )
@@ -218,7 +218,7 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
     // here, W = 1 (pixel error). theta = arctan(1/2*f)*2
     const double pixelErrorAngle = atan( pixelNoise / ( 2.0 * focalLength ) ) * 2.0;  // law of chord
 
-    Depth_Log( DEBUG ) << "Frame: " << frame->m_id << ", size its depthFilters " << m_depthFilters.size();
+    Depth_Log( DEBUG ) << "Frame: " << frame->m_id << ", size of depthFilters " << m_depthFilters.size();
 
     // if ( m_depthFilters.size() > 0 )
     // {
@@ -237,6 +237,8 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
 
     for ( auto& depthFilter : m_depthFilters )
     {
+        Depth_Log( DEBUG ) << "depth filter " << depthFilter.m_id << ", mu: " << depthFilter.m_frameId << ", sigma: " << depthFilter.m_sigma;
+
         if ( m_haltUpdatingDepthFilter == true )
             return;
         // if the current depth filter is very old, delete it
@@ -319,6 +321,7 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
             depthFilter.m_validity = false;
             failedUpdated++;
         }
+        Depth_Log( DEBUG ) << "updated depth filter " << depthFilter.m_id << ", mu: " << depthFilter.m_frameId << ", sigma: " << depthFilter.m_sigma;
         // Depth_Log( DEBUG ) << "Filter id: " << depthFilter.m_id << ", mu: " << depthFilter.m_mu << ", sigma: " << depthFilter.m_sigma;
     }
 

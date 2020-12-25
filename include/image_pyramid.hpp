@@ -39,24 +39,24 @@ public:
     /// @brief Copy construct a new image pyramid object
     ///
     /// @param[in] rhs
-    ImagePyramid( const ImagePyramid& rhs ) = default;
+    ImagePyramid( const ImagePyramid& rhs ) = delete;
 
     /// @brief Move construct a new image pyramid object
     ///
     /// @param[in] rhs
-    ImagePyramid( ImagePyramid&& rhs ) = default;
+    ImagePyramid( ImagePyramid&& rhs ) = delete;
 
     /// @brief Copy assignment operator
     ///
     /// @param[in] rhs
     /// @return ImagePyramid&
-    ImagePyramid& operator=( const ImagePyramid& rhs ) = default;
+    ImagePyramid& operator=( const ImagePyramid& rhs ) = delete;
 
     /// @brief Move assignment operator
     ///
     /// @param[in] rhs
     /// @return ImagePyramid&
-    ImagePyramid& operator=( ImagePyramid&& rhs ) = default;
+    ImagePyramid& operator=( ImagePyramid&& rhs ) = delete;
 
     // D'tor
     ~ImagePyramid() = default;

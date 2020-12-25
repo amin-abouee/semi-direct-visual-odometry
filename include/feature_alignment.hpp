@@ -32,7 +32,8 @@ private:
     int32_t m_level;
 
     Optimizer m_optimizer;
-    cv::Mat m_refPatches;
+    // cv::Mat m_refPatches;
+    Eigen::VectorXd m_refPatches;
     std::vector< bool > m_refVisibility;
 
     void computeJacobian( const std::shared_ptr< Feature >& refFeature);

@@ -52,6 +52,7 @@ public:
     uint32_t m_minDetectedPointsSuccessInitialization;  ///< Minimum number points for success initialization
     uint32_t m_desiredDetectedPointsForInitialization;  ///< Size of Desired detected points in initialization
     double m_initMapScaleFactor;                        ///< Scale factor of initialize map
+    int32_t m_disparityThreshold;                       ///< initialize minimum disparity threshold
 
     int32_t m_cellPixelSize;            ///< Cell size in pixel for grid
     int32_t m_patchSizeImageAlignment;  ///< Patch size in pixel for image alignment

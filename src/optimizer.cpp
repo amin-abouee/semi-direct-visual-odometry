@@ -73,6 +73,7 @@ Optimizer::OptimizerResult Optimizer::optimizeGN(
         resetAllParameters( computeJacobian );
         cntTotalProjectedPixels = lambdaResidualFunctor( params );
         tukeyWeighting( cntTotalProjectedPixels );
+        chiSquaredError = computeChiSquaredError();
         // const uint32_t validpatches = std::count( curVisibility.begin(), curVisibility.end(), true );
         // std::cout << "projected points: " << cntTotalProjectedPixels << std::endl;
         if ( computeJacobian == true )
@@ -118,7 +119,7 @@ Optimizer::OptimizerResult Optimizer::optimizeGN(
 
         preParams            = params;
         preChiSquaredError = chiSquaredError;
-        std::cout << "chi error: " << chiSquaredError << std::endl;
+        // std::cout << "chi error: " << chiSquaredError << std::endl;
 
         stepSize     = m_dx.transpose() * m_dx;
 
@@ -150,7 +151,7 @@ Optimizer::OptimizerResult Optimizer::optimizeGN(
             optimizeStatus = Status::Success;
         }
 
-        visualize( cntTotalProjectedPixels );
+        // visualize( cntTotalProjectedPixels );
         ++curIteration;
     }
     const double rmse = std::sqrt( chiSquaredError / cntTotalProjectedPixels );

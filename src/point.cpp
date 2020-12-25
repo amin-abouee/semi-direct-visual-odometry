@@ -64,22 +64,60 @@ std::size_t Point::numberObservation() const
 
 bool Point::getCloseViewObservation( const Eigen::Vector3d& poseInWorld, std::shared_ptr< Feature >& feature ) const
 {
+    /*
+            frame k-n                       frame k-3               frame k-2              frame k-1            frame k (new frame)
+      +--------------------+          +--------------------+ +--------------------+ +--------------------+     +--------------------+
+      |                    |          |                    | |                    | |                    |     |                    |
+      | f\                 | -------  |      f\            | |        f|          | |           /f       |     |              f     |
+      |   --\              | -------  |        \           | |         |          | |          /         |     |            /-      |
+      |      --\           |          |         -\         | |         \          | |         /          |     |          /-        |
+      +- --------\---------+          +-----------\--------+ +---------|----------+ +--------|-----------+     +--------/-----------+
+                  --\                             \                    |                    /                        /-
+                    --\                           -\                   |                   /                      /--
+                      --\                          \                   \                  /                     /-
+                         --\                        \                  |                /                    /-
+                            --\                      -\                |               /                   /-
+                               --\                     \               |              /                 /--
+                                  --\                   \              |             /                /-
+                                      --\                 -\            \            |              /-    a_0 = angle(k, k-1)
+                                         -\                 \           |           /             /-      a_1 = angle(k, k-2)
+                                           --\               \          |          /            /-        a_2 = angle(k, k-3)
+                                              --\             \         |         /          /--          .
+                                                 --\          -\        |        /         /-             .
+                                                    --\        \        \       /        /-               .
+                                                      --\         \      |     /       /-                 a_n = angle(k, k-n)
+                                                          --\      -\    |    /     /--
+                                                              --\     \   |  |    /-                      min_a = min(a_0, ..., a_n)
+                                                                --\    \  \  /  /-                        if min_a < 60:
+                                                                   --\ -\ | / /-                              accept
+                                                                      --\\|//-                            else
+                                                                          ---                                 reject
+                                                                      3D point
+     */
+
+    // compute the 3d vector between the point and camera origin in world coordinate and normalized it
     Eigen::Vector3d diffObs( poseInWorld - m_position );
     diffObs.normalized();
-    double minCosAngle = 0;
+
+    double maxCosAngle = 0;
     for ( auto& ft : m_features )
     {
+        // compute 3d vectors between the point and other camera origins in world coordinate and normalized them
         Eigen::Vector3d dir( ft->m_frame->cameraInWorld() - m_position );
         dir.normalized();
+        // cos(alpha) = a * b / ||a|| * ||b|| -> we have already normalized a and b -> cos(alpha) = a * b
+        // range cos in dot product: -1 <= cos(alpha) <= 1 (https://chortle.ccsu.edu/VectorLessons/vch09/vch09_6.html)
+        // because frames are very close and point is visible in all of them, we assume the range is between 0° and 90° -> 0 <= cos(alpha)
+        // <= 1 look for the closest frame and regarding to this fact that cos(0) = 1 and cos(90) = 0, the maximum should be selected
         double cosAngle = diffObs.dot( dir );
-        if ( cosAngle < minCosAngle )
+        if ( cosAngle > maxCosAngle )
         {
             feature     = ft;
-            minCosAngle = cosAngle;
+            maxCosAngle = cosAngle;
         }
     }
 
-    if ( minCosAngle < 0.5 )  // assume that observations larger than 60° are useless
+    if ( maxCosAngle < 0.5 )  // assume that observations larger than 60° are useless
     {
         return false;
     }

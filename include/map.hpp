@@ -2,17 +2,17 @@
 #define __MAP_HPP__
 
 #include "feature.hpp"
+#include "feature_alignment.hpp"
 #include "frame.hpp"
 #include "point.hpp"
-#include "feature_alignment.hpp"
 
 #include <iostream>
 #include <memory>
 
 class Map final
 {
-    using keyframeDistance = std::pair< const std::shared_ptr< Frame >&, double >;
-    using frameSize        = std::pair< const std::shared_ptr< Frame >&, int32_t>;
+    using keyframeDistance = std::pair< const std::shared_ptr< Frame >, double >;
+    using frameSize        = std::pair< const std::shared_ptr< Frame >, int32_t >;
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -40,7 +40,7 @@ public:
 
     void addKeyframe( std::shared_ptr< Frame >& frame );
 
-    void getClosestKeyframe( std::shared_ptr< Frame >& frame, std::shared_ptr<Frame>& closestKeyframe ) const;
+    void getClosestKeyframe( std::shared_ptr< Frame >& frame, std::shared_ptr< Frame >& closestKeyframe ) const;
 
     void getCloseKeyframes( const std::shared_ptr< Frame >& frame, std::vector< keyframeDistance >& closeKeyframes ) const;
 
@@ -52,7 +52,7 @@ public:
     /// a list of objects which must be removed.
     // void emptyTrash();
 
-    void getFurthestKeyframe( const Eigen::Vector3d& pos, std::shared_ptr<Frame>& furthestKeyframe ) const;
+    void getFurthestKeyframe( const Eigen::Vector3d& pos, std::shared_ptr< Frame >& furthestKeyframe ) const;
 
     bool getFrameById( const uint64_t id, std::shared_ptr< Frame >& lookingFrame ) const;
 
@@ -61,14 +61,12 @@ public:
 
     /// Project points from the map into the image. First finds keyframes with
     /// overlapping field of view and projects only those map-points.
-    void reprojectMap( std::shared_ptr< Frame >& frame,
-                       std::vector< frameSize >& overlapKeyFrames );
+    void reprojectMap( std::shared_ptr< Frame >& frame, std::vector< frameSize >& overlapKeyFrames );
 
     int32_t m_matches;
     int32_t m_trials;
 
 private:
-
     std::shared_ptr< FeatureAlignment > m_alignment;
 
     /// A candidate is a point that projects into the image plane and for which we
@@ -76,9 +74,11 @@ private:
     struct Candidate
     {
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-        std::shared_ptr< Point > m_point;  //!< 3D point.
-        Eigen::Vector2d m_pixelPosition;         //!< projected 2D pixel location.
-        Candidate( const std::shared_ptr< Point >& point, const Eigen::Vector2d& feature ) : m_point( point ), m_pixelPosition( feature )
+        std::shared_ptr< Feature > m_refFeature;  //!< Feature in reference frame
+        Eigen::Vector2d m_pixelPosition;          //!< projected 2D pixel location.
+        Candidate( const std::shared_ptr< Feature >& refFeature,
+                   const Eigen::Vector2d& pixelLocation )
+            : m_refFeature( refFeature ), m_pixelPosition( pixelLocation )
         {
         }
     };
@@ -101,8 +101,8 @@ private:
     bool pointQualityComparator( Candidate& lhs, Candidate& rhs );
     void initializeGrid( const std::shared_ptr< PinholeCamera >& camera, const uint32_t cellSize );
     void resetGrid();
-    bool reprojectCell( std::shared_ptr<Cell>& cell, std::shared_ptr< Frame >& frame );
-    bool reprojectPoint( const std::shared_ptr< Frame >& frame, const std::shared_ptr< Point >& point );
+    bool reprojectCell( std::shared_ptr< Cell >& cell, std::shared_ptr< Frame >& frame );
+    bool reprojectPoint( const std::shared_ptr< Frame >& frame, const std::shared_ptr< Feature >& feature );
 };
 
 #endif /* __MAP_HPP__ */

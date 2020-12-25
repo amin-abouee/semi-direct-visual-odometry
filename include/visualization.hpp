@@ -62,21 +62,9 @@ cv::Mat getHSVImageWithMagnitude( const cv::Mat& img, const uint8_t minMagnitude
 
 cv::Scalar generateColor( const uint8_t min, const uint8_t max, const uint8_t value );
 
-void templatePatches( const cv::Mat& patches,
-                      const uint32_t numberPatches,
-                      const uint32_t patchSize,
-                      const uint32_t horizontalMargin,
-                      const uint32_t verticalMargin,
-                      const uint32_t maxPatchInRow );
+void stickTwoImageVertically( const cv::Mat& refImg, const cv::Mat& curImg, cv::Mat& img );
 
-cv::Mat residualsPatches( const Eigen::VectorXd& residuals,
-                          const uint32_t numberPatches,
-                          const uint32_t patchSize,
-                          const uint32_t horizontalMargin,
-                          const uint32_t verticalMargin,
-                          const uint32_t maxPatchInRow );
-
-void drawHistogram( std::map< std::string, std::any >& pack );
+void stickTwoImageHorizontally( const cv::Mat& refImg, const cv::Mat& curImg, cv::Mat& img );
 
 void featurePoints(
   cv::Mat& img,
@@ -89,13 +77,13 @@ void featurePoints(
 /// visualize feature points in any input image (for instance on HSV image)
 void imageGrid( cv::Mat& img, const int32_t gridSize, const std::string& color );
 
-void project3DPoints(
-  cv::Mat& img,
-  const std::shared_ptr< Frame >& frame,
-  const u_int32_t radiusSize,
-  const std::string& color,
-  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >&
-    drawingFunctor );
+// void project3DPoints(
+//   cv::Mat& img,
+//   const std::shared_ptr< Frame >& frame,
+//   const u_int32_t radiusSize,
+//   const std::string& color,
+//   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >&
+//     drawingFunctor );
 
 ///@brief
 ///
@@ -139,6 +127,22 @@ void epipole( cv::Mat& img,
               const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >&
                 drawingFunctor );
 
+cv::Mat referencePatches( const cv::Mat& patches,
+                      const uint32_t numberPatches,
+                      const uint32_t patchSize,
+                      const uint32_t horizontalMargin,
+                      const uint32_t verticalMargin,
+                      const uint32_t maxPatchInRow );
+
+cv::Mat residualsPatches( const Eigen::VectorXd& residuals,
+                          const uint32_t numberPatches,
+                          const uint32_t patchSize,
+                          const uint32_t horizontalMargin,
+                          const uint32_t verticalMargin,
+                          const uint32_t maxPatchInRow );
+
+void drawHistogram( std::map< std::string, std::any >& pack );
+
 void projectDepthFilters(
   cv::Mat& img,
   const std::shared_ptr< Frame >& frame,
@@ -157,10 +161,6 @@ void projectDepthFilters(
   const std::string& color,
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
     drawingFunctor );
-
-void stickTwoImageVertically( const cv::Mat& refImg, const cv::Mat& curImg, cv::Mat& img );
-
-void stickTwoImageHorizontally( const cv::Mat& refImg, const cv::Mat& curImg, cv::Mat& img );
 
 }  // namespace visualization
 

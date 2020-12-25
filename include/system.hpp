@@ -18,7 +18,7 @@
 #include <opencv2/core.hpp>
 class System final
 {
-    using frameSize = std::pair< const std::shared_ptr< Frame >&, int32_t >;
+    using frameSize = std::pair< const std::shared_ptr< Frame >, int32_t >;
 
     enum class Status : uint8_t
     {
