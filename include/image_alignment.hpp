@@ -1,15 +1,16 @@
 #ifndef __IMAGE_ALIGNMENT_HPP__
 #define __IMAGE_ALIGNMENT_HPP__
 
-#include <iostream>
-#include <memory>
-#include <vector>
+#include "algorithm.hpp"
+#include "frame.hpp"
+#include "optimizer.hpp"
 
 #include <Eigen/Core>
 #include <opencv2/core.hpp>
 
-#include "frame.hpp"
-#include "optimizer.hpp"
+#include <iostream>
+#include <memory>
+#include <vector>
 
 class ImageAlignment
 {
@@ -21,7 +22,7 @@ public:
     ImageAlignment& operator=( ImageAlignment&& rhs );
     ~ImageAlignment()       = default;
 
-    double align( std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame );
+    double align( std::shared_ptr< Frame >& refFrame, std::shared_ptr< Frame >& curFrame );
 
     // Matrix<double, 6, 6> getFisherInformation();
 
@@ -34,13 +35,39 @@ private:
     int32_t m_maxLevel;
 
     Optimizer m_optimizer;
-    cv::Mat m_refPatches;
+    // cv::Mat m_refPatches;
+    Eigen::MatrixXd m_refPatches;
     std::vector< bool > m_refVisibility;
     // std::vector< bool > m_curVisibility;
 
-    void computeJacobian( std::shared_ptr<Frame>& frame, uint32_t level );
-    uint32_t computeResiduals( std::shared_ptr<Frame>& refFrame, std::shared_ptr<Frame>& curFrame, uint32_t level, Sophus::SE3d& pose );
+    void computeJacobian( const std::shared_ptr< Frame >& frame, const uint32_t level );
+    
+    bool computeJacobianSingleFeature( const std::shared_ptr< Feature >& feature,
+                                       const algorithm::MapXRowConst& imageEigen,
+                                       const int32_t border,
+                                       const Eigen::Vector3d& cameraInWorld,
+                                       const double scale,
+                                       const double scaledFx,
+                                       const double scaledFy,
+                                       uint32_t& cntFeature );
+
     void computeImageJac( Eigen::Matrix< double, 2, 6 >& imageJac, const Eigen::Vector3d& point, const double fx, const double fy );
+
+    uint32_t computeResiduals( const std::shared_ptr< Frame >& refFrame,
+                               const std::shared_ptr< Frame >& curFrame,
+                               const uint32_t level,
+                               const Sophus::SE3d& pose );
+
+    bool computeResidualSingleFeature( const std::shared_ptr< Feature >& feature,
+                                       const algorithm::MapXRowConst& imageEigen,
+                                       const std::shared_ptr< Frame >& curFrame,
+                                       const Sophus::SE3d& pose,
+                                       const int32_t border,
+                                       const Eigen::Vector3d& cameraInWorld,
+                                       const double scale,
+                                       uint32_t& cntFeature,
+                                       uint32_t& cntTotalProjectedPixels );
+
     void update( Sophus::SE3d& pose, const Eigen::VectorXd& dx );
     void resetParameters();
 };

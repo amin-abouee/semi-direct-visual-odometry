@@ -62,6 +62,7 @@ private:
 
     const std::shared_ptr< Config > m_config;
     std::shared_ptr< PinholeCamera > m_camera;
+    std::shared_ptr<Frame> m_activeKeyframe;
     std::shared_ptr< Frame > m_refFrame;
     std::shared_ptr< Frame > m_curFrame;
     std::shared_ptr< FeatureSelection > m_featureSelector;

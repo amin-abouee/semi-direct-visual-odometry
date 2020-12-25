@@ -370,7 +370,8 @@ bool Map::reprojectCell( std::shared_ptr< Cell >& cell, std::shared_ptr< Frame >
         // it = cell->erase( it );
 
         // Maximum one point per cell.
-        return true;
+        // return true;
     }
-    return false;
+    // return false;
+    return true;
 }

@@ -114,6 +114,7 @@ void visualization::featurePoints(
   const std::shared_ptr< Frame >& frame,
   const u_int32_t radiusSize,
   const std::string& color,
+  const bool justFeatureWithoutVisiblePoint,
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >& drawingFunctor )
 {
     cv::Scalar colorRGB;
@@ -132,7 +133,7 @@ void visualization::featurePoints(
             drawingFunctor( img, feature->m_pixelPosition, radiusSize, colorRGB );
             cnt++;
         }
-        else
+        if (justFeatureWithoutVisiblePoint == true)
         {
             drawingFunctor( img, feature->m_pixelPosition, radiusSize, colors.at( "cyan" ) );
         }

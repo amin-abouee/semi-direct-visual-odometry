@@ -81,7 +81,8 @@ public:
     explicit Frame( const std::shared_ptr< PinholeCamera >& camera,
                     const cv::Mat& img,
                     const uint32_t maxImagePyramid,
-                    const uint64_t timestamp );
+                    const uint64_t timestamp,
+                    const std::shared_ptr <Frame> lastKeyframe );
     // Copy C'tor
     Frame( const Frame& rhs ) = delete;  // non construction-copyable
     // move C'tor
@@ -192,6 +193,7 @@ public:
     std::vector< std::shared_ptr< Feature > > m_features;  ///< List of features in the image
     bool m_keyFrame;                                       ///< Is this frames selected as keyframe?
     uint64_t m_timestamp;                                    ///< Timestamp of when the image was recorded
+    std::shared_ptr <Frame> m_lastKeyframe;
 
 private:
 };

@@ -45,8 +45,7 @@ auto inline drawingCircle = []( cv::Mat& img, const Eigen::Vector2d& point, cons
 };
 
 auto inline drawingRectangle = []( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) -> void {
-    cv::rectangle( img, cv::Point2d( point.x() - size, point.y() - size ),
-                   cv::Point2d( point.x() + size, point.y() + size ), color );
+    cv::rectangle( img, cv::Point2d( point.x() - size, point.y() - size ), cv::Point2d( point.x() + size, point.y() + size ), color );
 };
 
 auto inline drawingLine = [](
@@ -71,19 +70,12 @@ void featurePoints(
   const std::shared_ptr< Frame >& frame,
   const u_int32_t radiusSize,
   const std::string& color,
+  const bool justFeatureWithoutVisiblePoint,
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >&
     drawingFunctor );
 
 /// visualize feature points in any input image (for instance on HSV image)
 void imageGrid( cv::Mat& img, const int32_t gridSize, const std::string& color );
-
-// void project3DPoints(
-//   cv::Mat& img,
-//   const std::shared_ptr< Frame >& frame,
-//   const u_int32_t radiusSize,
-//   const std::string& color,
-//   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >&
-//     drawingFunctor );
 
 ///@brief
 ///
@@ -128,11 +120,11 @@ void epipole( cv::Mat& img,
                 drawingFunctor );
 
 cv::Mat referencePatches( const cv::Mat& patches,
-                      const uint32_t numberPatches,
-                      const uint32_t patchSize,
-                      const uint32_t horizontalMargin,
-                      const uint32_t verticalMargin,
-                      const uint32_t maxPatchInRow );
+                          const uint32_t numberPatches,
+                          const uint32_t patchSize,
+                          const uint32_t horizontalMargin,
+                          const uint32_t verticalMargin,
+                          const uint32_t maxPatchInRow );
 
 cv::Mat residualsPatches( const Eigen::VectorXd& residuals,
                           const uint32_t numberPatches,

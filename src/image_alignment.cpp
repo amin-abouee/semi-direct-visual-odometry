@@ -1,17 +1,15 @@
 #include "image_alignment.hpp"
-#include "algorithm.hpp"
 #include "feature.hpp"
 #include "utils.hpp"
 #include "visualization.hpp"
 
-#include <algorithm>
-
-#include <sophus/se3.hpp>
-
+#include <easylogging++.h>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
+#include <sophus/se3.hpp>
 
-#include "easylogging++.h"
+#include <algorithm>
+
 #define Alignment_Log( LEVEL ) CLOG( LEVEL, "Alignment" )
 
 ImageAlignment::ImageAlignment( uint32_t patchSize, int32_t minLevel, int32_t maxLevel, uint32_t numParameters )
@@ -22,8 +20,6 @@ ImageAlignment::ImageAlignment( uint32_t patchSize, int32_t minLevel, int32_t ma
     , m_maxLevel( maxLevel )
     , m_optimizer( numParameters )
 {
-    // el::Loggers::getLogger( "Tracker" );  // Register new logger
-    // std::cout << "c'tor image alignment" << std::endl;
 }
 
 double ImageAlignment::align( std::shared_ptr< Frame >& refFrame, std::shared_ptr< Frame >& curFrame )
@@ -31,35 +27,17 @@ double ImageAlignment::align( std::shared_ptr< Frame >& refFrame, std::shared_pt
     if ( refFrame->numberObservation() == 0 )
         return 0;
 
-    // auto t1 = std::chrono::high_resolution_clock::now();
-    const std::size_t numFeatures  = refFrame->numberObservation();
+    const auto& lastKF = refFrame->m_lastKeyframe;
+    const std::size_t numFeatures  = refFrame->numberObservation() * 2 ;
     const uint32_t numObservations = numFeatures * m_patchArea;
-    m_refPatches                   = cv::Mat( numFeatures, m_patchArea, CV_32F );
+    m_refPatches.conservativeResize( numFeatures, m_patchArea );
+    // m_refPatches                   = cv::Mat( numFeatures, m_patchArea, CV_32F );
     m_optimizer.initParameters( numObservations );
     m_refVisibility.resize( numFeatures, false );
-    // std::cout << "Init: " << std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1
-    // ).count() << std::endl;
 
-    // m_curVisibility.resize( numFeatures, false );
-
-    // std::cout << "jacobian size: " << m_optimizer.m_jacobian.rows() << " , " << m_optimizer.m_jacobian.cols() << std::endl;
-    // std::cout << "residuals size: " << m_optimizer.m_residuals.rows() << " , " << m_optimizer.m_residuals.cols() << std::endl;
-    // std::cout << "reference Patch size: " << m_refPatches.size << std::endl;
-    // std::cout << "number Observation: " << numObservations << std::endl;
-
-    Sophus::SE3d relativePose;
-
-    // auto lambdaJacobianFunctor = [&refFrame, level](
-    //                                 Sophus::SE3d& pose ) -> void {
-    //     return computeJacobian( refFrame, level );
-    // };
-
-    auto lambdaUpdateFunctor = [this]( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) -> void { update( pose, dx ); };
+    auto lambdaUpdateFunctor = [ this ]( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) -> void { update( pose, dx ); };
     double error             = 0.0;
     Optimizer::Status optimizationStatus;
-
-    // uint64_t timerJacobian = 0;
-    // uint64_t timeroptimize = 0;
 
     // auto t3 = std::chrono::high_resolution_clock::now();
     // when we wanna compare a uint32 with an int32, the c++ can not compare -1 with 0
@@ -70,170 +48,139 @@ double ImageAlignment::align( std::shared_ptr< Frame >& refFrame, std::shared_pt
         // timerJacobian += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1
         // ).count();
 
-        auto lambdaResidualFunctor = [this, &refFrame, &curFrame, &level]( Sophus::SE3d& pose ) -> uint32_t {
+        auto lambdaResidualFunctor = [ this, &refFrame, &curFrame, &level ]( Sophus::SE3d& pose ) -> uint32_t {
             return computeResiduals( refFrame, curFrame, level, pose );
         };
         // t1 = std::chrono::high_resolution_clock::now();
-        std::tie( optimizationStatus, error ) = m_optimizer.optimizeLM<Sophus::SE3d>( relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor );
+        std::tie( optimizationStatus, error ) =
+          m_optimizer.optimizeLM< Sophus::SE3d >( curFrame->m_absPose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor );
         // timeroptimize += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1
         // ).count();
-
-        // std::cout << "error at level " << level << " is: "<< error << " with status: " <<
-        // static_cast<std::underlying_type<NLLS::Status>::type>(optimizationStatus) << std::endl; std::cout << "error at level " << level
-        // << " is: "<< error << " with status: " << static_cast<uint32_t>(optimizationStatus) << std::endl;
     }
-    // std::cout << "total: " << std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t3
-    // ).count() << std::endl; std::cout << "timerJacobian: " << timerJacobian << std::endl; std::cout << "timeroptimize: " << timeroptimize
-    // << std::endl; std::cout << "m_timerResiduals: " << m_optimizer.m_timerResiduals << std::endl; std::cout << "m_timerSolve: " <<
-    // m_optimizer.m_timerSolve << std::endl; std::cout << "m_timerHessina: " << m_optimizer.m_timerHessian << std::endl; std::cout <<
-    // "m_timerLambda: " << m_optimizer.m_timerLambda << std::endl; std::cout << "m_timerSwitch: " << m_optimizer.m_timerSwitch <<
-    // std::endl; std::cout << "m_timerLambda: " << m_optimizer.m_timerLambda << std::endl; std::cout << "m_timerUpdateParameters: " <<
-    // m_optimizer.m_timerUpdateParameters << std::endl; std::cout << "m_timerCheck: " << m_optimizer.m_timerCheck << std::endl; std::cout
-    // << "m_timerFor: " << m_optimizer.m_timerFor << std::endl;
 
     // curFrame->m_absPose = refFrame->m_absPose * relativePose;
-    curFrame->m_absPose = relativePose * refFrame->m_absPose;
+    // curFrame->m_absPose = absPose;
     Alignment_Log( DEBUG ) << "Computed Pose: " << curFrame->m_absPose.params().transpose();
+
+    for ( uint32_t i( 0 ); i < numFeatures; i += 2 )
+    {
+        if ( m_refVisibility[ i ] == true && m_refVisibility[ i + 1 ] == true )
+        {
+            const int32_t idx    = i / 2;
+            const auto& refFeature = refFrame->m_features[ idx ];
+            const auto& point = refFeature->m_point;
+            const Eigen::Vector2d pixelPosition = curFrame->world2image(point->m_position);
+            std::shared_ptr< Feature > feature = std::make_shared< Feature >( curFrame, pixelPosition, 0 );
+            curFrame->addFeature( feature );
+            // Here we add a reference in the feature to the 3D point, the other way
+            // round is only done if this frame is selected as keyframe.
+            feature->m_point = point;
+        }
+    }
+
     return error;
 }
 
-void ImageAlignment::computeJacobian( std::shared_ptr< Frame >& frame, uint32_t level )
+void ImageAlignment::computeJacobian( const std::shared_ptr< Frame >& frame, const uint32_t level )
 {
     resetParameters();
     const int32_t border    = m_halfPatchSize + 2;
     const cv::Mat& refImage = frame->m_imagePyramid.getImageAtLevel( level );
-    // std::cout << "Type: " << refImage.type() << std::endl;
-    // std::cout << "Image data:\n" << refImage << std::endl;
     const algorithm::MapXRowConst refImageEigen( refImage.ptr< uint8_t >(), refImage.rows, refImage.cols );
-    // std::cout << "Image data:\n" << refImageEigen.block(0, 0, 20, 20) << std::endl;
-    // const uint32_t stride       = refImage.cols;
-    const double levelDominator = 1 << level;
-    const double scale          = 1.0 / levelDominator;
-    const Eigen::Vector3d C     = frame->cameraInWorld();
-    const double fx             = frame->m_camera->fx() / levelDominator;
-    const double fy             = frame->m_camera->fy() / levelDominator;
-    uint32_t cntFeature         = 0;
+
+    const std::shared_ptr< Frame >& lastKeyframe = frame->m_lastKeyframe;
+    const cv::Mat& lastKFImage                   = lastKeyframe->m_imagePyramid.getImageAtLevel( level );
+    const algorithm::MapXRowConst lastKFImageEigen( lastKFImage.ptr< uint8_t >(), lastKFImage.rows, lastKFImage.cols );
+
+    const double levelDominator   = 1 << level;
+    const double scale            = 1.0 / levelDominator;
+    const Eigen::Vector3d refC    = frame->cameraInWorld();
+    const Eigen::Vector3d lastKFC = lastKeyframe->cameraInWorld();
+    const double fx               = frame->m_camera->fx() / levelDominator;
+    const double fy               = frame->m_camera->fy() / levelDominator;
+    uint32_t cntFeature           = 0;
     for ( const auto& feature : frame->m_features )
     {
-        const double u     = feature->m_pixelPosition.x() * scale;
-        const double v     = feature->m_pixelPosition.y() * scale;
-        const int32_t uInt = static_cast< int32_t >( std::floor( u ) );
-        const int32_t vInt = static_cast< int32_t >( std::floor( v ) );
-        // std::cout << "index feature: " << cntFeature << ", loc [" << uInt << " , " << vInt << "]" << std::endl;
-        if ( feature->m_point == nullptr || ( uInt - border ) < 0 || ( vInt - border ) < 0 || ( uInt + border ) >= refImage.cols ||
-             ( vInt + border ) >= refImage.rows )
+        // if (feature->m_point)
+
+        bool res = computeJacobianSingleFeature( feature, refImageEigen, border, refC, scale, fx, fy, cntFeature );
+        if ( res == false )
+        {
+            // ignore current feature + feature of last keyframe (probably not visible)
+            cntFeature += 2;
+            continue;
+        }
+        const auto& point         = feature->m_point;
+        const auto& lastKFFeature = point->findFeature( lastKeyframe );
+        if ( lastKFFeature == nullptr )
         {
             cntFeature++;
             continue;
         }
-        m_refVisibility[ cntFeature ] = true;
 
-        const double depthNorm = ( feature->m_point->m_position - C ).norm();
-        const Eigen::Vector3d point( feature->m_bearingVec * depthNorm );
-
-        /// just for test
-        const double depth = frame->world2camera( feature->m_point->m_position ).z();
-        const Eigen::Vector3d newPoint( feature->m_homogenous * depth );
-        ///
-
-        Eigen::Matrix< double, 2, 6 > imageJac;
-        computeImageJac( imageJac, point, fx, fy );
-
-        float* pixelPtr   = m_refPatches.row( cntFeature ).ptr< float >();
-        uint32_t cntPixel = 0;
-        // FIXME: Patch size should be set as odd
-        const int32_t beginIdx = -m_halfPatchSize;
-        const int32_t endIdx   = m_halfPatchSize;
-        for ( int32_t y{beginIdx}; y <= endIdx; y++ )
+        res = computeJacobianSingleFeature( lastKFFeature, lastKFImageEigen, border, lastKFC, scale, fx, fy, cntFeature );
+        if ( res == false )
         {
-            for ( int32_t x{beginIdx}; x <= endIdx; x++, cntPixel++, pixelPtr++ )
-            {
-                const double rowIdx = v + y;
-                const double colIdx = u + x;
-                *pixelPtr           = algorithm::bilinearInterpolation( refImageEigen, colIdx, rowIdx );
-                const double dx     = 0.5 * ( algorithm::bilinearInterpolation( refImageEigen, colIdx + 1, rowIdx ) -
-                                          algorithm::bilinearInterpolation( refImageEigen, colIdx - 1, rowIdx ) );
-                const double dy     = 0.5 * ( algorithm::bilinearInterpolation( refImageEigen, colIdx, rowIdx + 1 ) -
-                                          algorithm::bilinearInterpolation( refImageEigen, colIdx, rowIdx - 1 ) );
-                m_optimizer.m_jacobian.row( cntFeature * m_patchArea + cntPixel ) = dx * imageJac.row( 0 ) + dy * imageJac.row( 1 );
-                // std::cout << "index: " << cntFeature * m_patchArea + cntPixel << std::endl;
-                // std::cout << "dx: " << dx << "   row 0: " << imageJac.row( 0 ) << std::endl;
-                // std::cout << "dy: " << dy << "   row 1: " << imageJac.row( 1 ) << std::endl;
-                // std::cout << "jac " << m_optimizer.m_jacobian.row( cntFeature * m_patchArea + cntPixel ) <<
-                // std::endl;
-            }
+            cntFeature++;
+            continue;
         }
-        cntFeature++;
     }
+
+    // for(cosnt auto& feature : lastKeyframe->m_features)
+    // {
+
+    // }
     // visualization::templatePatches( m_refPatches, cntFeature, m_patchSize, 10, 10, 12 );
 }
 
-// if we define the residual error as current image - reference image, we do not need to apply the negative for gradient
-uint32_t ImageAlignment::computeResiduals( std::shared_ptr< Frame >& refFrame,
-                                           std::shared_ptr< Frame >& curFrame,
-                                           uint32_t level,
-                                           Sophus::SE3d& pose )
+bool ImageAlignment::computeJacobianSingleFeature( const std::shared_ptr< Feature >& feature,
+                                                   const algorithm::MapXRowConst& imageEigen,
+                                                   const int32_t border,
+                                                   const Eigen::Vector3d& cameraInWorld,
+                                                   const double scale,
+                                                   const double scaledFx,
+                                                   const double scaledFy,
+                                                   uint32_t& cntFeature )
 {
-    const cv::Mat& curImage = curFrame->m_imagePyramid.getImageAtLevel( level );
-    const algorithm::MapXRowConst curImageEigen( curImage.ptr< uint8_t >(), curImage.rows, curImage.cols );
-    const int32_t border = m_halfPatchSize + 2;
-    // const uint32_t stride            = curImage.cols;
-    const double levelDominator      = 1 << level;
-    const double scale               = 1.0 / levelDominator;
-    const Eigen::Vector3d C          = refFrame->cameraInWorld();
-    uint32_t cntFeature              = 0;
-    uint32_t cntTotalProjectedPixels = 0;
-    for ( const auto& feature : refFrame->m_features )
+    const auto& frame  = feature->m_frame;
+    const double u     = feature->m_pixelPosition.x() * scale;
+    const double v     = feature->m_pixelPosition.y() * scale;
+    const int32_t uInt = static_cast< int32_t >( std::floor( u ) );
+    const int32_t vInt = static_cast< int32_t >( std::floor( v ) );
+    if ( feature->m_point == nullptr || ( uInt - border ) < 0 || ( vInt - border ) < 0 || ( uInt + border ) >= imageEigen.cols() ||
+         ( vInt + border ) >= imageEigen.rows() )
     {
-        if ( m_refVisibility[ cntFeature ] == false )
-        {
-            cntFeature++;
-            continue;
-        }
-
-        const double depthNorm = ( feature->m_point->m_position - C ).norm();
-        const Eigen::Vector3d refPoint( feature->m_bearingVec * depthNorm );
-        const Eigen::Vector3d curPoint( pose * refPoint );
-        const Eigen::Vector2d curFeature( curFrame->camera2image( curPoint ) );
-        const double u     = curFeature.x() * scale;
-        const double v     = curFeature.y() * scale;
-        const int32_t uInt = static_cast< int32_t >( std::floor( u ) );
-        const int32_t vInt = static_cast< int32_t >( std::floor( v ) );
-        // std::cout << "index feature: " << cntFeature << ", loc [" << uInt << " , " << vInt << "]" << std::endl;
-        if ( feature->m_point == nullptr || ( uInt - border ) < 0 || ( vInt - border ) < 0 || ( uInt + border ) >= curImage.cols ||
-             ( vInt + border ) >= curImage.rows )
-        {
-            cntFeature++;
-            continue;
-        }
-        // m_curVisibility[ cntFeature ] = true;
-
-        float* pixelPtr   = m_refPatches.row( cntFeature ).ptr< float >();
-        uint32_t cntPixel = 0;
-        // FIXME: Patch size should be set as odd
-        const int32_t beginIdx = -m_halfPatchSize;
-        const int32_t endIdx   = m_halfPatchSize;
-        for ( int32_t y{beginIdx}; y <= endIdx; y++ )
-        {
-            for ( int32_t x{beginIdx}; x <= endIdx; x++, cntPixel++, pixelPtr++, cntTotalProjectedPixels++ )
-            {
-                const double rowIdx       = v + y;
-                const double colIdx       = u + x;
-                const float curPixelValue = algorithm::bilinearInterpolation( curImageEigen, colIdx, rowIdx );
-
-                // ****
-                // IF we compute the error of inverse compositional as r = T(x) - I(W), then we should solve (delta p) = -(JtWT).inverse() *
-                // JtWr BUt if we take r = I(W) - T(x) a residual error, then (delta p) = (JtWT).inverse() * JtWr
-                // ***
-
-                m_optimizer.m_residuals( cntFeature * m_patchArea + cntPixel ) = static_cast< double >( curPixelValue - *pixelPtr );
-                // m_optimizer.m_residuals( cntFeature * m_patchArea + cntPixel ) = static_cast< double >( *pixelPtr - curPixelValue);
-                m_optimizer.m_visiblePoints( cntFeature * m_patchArea + cntPixel ) = true;
-            }
-        }
-        cntFeature++;
+        return false;
     }
-    return cntTotalProjectedPixels;
+
+    m_refVisibility[ cntFeature ]   = true;
+    const double depthNorm          = ( feature->m_point->m_position - cameraInWorld ).norm();
+    const Eigen::Vector3d point3d_C = feature->m_bearingVec * depthNorm;
+    const Eigen::Vector3d point3d_W = frame->camera2world( point3d_C );
+
+    Eigen::Matrix< double, 2, 6 > imageJac;
+    computeImageJac( imageJac, point3d_W, scaledFx, scaledFy );
+
+    uint32_t cntPixel = 0;
+    // FIXME: Patch size should be set as odd
+    int32_t beginIdx = -m_halfPatchSize;
+    int32_t endIdx   = m_halfPatchSize;
+    for ( int32_t y{ beginIdx }; y <= endIdx; y++ )
+    {
+        for ( int32_t x{ beginIdx }; x <= endIdx; x++, cntPixel++ )
+        {
+            const double rowIdx                  = v + y;
+            const double colIdx                  = u + x;
+            m_refPatches( cntFeature, cntPixel ) = algorithm::bilinearInterpolationDouble( imageEigen, colIdx, rowIdx );
+            const double dx                      = 0.5 * ( algorithm::bilinearInterpolationDouble( imageEigen, colIdx + 1, rowIdx ) -
+                                      algorithm::bilinearInterpolationDouble( imageEigen, colIdx - 1, rowIdx ) );
+            const double dy                      = 0.5 * ( algorithm::bilinearInterpolationDouble( imageEigen, colIdx, rowIdx + 1 ) -
+                                      algorithm::bilinearInterpolationDouble( imageEigen, colIdx, rowIdx - 1 ) );
+            m_optimizer.m_jacobian.row( cntFeature * m_patchArea + cntPixel ) = dx * imageJac.row( 0 ) + dy * imageJac.row( 1 );
+        }
+    }
+    cntFeature++;
+    return true;
 }
 
 void ImageAlignment::computeImageJac( Eigen::Matrix< double, 2, 6 >& imageJac,
@@ -292,6 +239,108 @@ void ImageAlignment::computeImageJac( Eigen::Matrix< double, 2, 6 >& imageJac,
     imageJac( 1, 5 ) = ( fy * x ) / z;
 }
 
+// if we define the residual error as current image - reference image, we do not need to apply the negative for gradient
+uint32_t ImageAlignment::computeResiduals( const std::shared_ptr< Frame >& refFrame,
+                                           const std::shared_ptr< Frame >& curFrame,
+                                           const uint32_t level,
+                                           const Sophus::SE3d& pose )
+{
+    const std::shared_ptr< Frame >& lastKeyframe = refFrame->m_lastKeyframe;
+    const cv::Mat& curImage                      = curFrame->m_imagePyramid.getImageAtLevel( level );
+    const algorithm::MapXRowConst curImageEigen( curImage.ptr< uint8_t >(), curImage.rows, curImage.cols );
+    const int32_t border = m_halfPatchSize + 2;
+    // const uint32_t stride            = curImage.cols;
+    const double levelDominator      = 1 << level;
+    const double scale               = 1.0 / levelDominator;
+    const Eigen::Vector3d refC       = refFrame->cameraInWorld();
+    const Eigen::Vector3d lastKFC    = lastKeyframe->cameraInWorld();
+    uint32_t cntFeature              = 0;
+    uint32_t cntTotalProjectedPixels = 0;
+    for ( const auto& feature : refFrame->m_features )
+    {
+        if ( m_refVisibility[ cntFeature ] == false )
+        {
+            cntFeature += 2;
+            continue;
+        }
+        bool res =
+          computeResidualSingleFeature( feature, curImageEigen, curFrame, pose, border, refC, scale, cntFeature, cntTotalProjectedPixels );
+        if ( res == false )
+        {
+            // we also ignore the feature of last keyframe
+            cntFeature += 2;
+            continue;
+        }
+
+        const auto& point         = feature->m_point;
+        const auto& lastKFFeature = point->findFeature( lastKeyframe );
+        if ( lastKFFeature == nullptr )
+        {
+            cntFeature++;
+            continue;
+        }
+        res = computeResidualSingleFeature( lastKFFeature, curImageEigen, curFrame, pose, border, lastKFC, scale, cntFeature,
+                                            cntTotalProjectedPixels );
+        if ( res == false )
+        {
+            cntFeature++;
+            continue;
+        }
+    }
+    return cntTotalProjectedPixels;
+}
+
+bool ImageAlignment::computeResidualSingleFeature( const std::shared_ptr< Feature >& feature,
+                                                   const algorithm::MapXRowConst& imageEigen,
+                                                   const std::shared_ptr< Frame >& curFrame,
+                                                   const Sophus::SE3d& pose,
+                                                   const int32_t border,
+                                                   const Eigen::Vector3d& cameraInWorld,
+                                                   const double scale,
+                                                   uint32_t& cntFeature,
+                                                   uint32_t& cntTotalProjectedPixels )
+{
+    const auto& refFrame             = feature->m_frame;
+    const double depthNorm           = ( feature->m_point->m_position - cameraInWorld ).norm();
+    const Eigen::Vector3d point3d_C  = feature->m_bearingVec * depthNorm;
+    const Eigen::Vector3d point3d_W  = refFrame->camera2world( point3d_C );
+    const Eigen::Vector3d curPoint   = pose * point3d_W;
+    const Eigen::Vector2d curFeature = curFrame->camera2image( curPoint );
+    const double u                   = curFeature.x() * scale;
+    const double v                   = curFeature.y() * scale;
+    const int32_t uInt               = static_cast< int32_t >( std::floor( u ) );
+    const int32_t vInt               = static_cast< int32_t >( std::floor( v ) );
+    if ( feature->m_point == nullptr || ( uInt - border ) < 0 || ( vInt - border ) < 0 || ( uInt + border ) >= imageEigen.cols() ||
+         ( vInt + border ) >= imageEigen.rows() )
+    {
+        return false;
+    }
+
+    uint32_t cntPixel = 0;
+    // FIXME: Patch size should be set as odd
+    const int32_t beginIdx = -m_halfPatchSize;
+    const int32_t endIdx   = m_halfPatchSize;
+    for ( int32_t y{ beginIdx }; y <= endIdx; y++ )
+    {
+        for ( int32_t x{ beginIdx }; x <= endIdx; x++, cntPixel++, cntTotalProjectedPixels++ )
+        {
+            const double rowIdx        = v + y;
+            const double colIdx        = u + x;
+            const double curPixelValue = algorithm::bilinearInterpolationDouble( imageEigen, colIdx, rowIdx );
+
+            // ****
+            // IF we compute the error of inverse compositional as r = T(x) - I(W), then we should solve (delta p) = -(JtWT).inverse() *
+            // JtWr BUt if we take r = I(W) - T(x) a residual error, then (delta p) = (JtWT).inverse() * JtWr
+            // ***
+
+            m_optimizer.m_residuals( cntFeature * m_patchArea + cntPixel )     = curPixelValue - m_refPatches( cntFeature, cntPixel );
+            m_optimizer.m_visiblePoints( cntFeature * m_patchArea + cntPixel ) = true;
+        }
+    }
+    cntFeature++;
+    return true;
+}
+
 void ImageAlignment::update( Sophus::SE3d& pose, const Eigen::VectorXd& dx )
 {
     // pose = Sophus::SE3d::exp( dx ) * pose;
@@ -305,5 +354,6 @@ void ImageAlignment::update( Sophus::SE3d& pose, const Eigen::VectorXd& dx )
 void ImageAlignment::resetParameters()
 {
     std::fill( m_refVisibility.begin(), m_refVisibility.end(), false );
-    m_refPatches = cv::Scalar( 0.0 );
+    // m_refPatches = cv::Scalar( 0.0 );
+    m_refPatches.setZero();
 }

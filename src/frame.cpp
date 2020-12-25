@@ -3,13 +3,18 @@
 
 uint64_t Frame::m_frameCounter = 0;
 
-Frame::Frame( const std::shared_ptr< PinholeCamera >& camera, const cv::Mat& img, const uint32_t maxImagePyramid, const uint64_t timestamp )
+Frame::Frame( const std::shared_ptr< PinholeCamera >& camera,
+              const cv::Mat& img,
+              const uint32_t maxImagePyramid,
+              const uint64_t timestamp,
+              const std::shared_ptr< Frame > lastKeyframe )
     : m_id( m_frameCounter++ )
     , m_camera( camera )
     , m_absPose( Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero() )
     , m_imagePyramid( maxImagePyramid )
     , m_keyFrame( false )
     , m_timestamp( timestamp )
+    , m_lastKeyframe( lastKeyframe )
 {
     if ( img.empty() || img.type() != CV_8UC1 || img.cols != static_cast< int32_t >( m_camera->width() ) ||
          img.rows != static_cast< int32_t >( m_camera->height() ) )

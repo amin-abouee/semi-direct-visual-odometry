@@ -48,6 +48,17 @@ void Point::removeFrame( std::shared_ptr< Frame >& frame )
     m_features.erase( element, m_features.end() );
 }
 
+const std::shared_ptr< Feature >& Point::findFeature( const std::shared_ptr< Frame >& frame )
+{
+    for (const auto& feature : frame->m_features)
+    {
+        if (feature->m_point != nullptr && feature->m_point.get() == this)
+        {
+            return feature;
+        }
+    }
+}
+
 void Point::computeNormal()
 {
     const auto& feature = m_features.back();

@@ -11,7 +11,8 @@
 
 #define System_Log( LEVEL ) CLOG( LEVEL, "System" )
 
-System::System( const std::shared_ptr< Config >& config ) : m_config( config ), m_systemStatus( System::Status::Process_First_Frame )
+System::System( const std::shared_ptr< Config >& config )
+    : m_config( config ), m_activeKeyframe( nullptr ), m_systemStatus( System::Status::Process_First_Frame )
 {
     const std::string calibrationFile = utils::findAbsoluteFilePath( m_config->m_cameraCalibrationPath );
     cv::Mat cameraMatrix;
@@ -28,7 +29,7 @@ System::System( const std::shared_ptr< Config >& config ) : m_config( config ), 
 
 void System::addImage( const cv::Mat& img, const uint64_t timestamp )
 {
-    m_curFrame = std::make_shared< Frame >( m_camera, img, m_config->m_maxLevelImagePyramid + 1, timestamp );
+    m_curFrame = std::make_shared< Frame >( m_camera, img, m_config->m_maxLevelImagePyramid + 1, timestamp, m_activeKeyframe );
     System_Log( INFO ) << "Processing frame id: " << m_curFrame->m_id;
     System::Result res;
 
@@ -38,7 +39,7 @@ void System::addImage( const cv::Mat& img, const uint64_t timestamp )
     }
     else if ( m_systemStatus == System::Status::Process_Second_Frame )
     {
-        //TODO: check to avoid change of reference when res for the second frame is false
+        // TODO: check to avoid change of reference when res for the second frame is false
         res = processSecondFrame();
     }
     else if ( m_systemStatus == System::Status::Process_First_Frame )
@@ -73,7 +74,7 @@ System::Result System::processFirstFrame()
     {
         cv::Mat gradient = m_featureSelector->m_imgGradientMagnitude.clone();
         cv::Mat refBGR   = visualization::getColorImage( gradient );
-        visualization::featurePoints( refBGR, m_curFrame, 5, "pink", visualization::drawingRectangle );
+        visualization::featurePoints( refBGR, m_curFrame, 5, "pink", true, visualization::drawingRectangle );
         visualization::imageGrid( refBGR, m_config->m_cellPixelSize, "amber" );
         if ( m_config->m_savingType == "LiveShow" )
         {
@@ -86,6 +87,7 @@ System::Result System::processFirstFrame()
     }
 
     m_curFrame->setKeyframe();
+    m_activeKeyframe = m_curFrame;
     m_map->addKeyframe( m_curFrame );
     System_Log( DEBUG ) << "Number of Features: " << m_curFrame->numberObservation();
     m_systemStatus = System::Status::Process_Second_Frame;
@@ -101,7 +103,8 @@ System::Result System::processSecondFrame()
     Eigen::Vector3d t;
 
     // we find the corresponding point in curFrame and create feature for them
-    bool resOpticalFlow = algorithm::computeOpticalFlowSparse( m_refFrame, m_curFrame, m_config->m_patchSizeOpticalFlow, m_config->m_disparityThreshold );
+    bool resOpticalFlow =
+      algorithm::computeOpticalFlowSparse( m_refFrame, m_curFrame, m_config->m_patchSizeOpticalFlow, m_config->m_disparityThreshold );
     if ( resOpticalFlow == false )
     {
         System_Log( WARNING ) << "Disparity (displacement) is not sufficient";
@@ -186,7 +189,8 @@ System::Result System::processSecondFrame()
     // FIXME: do BA
 
     m_curFrame->setKeyframe();
-    numObserves = m_curFrame->numberObservation();
+    m_activeKeyframe = m_curFrame;
+    numObserves      = m_curFrame->numberObservation();
     Eigen::VectorXd newCurDepths( numObserves );
     algorithm::depthCamera( m_curFrame, newCurDepths );
     medianDepth           = algorithm::computeMedian( newCurDepths );
@@ -210,7 +214,7 @@ System::Result System::processSecondFrame()
     if ( m_config->m_enableVisualization == true )
     {
         cv::Mat refBGR = visualization::getColorImage( m_refFrame->m_imagePyramid.getBaseGradientImage() );
-        visualization::featurePoints( refBGR, m_refFrame, 6, "pink", visualization::drawingRectangle );
+        visualization::featurePoints( refBGR, m_refFrame, 6, "pink", true, visualization::drawingRectangle );
 
         cv::Mat curBGR = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
         visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 6, "orange", visualization::drawingCircle );
@@ -219,7 +223,7 @@ System::Result System::processSecondFrame()
         visualization::stickTwoImageVertically( refBGR, curBGR, stickImg );
 
         cv::Mat curBGR2 = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
-        visualization::featurePoints( curBGR2, m_curFrame, 6, "orange", visualization::drawingCircle );
+        visualization::featurePoints( curBGR2, m_curFrame, 6, "orange", false, visualization::drawingCircle );
         visualization::imageGrid( curBGR2, m_config->m_cellPixelSize, "green" );
 
         visualization::stickTwoImageVertically( stickImg, curBGR2, stickImg );
@@ -282,7 +286,7 @@ System::Result System::processNewFrame()
     if ( m_config->m_enableVisualization == true )
     {
         cv::Mat refBGR = visualization::getColorImage( m_refFrame->m_imagePyramid.getBaseGradientImage() );
-        visualization::featurePoints( refBGR, m_refFrame, 6, "pink", visualization::drawingRectangle );
+        visualization::featurePoints( refBGR, m_refFrame, 6, "pink", false, visualization::drawingRectangle );
 
         curBGR = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
         visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 6, "orange", visualization::drawingCircle );
@@ -290,18 +294,18 @@ System::Result System::processNewFrame()
         // cv::Mat stickImg;
         visualization::stickTwoImageVertically( refBGR, curBGR, stickImg );
 
-        // if ( m_config->m_savingType == "LiveShow" )
-        // {
-        //     std::stringstream ss;
-        //     ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
-        //     cv::imshow( ss.str(), stickImg );
-        // }
-        // else if ( m_config->m_savingType == "File" )
-        // {
-        //     std::stringstream ss;
-        //     ss << "../output/images/" << m_refFrame->m_id << " -> " << m_curFrame->m_id << ".png";
-        //     cv::imwrite( ss.str(), stickImg );
-        // }
+        if ( m_config->m_savingType == "LiveShow" )
+        {
+            std::stringstream ss;
+            ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
+            cv::imshow( ss.str(), stickImg );
+        }
+        else if ( m_config->m_savingType == "File" )
+        {
+            std::stringstream ss;
+            ss << "../output/images/" << m_refFrame->m_id << " -> " << m_curFrame->m_id << ".png";
+            cv::imwrite( ss.str(), stickImg );
+        }
     }
 
     // for ( const auto& refFeatures : m_refFrame->m_features )
@@ -321,35 +325,35 @@ System::Result System::processNewFrame()
     //     }
     // }
     std::vector< frameSize > overlapKeyFrames;
-    m_map->reprojectMap( m_curFrame, overlapKeyFrames );
-    System_Log( INFO ) << "Number of Features: " << m_curFrame->numberObservation();
+    // m_map->reprojectMap( m_curFrame, overlapKeyFrames );
+    // System_Log( INFO ) << "Number of Features: " << m_curFrame->numberObservation();
 
     if ( m_config->m_enableVisualization == true )
     {
-        visualization::featurePoints( curBGR, m_curFrame, 6, "teal", visualization::drawingCircle );
+        // visualization::featurePoints( curBGR, m_curFrame, 6, "teal", visualization::drawingCircle );
 
-        // cv::Mat stickImg;
-        visualization::stickTwoImageVertically( stickImg, curBGR, stickImg );
+        // // cv::Mat stickImg;
+        // visualization::stickTwoImageVertically( stickImg, curBGR, stickImg );
 
-        if ( m_config->m_savingType == "LiveShow" )
-        {
-            std::stringstream ss;
-            ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
-            cv::imshow( ss.str(), stickImg );
-        }
-        else if ( m_config->m_savingType == "File" )
-        {
-            std::stringstream ss;
-            ss << "../output/images/" << m_refFrame->m_id << " -> " << m_curFrame->m_id << ".png";
-            cv::imwrite( ss.str(), stickImg );
-        }
+        // if ( m_config->m_savingType == "LiveShow" )
+        // {
+        //     std::stringstream ss;
+        //     ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
+        //     cv::imshow( ss.str(), stickImg );
+        // }
+        // else if ( m_config->m_savingType == "File" )
+        // {
+        //     std::stringstream ss;
+        //     ss << "../output/images/" << m_refFrame->m_id << " -> " << m_curFrame->m_id << ".png";
+        //     cv::imwrite( ss.str(), stickImg );
+        // }
     }
 
-    if ( m_map->m_matches < 50 )
-    {
-        m_curFrame->m_absPose = m_refFrame->m_absPose;
-        return Result::Failed;
-    }
+    // if ( m_map->m_matches < 50 )
+    // {
+    //     m_curFrame->m_absPose = m_refFrame->m_absPose;
+    //     return Result::Failed;
+    // }
 
     // select keyframe
     // core_kfs_.insert(new_frame_);
