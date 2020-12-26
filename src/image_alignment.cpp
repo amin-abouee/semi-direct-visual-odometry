@@ -27,8 +27,8 @@ double ImageAlignment::align( std::shared_ptr< Frame >& refFrame, std::shared_pt
     if ( refFrame->numberObservation() == 0 )
         return 0;
 
-    const auto& lastKF = refFrame->m_lastKeyframe;
-    const std::size_t numFeatures  = refFrame->numberObservation() * 2 ;
+    const auto& lastKF             = refFrame->m_lastKeyframe;
+    const std::size_t numFeatures  = refFrame->numberObservation() + lastKF->numberObservation();
     const uint32_t numObservations = numFeatures * m_patchArea;
     m_refPatches.conservativeResize( numFeatures, m_patchArea );
     // m_refPatches                   = cv::Mat( numFeatures, m_patchArea, CV_32F );
@@ -88,37 +88,23 @@ void ImageAlignment::computeJacobian( const std::shared_ptr< Frame >& frame, con
     const cv::Mat& refImage = frame->m_imagePyramid.getImageAtLevel( level );
     const algorithm::MapXRowConst refImageEigen( refImage.ptr< uint8_t >(), refImage.rows, refImage.cols );
 
-    const std::shared_ptr< Frame >& lastKeyframe = frame->m_lastKeyframe;
-    const cv::Mat& lastKFImage                   = lastKeyframe->m_imagePyramid.getImageAtLevel( level );
-    const algorithm::MapXRowConst lastKFImageEigen( lastKFImage.ptr< uint8_t >(), lastKFImage.rows, lastKFImage.cols );
-
     const double levelDominator   = 1 << level;
     const double scale            = 1.0 / levelDominator;
     const Eigen::Vector3d refC    = frame->cameraInWorld();
-    const Eigen::Vector3d lastKFC = lastKeyframe->cameraInWorld();
     const double fx               = frame->m_camera->fx() / levelDominator;
     const double fy               = frame->m_camera->fy() / levelDominator;
     uint32_t cntFeature           = 0;
+
+    // project all feature of reference frame
     for ( const auto& feature : frame->m_features )
     {
-        // if (feature->m_point)
-
-        bool res = computeJacobianSingleFeature( feature, refImageEigen, border, refC, scale, fx, fy, cntFeature );
-        if ( res == false )
-        {
-            // ignore current feature + feature of last keyframe (probably not visible)
-            cntFeature += 2;
-            continue;
-        }
-        const auto& point         = feature->m_point;
-        const auto& lastKFFeature = point->findFeature( lastKeyframe );
-        if ( lastKFFeature == nullptr )
+        if ( feature->m_point == nullptr )
         {
             cntFeature++;
             continue;
         }
 
-        res = computeJacobianSingleFeature( lastKFFeature, lastKFImageEigen, border, lastKFC, scale, fx, fy, cntFeature );
+        bool res = computeJacobianSingleFeature( feature, refImageEigen, border, refC, scale, fx, fy, cntFeature );
         if ( res == false )
         {
             cntFeature++;
@@ -126,10 +112,26 @@ void ImageAlignment::computeJacobian( const std::shared_ptr< Frame >& frame, con
         }
     }
 
-    // for(cosnt auto& feature : lastKeyframe->m_features)
-    // {
+    const std::shared_ptr< Frame >& lastKeyframe = frame->m_lastKeyframe;
+    const cv::Mat& lastKFImage                   = lastKeyframe->m_imagePyramid.getImageAtLevel( level );
+    const algorithm::MapXRowConst lastKFImageEigen( lastKFImage.ptr< uint8_t >(), lastKFImage.rows, lastKFImage.cols );
+    const Eigen::Vector3d lastKFC = lastKeyframe->cameraInWorld();
+    // project all feature of last keyframe
+    for ( const auto& feature : lastKeyframe->m_features )
+    {
+        if ( feature->m_point == nullptr )
+        {
+            cntFeature++;
+            continue;
+        }
 
-    // }
+        bool res = computeJacobianSingleFeature( feature, lastKFImageEigen, border, lastKFC, scale, fx, fy, cntFeature );
+        if ( res == false )
+        {
+            cntFeature++;
+            continue;
+        }
+    }
     // visualization::templatePatches( m_refPatches, cntFeature, m_patchSize, 10, 10, 12 );
 }
 
@@ -147,7 +149,7 @@ bool ImageAlignment::computeJacobianSingleFeature( const std::shared_ptr< Featur
     const double v     = feature->m_pixelPosition.y() * scale;
     const int32_t uInt = static_cast< int32_t >( std::floor( u ) );
     const int32_t vInt = static_cast< int32_t >( std::floor( v ) );
-    if ( feature->m_point == nullptr || ( uInt - border ) < 0 || ( vInt - border ) < 0 || ( uInt + border ) >= imageEigen.cols() ||
+    if ( ( uInt - border ) < 0 || ( vInt - border ) < 0 || ( uInt + border ) >= imageEigen.cols() ||
          ( vInt + border ) >= imageEigen.rows() )
     {
         return false;
@@ -253,14 +255,13 @@ uint32_t ImageAlignment::computeResiduals( const std::shared_ptr< Frame >& refFr
     const double levelDominator      = 1 << level;
     const double scale               = 1.0 / levelDominator;
     const Eigen::Vector3d refC       = refFrame->cameraInWorld();
-    const Eigen::Vector3d lastKFC    = lastKeyframe->cameraInWorld();
     uint32_t cntFeature              = 0;
     uint32_t cntTotalProjectedPixels = 0;
     for ( const auto& feature : refFrame->m_features )
     {
         if ( m_refVisibility[ cntFeature ] == false )
         {
-            cntFeature += 2;
+            cntFeature ++;
             continue;
         }
         bool res =
@@ -268,18 +269,20 @@ uint32_t ImageAlignment::computeResiduals( const std::shared_ptr< Frame >& refFr
         if ( res == false )
         {
             // we also ignore the feature of last keyframe
-            cntFeature += 2;
+            cntFeature ++;
             continue;
         }
+    }
 
-        const auto& point         = feature->m_point;
-        const auto& lastKFFeature = point->findFeature( lastKeyframe );
-        if ( lastKFFeature == nullptr )
+    const Eigen::Vector3d lastKFC    = lastKeyframe->cameraInWorld();
+    for (const auto& feature : lastKeyframe->m_features)
+    {   
+        if ( m_refVisibility[ cntFeature ] == false )
         {
-            cntFeature++;
+            cntFeature ++;
             continue;
         }
-        res = computeResidualSingleFeature( lastKFFeature, curImageEigen, curFrame, pose, border, lastKFC, scale, cntFeature,
+        bool res = computeResidualSingleFeature( feature, curImageEigen, curFrame, pose, border, lastKFC, scale, cntFeature,
                                             cntTotalProjectedPixels );
         if ( res == false )
         {
