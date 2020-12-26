@@ -293,7 +293,7 @@ void Map::reprojectMap( std::shared_ptr< Frame >& frame, std::vector< frameSize 
 bool Map::reprojectPoint( const std::shared_ptr< Frame >& frame, const std::shared_ptr< Feature >& feature  )
 {
     const Eigen::Vector2d pixel = frame->world2image( feature->m_point->m_position );
-    if ( frame->m_camera->isInFrame( pixel, 5 ) )  // 8px is the patch size in the matcher
+    if ( frame->m_camera->isInFrame( pixel, 3 ) )  // 8px is the patch size in the matcher
     {
         const int32_t k = static_cast< int32_t >( pixel.y() ) / m_grid.m_cellSize * m_grid.m_gridCols +
                           static_cast< int32_t >( pixel.x() ) / m_grid.m_cellSize;
@@ -333,25 +333,27 @@ bool Map::reprojectCell( std::shared_ptr< Cell >& cell, std::shared_ptr< Frame >
         //     continue;
         // }
 
-        Map_Log (DEBUG) << "pixel pos: " << candidate.m_pixelPosition.transpose();
-        double error    = m_alignment->align( candidate.m_refFeature, frame, candidate.m_pixelPosition );
-        bool foundMatch = error < 50.0 ? true : false;
-        Map_Log (DEBUG) << "error: " << error << ", update pixel pos: " << candidate.m_pixelPosition.transpose() << ", foundMatch: " << foundMatch;
+        // Map_Log (DEBUG) << "pixel pos: " << candidate.m_pixelPosition.transpose();
+        // double error    = m_alignment->align( candidate.m_refFeature, frame, candidate.m_pixelPosition );
+        // bool foundMatch = error < 50.0 ? true : false;
+        // Map_Log (DEBUG) << "error: " << error << ", update pixel pos: " << candidate.m_pixelPosition.transpose() << ", foundMatch: " << foundMatch;
+        candidate.m_pixelPosition = frame->world2image(point->m_position);
+        //TODO: check the projected area with reference and compute the error
 
-        if ( foundMatch == false )
-        {
-            point->m_failedProjection++;
-            if ( point->m_type == Point::PointType::UNKNOWN && point->m_failedProjection > 15 )
-            {
-                removePoint( point );
-            }
-            if ( point->m_type == Point::PointType::CANDIDATE && point->m_failedProjection > 30 )
-            {
-                // TODO: remove from candidate
-            }
-            // it = cell->erase( it );
-            continue;
-        }
+        // if ( foundMatch == false )
+        // {
+        //     point->m_failedProjection++;
+        //     if ( point->m_type == Point::PointType::UNKNOWN && point->m_failedProjection > 15 )
+        //     {
+        //         removePoint( point );
+        //     }
+        //     if ( point->m_type == Point::PointType::CANDIDATE && point->m_failedProjection > 30 )
+        //     {
+        //         // TODO: remove from candidate
+        //     }
+        //     // it = cell->erase( it );
+        //     continue;
+        // }
 
         point->m_succeededProjection++;
         if ( point->m_type == Point::PointType::UNKNOWN && point->m_succeededProjection > 10 )
@@ -365,13 +367,8 @@ bool Map::reprojectCell( std::shared_ptr< Cell >& cell, std::shared_ptr< Frame >
         // round is only done if this frame is selected as keyframe.
         feature->m_point = point;
 
-        // If the keyframe is selected and we reproject the rest, we don't have to
-        // check this point anymore.
-        // it = cell->erase( it );
-
         // Maximum one point per cell.
-        // return true;
+        return true;
     }
-    // return false;
-    return true;
+    return false;
 }

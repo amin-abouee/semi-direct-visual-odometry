@@ -270,7 +270,6 @@ System::Result System::processNewFrame()
     // https://docs.microsoft.com/en-us/cpp/cpp/how-to-create-and-use-shared-ptr-instances?view=vs-2019
 
     m_curFrame->m_absPose = m_refFrame->m_absPose;
-    System_Log( INFO ) << "Number of features, pre: " << m_refFrame->numberObservation() << ", cur: " << m_curFrame->numberObservation();
 
     // ImageAlignment match( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid, m_config->m_maxLevelImagePyramid, 6 );
     // auto t1 = std::chrono::high_resolution_clock::now();
@@ -281,59 +280,17 @@ System::Result System::processNewFrame()
     // auto t2 = std::chrono::high_resolution_clock::now();
     // System_Log( INFO ) << "Elapsed time for alignment: " << std::chrono::duration_cast< std::chrono::microseconds >( t2 - t1 ).count()
     //    << " micro sec";
-    cv::Mat curBGR;
     cv::Mat stickImg;
     if ( m_config->m_enableVisualization == true )
     {
         cv::Mat refBGR = visualization::getColorImage( m_refFrame->m_imagePyramid.getBaseGradientImage() );
         visualization::featurePoints( refBGR, m_refFrame, 6, "pink", false, visualization::drawingRectangle );
 
-        curBGR = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
+        cv::Mat curBGR = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
         visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 6, "orange", visualization::drawingCircle );
 
         // cv::Mat stickImg;
         visualization::stickTwoImageVertically( refBGR, curBGR, stickImg );
-
-        if ( m_config->m_savingType == "LiveShow" )
-        {
-            std::stringstream ss;
-            ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
-            cv::imshow( ss.str(), stickImg );
-        }
-        else if ( m_config->m_savingType == "File" )
-        {
-            std::stringstream ss;
-            ss << "../output/images/" << m_refFrame->m_id << " -> " << m_curFrame->m_id << ".png";
-            cv::imwrite( ss.str(), stickImg );
-        }
-    }
-
-    // for ( const auto& refFeatures : m_refFrame->m_features )
-    // {
-    //     if ( refFeatures->m_point == nullptr )
-    //     {
-    //         continue;
-    //     }
-
-    //     const auto& point      = refFeatures->m_point->m_position;
-    //     const auto& curFeature = m_curFrame->world2image( point );
-    //     if ( m_curFrame->m_camera->isInFrame( curFeature, 5.0 ) == true )
-    //     {
-    //         std::shared_ptr< Feature > newFeature = std::make_shared< Feature >( m_curFrame, curFeature, 0.0 );
-    //         m_curFrame->addFeature( newFeature );
-    //         m_curFrame->m_features.back()->setPoint( refFeatures->m_point );
-    //     }
-    // }
-    std::vector< frameSize > overlapKeyFrames;
-    // m_map->reprojectMap( m_curFrame, overlapKeyFrames );
-    // System_Log( INFO ) << "Number of Features: " << m_curFrame->numberObservation();
-
-    if ( m_config->m_enableVisualization == true )
-    {
-        // visualization::featurePoints( curBGR, m_curFrame, 6, "teal", visualization::drawingCircle );
-
-        // // cv::Mat stickImg;
-        // visualization::stickTwoImageVertically( stickImg, curBGR, stickImg );
 
         // if ( m_config->m_savingType == "LiveShow" )
         // {
@@ -347,6 +304,33 @@ System::Result System::processNewFrame()
         //     ss << "../output/images/" << m_refFrame->m_id << " -> " << m_curFrame->m_id << ".png";
         //     cv::imwrite( ss.str(), stickImg );
         // }
+    }
+
+    std::vector< frameSize > overlapKeyFrames;
+    m_map->reprojectMap( m_curFrame, overlapKeyFrames );
+    System_Log( INFO ) << "Number of Features in new frame: " << m_curFrame->numberObservation();
+
+    if ( m_config->m_enableVisualization == true )
+    {
+        cv::Mat curBGR = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
+        visualization::featurePoints( curBGR, m_curFrame, 6, "orange", false, visualization::drawingCircle );
+        visualization::imageGrid( curBGR, m_config->m_cellPixelSize, "green" );
+
+        // cv::Mat stickImg;
+        visualization::stickTwoImageVertically( stickImg, curBGR, stickImg );
+
+        if ( m_config->m_savingType == "LiveShow" )
+        {
+            std::stringstream ss;
+            ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
+            cv::imshow( ss.str(), stickImg );
+        }
+        else if ( m_config->m_savingType == "File" )
+        {
+            std::stringstream ss;
+            ss << "../output/images/" << m_refFrame->m_id << " -> " << m_curFrame->m_id << ".png";
+            cv::imwrite( ss.str(), stickImg );
+        }
     }
 
     // if ( m_map->m_matches < 50 )

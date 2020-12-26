@@ -62,21 +62,22 @@ double ImageAlignment::align( std::shared_ptr< Frame >& refFrame, std::shared_pt
     // curFrame->m_absPose = absPose;
     Alignment_Log( DEBUG ) << "Computed Pose: " << curFrame->m_absPose.params().transpose();
 
-    for ( uint32_t i( 0 ); i < numFeatures; i += 2 )
-    {
-        if ( m_refVisibility[ i ] == true && m_refVisibility[ i + 1 ] == true )
-        {
-            const int32_t idx    = i / 2;
-            const auto& refFeature = refFrame->m_features[ idx ];
-            const auto& point = refFeature->m_point;
-            const Eigen::Vector2d pixelPosition = curFrame->world2image(point->m_position);
-            std::shared_ptr< Feature > feature = std::make_shared< Feature >( curFrame, pixelPosition, 0 );
-            curFrame->addFeature( feature );
-            // Here we add a reference in the feature to the 3D point, the other way
-            // round is only done if this frame is selected as keyframe.
-            feature->m_point = point;
-        }
-    }
+    // int32_t featureCounter = 0;
+    // for ( uint32_t i( 0 ); i < numFeatures; i += 2 )
+    // {
+    //     if ( m_refVisibility[ i ] == true && m_refVisibility[ i + 1 ] == true )
+    //     {
+    //         const int32_t idx    = i / 2;
+    //         const auto& refFeature = refFrame->m_features[ idx ];
+    //         const auto& point = refFeature->m_point;
+    //         const Eigen::Vector2d pixelPosition = curFrame->world2image(point->m_position);
+    //         std::shared_ptr< Feature > feature = std::make_shared< Feature >( curFrame, pixelPosition, 0 );
+    //         curFrame->addFeature( feature );
+    //         // Here we add a reference in the feature to the 3D point, the other way
+    //         // round is only done if this frame is selected as keyframe.
+    //         feature->m_point = point;
+    //     }
+    // }
 
     return error;
 }
