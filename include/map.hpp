@@ -63,8 +63,18 @@ public:
     /// overlapping field of view and projects only those map-points.
     void reprojectMap( std::shared_ptr< Frame >& frame, std::vector< frameSize >& overlapKeyFrames );
 
-    int32_t m_matches;
-    int32_t m_trials;
+    void addNewCandidate( const std::shared_ptr< Feature >& feature, const std::shared_ptr< Point >& point );
+
+    void addCandidateToFrame( std::shared_ptr< Frame >& frame );
+
+    void removeCandidate( const std::shared_ptr< Point >& point );
+
+    void removeFrameCandidate( std::shared_ptr< Frame >& frame );
+
+    void resetCandidates();
+
+    uint32_t m_matches;
+    uint32_t m_trials;
 
 private:
     std::shared_ptr< FeatureAlignment > m_alignment;
@@ -74,17 +84,16 @@ private:
     struct Candidate
     {
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-        std::shared_ptr< Feature > m_refFeature;  //!< Feature in reference frame
-        Eigen::Vector2d m_pixelPosition;          //!< projected 2D pixel location.
-        Candidate( const std::shared_ptr< Feature >& refFeature,
-                   const Eigen::Vector2d& pixelLocation )
-            : m_refFeature( refFeature ), m_pixelPosition( pixelLocation )
+        std::shared_ptr< Feature > m_feature;  //!< Feature in reference frame
+        std::shared_ptr< Point > m_point;      //!< projected 2D pixel location.
+        Candidate( const std::shared_ptr< Feature >& feature, const std::shared_ptr< Point >& point )
+            : m_feature( feature ), m_point( point )
         {
         }
     };
 
-    using Cell          = std::vector< Candidate >;
-    using CandidateGrid = std::vector< std::shared_ptr< Cell > >;
+    using CandidateList = std::vector< Candidate >;
+    using CandidateGrid = std::vector< std::shared_ptr< CandidateList > >;
 
     /// The grid stores a set of candidate matches. For every grid cell we try to find one match.
     struct Grid
@@ -96,12 +105,17 @@ private:
         uint32_t m_gridRows;
     };
 
+    // to projects all point into the new frame and create a list of features
     Grid m_grid;
+
+    // To get the new candidate points from depth filter
+    CandidateList m_candidates;
+    std::mutex m_mutexCandidates;
 
     bool pointQualityComparator( Candidate& lhs, Candidate& rhs );
     void initializeGrid( const std::shared_ptr< PinholeCamera >& camera, const uint32_t cellSize );
     void resetGrid();
-    bool reprojectCell( std::shared_ptr< Cell >& cell, std::shared_ptr< Frame >& frame );
+    bool reprojectCell( std::shared_ptr< CandidateList >& candidates, std::shared_ptr< Frame >& frame );
     bool reprojectPoint( const std::shared_ptr< Frame >& frame, const std::shared_ptr< Feature >& feature );
 };
 
