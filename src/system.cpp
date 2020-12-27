@@ -87,6 +87,7 @@ System::Result System::processFirstFrame()
     }
 
     m_curFrame->setKeyframe();
+    m_keyFrames.emplace_back(m_curFrame);
     m_activeKeyframe = m_curFrame;
     m_map->addKeyframe( m_curFrame );
     System_Log( DEBUG ) << "Number of Features: " << m_curFrame->numberObservation();
@@ -189,6 +190,7 @@ System::Result System::processSecondFrame()
     // FIXME: do BA
 
     m_curFrame->setKeyframe();
+    m_keyFrames.emplace_back( m_curFrame );
     m_activeKeyframe = m_curFrame;
     numObserves      = m_curFrame->numberObservation();
     Eigen::VectorXd newCurDepths( numObserves );
@@ -207,7 +209,6 @@ System::Result System::processSecondFrame()
     System_Log( INFO ) << "Size observation after detect: " << m_curFrame->numberObservation();
 
     m_depthEstimator->addKeyframe( m_curFrame, medianDepth, 0.5 * minDepth );
-    // m_keyFrames.emplace_back( m_curFrame );
     // m_depthEstimator->addKeyframe(m_curFrame, medianDepth, 0.5 * minDepth);
     m_map->addKeyframe( m_curFrame );
 
@@ -338,6 +339,8 @@ System::Result System::processNewFrame()
     //     m_curFrame->m_absPose = m_refFrame->m_absPose;
     //     return Result::Failed;
     // }
+    m_map->addCandidateToFrame(m_curFrame);
+    
 
     // select keyframe
     // core_kfs_.insert(new_frame_);
@@ -348,29 +351,37 @@ System::Result System::processNewFrame()
     //     return RESULT_FAILURE;
     // }
 
-    m_bundler->optimizePose( m_curFrame );
+    // m_bundler->optimizePose( m_curFrame );
     m_bundler->optimizeStructure( m_curFrame, 50 );
-    m_keyFrames.emplace_back( m_curFrame );
+    bool qualityCheck = computeTrackingQuality (m_curFrame, m_refFrame->numberObservation());
+    if (qualityCheck == false)
+    {
+        m_curFrame->m_absPose = m_refFrame->m_absPose;
+        return Result::Failed;
+    }
 
     const uint32_t numObserves = m_curFrame->numberObservation();
-    Eigen::VectorXd newCurDepths( numObserves );
-    algorithm::depthCamera( m_curFrame, newCurDepths );
-    const double depthMean = algorithm::computeMedian( newCurDepths );
-    const double depthMin  = newCurDepths.minCoeff();
+    Eigen::VectorXd depthsInCurFrame( numObserves );
+    algorithm::depthCamera( m_curFrame, depthsInCurFrame );
+    const double depthMean = algorithm::computeMedian( depthsInCurFrame );
+    const double depthMin  = depthsInCurFrame.minCoeff();
 
     if ( needKeyframe( depthMean, overlapKeyFrames ) )
     {
         m_depthEstimator->addFrame( m_curFrame );
         return Result::Success;
     }
+    
     m_curFrame->setKeyframe();
-
-    // TODO: add candidatepoint to map
+    m_keyFrames.emplace_back( m_curFrame );
 
     // TODO: use bundle adjustment
 
+    //TODO: run feature selection for missing part
+    // run depth estimation for new points
     m_depthEstimator->addKeyframe( m_curFrame, depthMean, depthMin * 0.5 );
 
+    // remove old key frame from map
     if ( m_map->m_keyFrames.size() > 10 )
     {
         std::shared_ptr< Frame > furthestFrame{ nullptr };
@@ -392,6 +403,33 @@ System::Result System::relocalizeFrame( Sophus::SE3d& pose, std::shared_ptr< Fra
 
     m_alignment->align( closestKeyframe, m_curFrame );
     return Result::Success;
+}
+
+bool System::computeTrackingQuality (const std::shared_ptr< Frame >& frame, const uint32_t refFrameNumberObservations)
+{
+    const int32_t curNumberObservations = frame->numberObservation();
+    if (frame->numberObservation() < 50)
+    {
+        return false;
+    }
+    const int32_t droppedFeatures = refFrameNumberObservations - curNumberObservations;
+    if (droppedFeatures > 40)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool System::needKeyframe( const double sceneDepthMean, const std::vector< frameSize >& overlapKeyFrames )
+{
+    for ( const auto& frame : overlapKeyFrames )
+    {
+        const Eigen::Vector3d diffPose = m_curFrame->world2camera( frame.first->cameraInWorld() );
+        if ( std::abs( diffPose.x() ) / sceneDepthMean < 0.12 && std::abs( diffPose.y() ) / sceneDepthMean < 0.12 * 0.8 &&
+             std::abs( diffPose.z() ) / sceneDepthMean < 0.12 * 1.3 )
+            return false;
+    }
+    return true;
 }
 
 void System::reportSummaryFrames()
@@ -432,23 +470,6 @@ void System::reportSummaryFeatures()
 
 void System::reportSummaryPoints()
 {
-}
-
-// void System::makeKeyframe( std::shared_ptr< Frame >& frame, const double& depthMean, const double& depthMin )
-// {
-//     return;
-// }
-
-bool System::needKeyframe( const double sceneDepthMean, const std::vector< frameSize >& overlapKeyFrames )
-{
-    for ( const auto& frame : overlapKeyFrames )
-    {
-        const Eigen::Vector3d diffPose = m_curFrame->world2camera( frame.first->cameraInWorld() );
-        if ( std::abs( diffPose.x() ) / sceneDepthMean < 0.12 && std::abs( diffPose.y() ) / sceneDepthMean < 0.12 * 0.8 &&
-             std::abs( diffPose.z() ) / sceneDepthMean < 0.12 * 1.3 )
-            return false;
-    }
-    return true;
 }
 
 bool System::loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs )

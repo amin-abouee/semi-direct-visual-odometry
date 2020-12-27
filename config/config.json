@@ -19,7 +19,7 @@
         "patch_size_optical_flow" : 11,
         "threshold_gradient_magnitude" : 50,
         "min_detected_points" : 100,
-        "desired_detected_points" : 250,
+        "desired_detected_points" : 200,
         "map_scale_factor" : 1.0,
         "disparity_threshold" : 10
     },

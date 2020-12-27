@@ -52,13 +52,15 @@ public:
     void reportSummaryPoints();
 
 private:
-    bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs );
-    bool needKeyframe( const double sceneDepthMean, const std::vector< frameSize >& overlapKeyFrames );
 
     Result processFirstFrame();
     Result processSecondFrame();
     Result processNewFrame();
     Result relocalizeFrame( Sophus::SE3d& pose, std::shared_ptr< Frame >& closestKeyframe );
+
+    bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs );
+    bool needKeyframe( const double sceneDepthMean, const std::vector< frameSize >& overlapKeyFrames );
+    bool computeTrackingQuality (const std::shared_ptr< Frame >& curFrame, const uint32_t refFrameNumberObservations);
 
     const std::shared_ptr< Config > m_config;
     std::shared_ptr< PinholeCamera > m_camera;

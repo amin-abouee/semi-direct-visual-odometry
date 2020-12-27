@@ -19,8 +19,6 @@ Map::Map( const std::shared_ptr< PinholeCamera >& camera, const uint32_t cellSiz
 void Map::reset()
 {
     m_keyFrames.clear();
-    // m_trashPoints.clear();
-    // emptyTrash();
 }
 
 void Map::removeFrame( std::shared_ptr< Frame >& frame )
@@ -90,7 +88,7 @@ void Map::addKeyframe( std::shared_ptr< Frame >& frame )
 void Map::getClosestKeyframe( std::shared_ptr< Frame >& frame, std::shared_ptr< Frame >& closestKeyframe ) const
 {
     // std::shared_ptr< Frame > selectedKeyFrame{ nullptr };
-    std::vector< keyframeDistance > closeKeyframes;
+    std::vector< KeyframeDistance > closeKeyframes;
     getCloseKeyframes( frame, closeKeyframes );
     if ( closeKeyframes.empty() )
     {
@@ -114,7 +112,7 @@ void Map::getClosestKeyframe( std::shared_ptr< Frame >& frame, std::shared_ptr< 
     }
 }
 
-void Map::getCloseKeyframes( const std::shared_ptr< Frame >& frame, std::vector< keyframeDistance >& closeKeyframes ) const
+void Map::getCloseKeyframes( const std::shared_ptr< Frame >& frame, std::vector< KeyframeDistance >& closeKeyframes ) const
 {
     // for ( auto& keyFrame : m_keyFrames )
     for ( auto it = m_keyFrames.rbegin(); it != m_keyFrames.rend(); ++it )
@@ -230,12 +228,12 @@ void Map::resetGrid()
     }
 }
 
-void Map::reprojectMap( std::shared_ptr< Frame >& frame, std::vector< frameSize >& overlapKeyFrames )
+void Map::reprojectMap( std::shared_ptr< Frame >& frame, std::vector< FrameSize >& overlapKeyFrames )
 {
     resetGrid();
 
     // Identify those Keyframes which share a common field of view.
-    std::vector< keyframeDistance > closeKeyframes;
+    std::vector< KeyframeDistance > closeKeyframes;
     getCloseKeyframes( frame, closeKeyframes );
 
     // auto compare = [] (const std::pair< const std::shared_ptr< Frame >&, double >& lhs, const std::pair< const std::shared_ptr< Frame >&,
@@ -267,8 +265,6 @@ void Map::reprojectMap( std::shared_ptr< Frame >& frame, std::vector< frameSize 
             }
         }
     }
-
-    // TODO: Run for candidate
 
     // Now we go through each grid cell and select one point to match.
     // At the end, we should have at maximum one reprojected point per cell.
@@ -396,13 +392,6 @@ void Map::addCandidateToFrame( std::shared_ptr< Frame >& frame )
         }
     }
     removeFrameCandidate( frame );
-}
-
-void Map::removeCandidate( const std::shared_ptr< Point >& point )
-{
-    m_candidates.erase( std::remove_if( m_candidates.begin(), m_candidates.end(),
-                                        [ &point ]( const auto& candidate ) { return candidate.m_feature->m_point.get() == point.get(); } ),
-                        m_candidates.end() );
 }
 
 void Map::removeFrameCandidate( std::shared_ptr< Frame >& frame )

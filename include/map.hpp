@@ -11,8 +11,8 @@
 
 class Map final
 {
-    using keyframeDistance = std::pair< const std::shared_ptr< Frame >, double >;
-    using frameSize        = std::pair< const std::shared_ptr< Frame >, int32_t >;
+    using KeyframeDistance = std::pair< const std::shared_ptr< Frame >, double >;
+    using FrameSize        = std::pair< const std::shared_ptr< Frame >, int32_t >;
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -42,7 +42,7 @@ public:
 
     void getClosestKeyframe( std::shared_ptr< Frame >& frame, std::shared_ptr< Frame >& closestKeyframe ) const;
 
-    void getCloseKeyframes( const std::shared_ptr< Frame >& frame, std::vector< keyframeDistance >& closeKeyframes ) const;
+    void getCloseKeyframes( const std::shared_ptr< Frame >& frame, std::vector< KeyframeDistance >& closeKeyframes ) const;
 
     /// Transform the whole map with rotation R, translation t and scale s.
     void transform( const Eigen::Matrix3d& R, const Eigen::Vector3d& t, const double& s ) const;
@@ -61,13 +61,11 @@ public:
 
     /// Project points from the map into the image. First finds keyframes with
     /// overlapping field of view and projects only those map-points.
-    void reprojectMap( std::shared_ptr< Frame >& frame, std::vector< frameSize >& overlapKeyFrames );
+    void reprojectMap( std::shared_ptr< Frame >& frame, std::vector< FrameSize >& overlapKeyFrames );
 
     void addNewCandidate( const std::shared_ptr< Feature >& feature, const std::shared_ptr< Point >& point );
 
     void addCandidateToFrame( std::shared_ptr< Frame >& frame );
-
-    void removeCandidate( const std::shared_ptr< Point >& point );
 
     void removeFrameCandidate( std::shared_ptr< Frame >& frame );
 
