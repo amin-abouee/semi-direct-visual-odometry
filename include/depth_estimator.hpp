@@ -12,6 +12,14 @@
 #ifndef __DEPTH_ESTIMATOR_H__
 #define __DEPTH_ESTIMATOR_H__
 
+#include "feature_selection.hpp"
+#include "frame.hpp"
+#include "mixed_gaussian_filter.hpp"
+#include "map.hpp"
+
+#include <Eigen/Core>
+#include <sophus/se3.hpp>
+
 #include <condition_variable>
 #include <iostream>
 #include <memory>
@@ -19,12 +27,6 @@
 #include <queue>
 #include <thread>
 
-#include "feature_selection.hpp"
-#include "frame.hpp"
-#include "mixed_gaussian_filter.hpp"
-
-#include <Eigen/Core>
-#include <sophus/se3.hpp>
 
 class DepthEstimator final
 {
@@ -40,6 +42,7 @@ public:
     std::queue< std::shared_ptr< Frame > > m_queueFrames;
     std::vector< MixedGaussianFilter > m_depthFilters;
 
+    std::shared_ptr< Map > m_map;
     std::shared_ptr< FeatureSelection > m_featureSelector;
 
     double m_newKeyframeMinDepth;
@@ -51,7 +54,7 @@ public:
     bool m_terminateThread;
 
     // C'tor
-    explicit DepthEstimator(std::shared_ptr< FeatureSelection >& featureSelection);
+    explicit DepthEstimator(std::shared_ptr<Map>& map,  std::shared_ptr< FeatureSelection >& featureSelection);
     // Copy C'tor
     DepthEstimator( const DepthEstimator& rhs ) = delete;
     // move C'tor

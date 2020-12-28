@@ -70,7 +70,7 @@ private:
     std::shared_ptr< FeatureSelection > m_featureSelector;
     std::vector< std::shared_ptr< Frame > > m_keyFrames;
     std::unique_ptr< DepthEstimator > m_depthEstimator;
-    std::unique_ptr< Map > m_map;
+    std::shared_ptr< Map > m_map;
     std::shared_ptr< ImageAlignment > m_alignment;
     std::shared_ptr< BundleAdjustment > m_bundler;
     Status m_systemStatus;

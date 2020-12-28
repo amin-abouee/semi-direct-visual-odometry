@@ -22,8 +22,8 @@ System::System( const std::shared_ptr< Config >& config )
     m_alignment       = std::make_shared< ImageAlignment >( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid,
                                                       m_config->m_maxLevelImagePyramid, 6 );
     m_featureSelector = std::make_shared< FeatureSelection >( m_config->m_imgWidth, m_config->m_imgHeight, m_config->m_cellPixelSize );
-    m_depthEstimator  = std::make_unique< DepthEstimator >( m_featureSelector );
-    m_map             = std::make_unique< Map >( m_camera, m_config->m_cellPixelSize );
+    m_map             = std::make_shared< Map >( m_camera, m_config->m_cellPixelSize );
+    m_depthEstimator  = std::make_unique< DepthEstimator >( m_map, m_featureSelector );
     m_bundler         = std::make_shared< BundleAdjustment >( 0, 6 );
 }
 
@@ -376,6 +376,11 @@ System::Result System::processNewFrame()
     m_keyFrames.emplace_back( m_curFrame );
 
     // TODO: use bundle adjustment
+
+    m_featureSelector->setExistingFeatures( m_curFrame->m_features );
+    m_featureSelector->gradientMagnitudeWithSSC( m_curFrame, m_config->m_thresholdGradientMagnitude,
+                                                 m_config->m_desiredDetectedPointsForInitialization, true );
+
 
     //TODO: run feature selection for missing part
     // run depth estimation for new points

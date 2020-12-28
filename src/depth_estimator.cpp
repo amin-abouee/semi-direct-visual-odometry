@@ -3,15 +3,16 @@
 #include "utils.hpp"
 #include "visualization.hpp"
 
-#include <opencv2/highgui.hpp>
 #include <easylogging++.h>
+#include <opencv2/highgui.hpp>
 
 #include <random>
 
 #define Depth_Log( LEVEL ) CLOG( LEVEL, "Depth" )
 
-DepthEstimator::DepthEstimator( std::shared_ptr< FeatureSelection >& featureSelection )
+DepthEstimator::DepthEstimator( std::shared_ptr< Map >& map, std::shared_ptr< FeatureSelection >& featureSelection )
     : m_deletedKeyframe( nullptr )
+    , m_map( map )
     , m_featureSelector( featureSelection )
     , m_newKeyframeMinDepth( 0.0 )
     , m_newKeyframeMeanDepth( 0.0 )
@@ -86,6 +87,7 @@ void DepthEstimator::addKeyframe( std::shared_ptr< Frame >& frame, double depthM
 
 void DepthEstimator::removeKeyframe( std::shared_ptr< Frame >& frame )
 {
+    // we buffer this frame to delete them in the right time
     m_deletedKeyframe = frame;
     // m_haltUpdatingDepthFilter = true;
     // std::unique_lock< std::mutex > threadLocker( m_mutexFilter );
@@ -165,7 +167,7 @@ void DepthEstimator::updateFiltersLoop()
 void DepthEstimator::removeKeyframe()
 {
     std::unique_lock< std::mutex > threadLocker( m_mutexFilter );
-    auto element = std::remove_if( m_depthFilters.begin(), m_depthFilters.end(), [this]( auto& depthFilter ) -> bool {
+    auto element = std::remove_if( m_depthFilters.begin(), m_depthFilters.end(), [ this ]( auto& depthFilter ) -> bool {
         if ( depthFilter.m_feature->m_frame == m_deletedKeyframe )
             return true;
         return false;
@@ -174,32 +176,23 @@ void DepthEstimator::removeKeyframe()
     m_deletedKeyframe = nullptr;
 }
 
-
 void DepthEstimator::initializeFilters( std::shared_ptr< Frame >& frame )
 {
     Depth_Log( DEBUG ) << "initializeFilters";
 
-    // m_haltUpdatingDepthFilter = true;
-    // std::unique_lock< std::mutex > threadLocker( m_mutexFilter );
+    m_haltUpdatingDepthFilter = true;
+    std::unique_lock< std::mutex > threadLocker( m_mutexFilter );
 
     for ( auto& feature : frame->m_features )
     {
-        m_depthFilters.push_back( MixedGaussianFilter( feature, m_newKeyframeMeanDepth, m_newKeyframeMinDepth ) );
+        if ( feature->m_point == nullptr )
+        {
+            m_depthFilters.push_back( MixedGaussianFilter( feature, m_newKeyframeMeanDepth, m_newKeyframeMinDepth ) );
+        }
     }
-    // m_haltUpdatingDepthFilter = false;
+    m_haltUpdatingDepthFilter = false;
 
     Depth_Log( DEBUG ) << m_depthFilters.size() << " filters initialized for depth estimation";
-
-    // if (m_depthFilters.size() > 0)
-    // {
-    //     cv::Mat refBGR = visualization::getColorImageImage( m_depthFilters[0].m_feature->m_frame->m_imagePyramid.getBaseImage() );
-    //     visualization::projectDepthFilters(refBGR, frame, m_depthFilters, 4, "lime", visualization::drawingLine);
-    //     std::stringstream ss;
-    //     ss << "create depth for frame " << frame->m_id;
-    //     cv::imshow( ss.str(), refBGR );
-    //     // cv::imshow( "create depth", refBGR );
-    //     cv::waitKey(0);
-    // }
 }
 
 void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
@@ -233,11 +226,12 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
     //     // cv::waitKey(0);
     // }
 
-    std::vector< double > updatedDepths;
+    // std::vector< double > updatedDepths;
 
     for ( auto& depthFilter : m_depthFilters )
     {
-        Depth_Log( DEBUG ) << "depth filter " << depthFilter.m_id << ", mu: " << depthFilter.m_frameId << ", sigma: " << depthFilter.m_sigma;
+        Depth_Log( DEBUG ) << "depth filter " << depthFilter.m_id << ", mu: " << depthFilter.m_frameId
+                           << ", sigma: " << depthFilter.m_sigma;
 
         if ( m_haltUpdatingDepthFilter == true )
             return;
@@ -246,7 +240,7 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
         {
             depthFilter.m_validity = false;
             failedUpdated++;
-            updatedDepths.push_back( 0.0 );
+            // updatedDepths.push_back( 0.0 );
             continue;
         }
 
@@ -257,7 +251,7 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
         {
             depthFilter.m_validity = false;
             failedUpdated++;
-            updatedDepths.push_back( 0.0 );
+            // updatedDepths.push_back( 0.0 );
             continue;
         }
 
@@ -270,7 +264,14 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
         algorithm::matchEpipolarConstraint( depthFilter.m_feature->m_frame, frame, depthFilter.m_feature, 7, 1.0 / depthFilter.m_mu,
                                             1.0 / inverseMinDepth, 1.0 / inverseMaxDepth, updatedDepth );
 
-        updatedDepths.push_back( updatedDepth );
+        // updatedDepths.push_back( updatedDepth );
+        // TODO: check the result of epipolar. what about the failed case
+        // {
+        //     it->b++; // increase outlier probability when no match was found
+        //     ++it;
+        //     ++n_failed_matches;
+        //     continue;
+        // }
 
         // compute tau
         const double tau        = computeTau( relativePose, depthFilter.m_feature->m_bearingVec, updatedDepth, pixelErrorAngle );
@@ -295,24 +296,14 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
             // assert( it->ftr->point == NULL );  // TODO this should not happen anymore
             const Eigen::Vector3d pointInWorld =
               depthFilter.m_feature->m_frame->image2world( depthFilter.m_feature->m_pixelPosition, 1.0 / depthFilter.m_mu );
-            auto point                     = std::make_shared< Point >( pointInWorld, depthFilter.m_feature );
-            depthFilter.m_feature->m_point = point;
+            auto point = std::make_shared< Point >( pointInWorld, depthFilter.m_feature );
+            depthFilter.m_feature->setPoint( point );
+            point->addFeature( depthFilter.m_feature );
 
-            /* FIXME it is not threadsafe to add a feature to the frame here.
-            if(frame->isKeyframe())
             {
-              Feature* ftr = new Feature(frame.get(), matcher_.px_cur_, matcher_.search_level_);
-              ftr->point = point;
-              point->addFrameRef(ftr);
-              frame->addFeature(ftr);
-              it->ftr->frame->addFeature(it->ftr);
+                m_map->addNewCandidate(depthFilter.m_feature, point);
+                Depth_Log( DEBUG ) << "A new candidate added at position: " << point->m_position.transpose();
             }
-            else
-            */
-            {
-                // seed_converged_cb_( point, it->sigma2 );  // put in candidate list
-            }
-            // it = seeds_.erase( it );
             depthFilter.m_validity = false;
         }
         else if ( std::isnan( inverseMinDepth ) )
@@ -321,23 +312,10 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
             depthFilter.m_validity = false;
             failedUpdated++;
         }
-        Depth_Log( DEBUG ) << "updated depth filter " << depthFilter.m_id << ", mu: " << depthFilter.m_frameId << ", sigma: " << depthFilter.m_sigma;
+        Depth_Log( DEBUG ) << "updated depth filter " << depthFilter.m_id << ", mu: " << depthFilter.m_mu
+                           << ", sigma: " << depthFilter.m_sigma;
         // Depth_Log( DEBUG ) << "Filter id: " << depthFilter.m_id << ", mu: " << depthFilter.m_mu << ", sigma: " << depthFilter.m_sigma;
     }
-
-    // if ( m_depthFilters.size() > 0 )
-    // {
-    //     cv::Mat refBGR = visualization::getColorImageImage( m_depthFilters[ 0 ].m_feature->m_frame->m_imagePyramid.getBaseImage() );
-    //     visualization::featurePoints( refBGR, m_depthFilters[ 0 ].m_feature->m_frame, 8, "pink", visualization::drawingRectangle );
-    //     cv::Mat curBGR = visualization::getColorImageImage( frame->m_imagePyramid.getBaseImage() );
-    //     visualization::projectDepthFilters( curBGR, frame, m_depthFilters, updatedDepths, 4, "lime", visualization::drawingLine );
-    //     cv::Mat stickImg;
-    //     visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
-    //     std::stringstream ss;
-    //     ss << "updated depth for frame " << frame->m_id;
-    //     cv::imshow( ss.str(), stickImg );
-    //     cv::waitKey( 0 );
-    // }
 
     // remove bad filters
     auto removedElements = std::remove_if( m_depthFilters.begin(), m_depthFilters.end(), []( auto& depthFilter ) -> bool {
