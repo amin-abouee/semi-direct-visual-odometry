@@ -271,16 +271,11 @@ System::Result System::processNewFrame()
     // https://docs.microsoft.com/en-us/cpp/cpp/how-to-create-and-use-shared-ptr-instances?view=vs-2019
 
     m_curFrame->m_absPose = m_refFrame->m_absPose;
-
-    // ImageAlignment match( m_config->m_patchSizeImageAlignment, m_config->m_minLevelImagePyramid, m_config->m_maxLevelImagePyramid, 6 );
-    // auto t1 = std::chrono::high_resolution_clock::now();
     {
         TIMED_SCOPE( timerImageAlignment, "image_alignment" );
         m_alignment->align( m_refFrame, m_curFrame );
     }
-    // auto t2 = std::chrono::high_resolution_clock::now();
-    // System_Log( INFO ) << "Elapsed time for alignment: " << std::chrono::duration_cast< std::chrono::microseconds >( t2 - t1 ).count()
-    //    << " micro sec";
+
     cv::Mat stickImg;
     if ( m_config->m_enableVisualization == true )
     {
@@ -290,7 +285,6 @@ System::Result System::processNewFrame()
         cv::Mat curBGR = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
         visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 6, "orange", visualization::drawingCircle );
 
-        // cv::Mat stickImg;
         visualization::stickTwoImageVertically( refBGR, curBGR, stickImg );
 
         // if ( m_config->m_savingType == "LiveShow" )
@@ -320,6 +314,30 @@ System::Result System::processNewFrame()
         // cv::Mat stickImg;
         visualization::stickTwoImageVertically( stickImg, curBGR, stickImg );
 
+        // if ( m_config->m_savingType == "LiveShow" )
+        // {
+        //     std::stringstream ss;
+        //     ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
+        //     cv::imshow( ss.str(), stickImg );
+        // }
+        // else if ( m_config->m_savingType == "File" )
+        // {
+        //     std::stringstream ss;
+        //     ss << "../output/images/" << m_refFrame->m_id << " -> " << m_curFrame->m_id << ".png";
+        //     cv::imwrite( ss.str(), stickImg );
+        // }
+    }
+
+    m_map->addCandidateToFrame(m_curFrame->m_lastKeyframe);
+
+    if ( m_config->m_enableVisualization == true )
+    {
+        cv::Mat refBGR = visualization::getColorImage( m_refFrame->m_imagePyramid.getBaseGradientImage() );
+        visualization::featurePoints( refBGR, m_refFrame, 6, "pink", false, visualization::drawingRectangle );
+
+        // cv::Mat stickImg;
+        visualization::stickTwoImageVertically( stickImg, refBGR, stickImg );
+
         if ( m_config->m_savingType == "LiveShow" )
         {
             std::stringstream ss;
@@ -333,27 +351,18 @@ System::Result System::processNewFrame()
             cv::imwrite( ss.str(), stickImg );
         }
     }
-
-    // if ( m_map->m_matches < 50 )
-    // {
-    //     m_curFrame->m_absPose = m_refFrame->m_absPose;
-    //     return Result::Failed;
-    // }
-    m_map->addCandidateToFrame(m_curFrame);
     
-
-    // select keyframe
-    // core_kfs_.insert(new_frame_);
-    // setTrackingQuality(sfba_n_edges_final);
-    // if(tracking_quality_ == TRACKING_INSUFFICIENT)
-    // {
-    //     new_frame_->T_f_w_ = last_frame_->T_f_w_; // reset to avoid crazy pose jumps
-    //     return RESULT_FAILURE;
-    // }
-
     // m_bundler->optimizePose( m_curFrame );
     m_bundler->optimizeStructure( m_curFrame, 50 );
-    bool qualityCheck = computeTrackingQuality (m_curFrame, m_refFrame->numberObservation());
+    uint32_t obsWithPoints = 0;
+    for(const auto& feature : m_refFrame->m_features)
+    {
+        if (feature->m_point != nullptr)
+        {
+            obsWithPoints++;
+        }
+    }
+    bool qualityCheck = computeTrackingQuality (m_curFrame, obsWithPoints);
     if (qualityCheck == false)
     {
         m_curFrame->m_absPose = m_refFrame->m_absPose;

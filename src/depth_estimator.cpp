@@ -27,7 +27,7 @@ DepthEstimator::DepthEstimator( std::shared_ptr< Map >& map, std::shared_ptr< Fe
     // new std::thread(std::bind(&ThreadExample::run, this)));
     // https://www.youtube.com/watch?v=hCvc9y39RDw&list=PLk6CEY9XxSIAeK-EAh3hB4fgNvYkYmghp&index=2
     m_thread = std::make_unique< std::thread >( &DepthEstimator::updateFiltersLoop, this );
-    // Depth_Log( DEBUG ) << "thread initiliazed";
+    Depth_Log( DEBUG ) << "Thread initiliazed";
     // Depth_Log( DEBUG ) << "newKeyframeMinDepth: " << m_newKeyframeMinDepth << ", newKeyframeMinDepth: " << m_newKeyframeMinDepth;
 }
 
@@ -89,16 +89,6 @@ void DepthEstimator::removeKeyframe( std::shared_ptr< Frame >& frame )
 {
     // we buffer this frame to delete them in the right time
     m_deletedKeyframe = frame;
-    // m_haltUpdatingDepthFilter = true;
-    // std::unique_lock< std::mutex > threadLocker( m_mutexFilter );
-    // auto element = std::remove_if( m_depthFilters.begin(), m_depthFilters.end(), [ &frame ]( auto& depthFilter ) -> bool {
-    //     if ( depthFilter.m_feature->m_frame == frame )
-    //         return true;
-    //     return false;
-    // } );
-    // m_depthFilters.erase( element, m_depthFilters.end() );
-
-    // m_haltUpdatingDepthFilter = false;
 }
 
 void DepthEstimator::reset()
@@ -213,21 +203,6 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
 
     Depth_Log( DEBUG ) << "Frame: " << frame->m_id << ", size of depthFilters " << m_depthFilters.size();
 
-    // if ( m_depthFilters.size() > 0 )
-    // {
-    //     cv::Mat refBGR = visualization::getColorImageImage( frame->m_imagePyramid.getBaseImage() );
-    //     // cv::Mat curBGR = visualization::getColorImageImage( frame->m_imagePyramid.getBaseImage() );
-    //     // cv::Mat stickImg;
-    //     // visualization::stickTwoImageHorizontally( refBGR, curBGR, stickImg );
-    //     visualization::projectDepthFilters( refBGR, frame, m_depthFilters, 4, "lime", visualization::drawingLine );
-    //     std::stringstream ss;
-    //     ss << "depth for frame " << frame->m_id;
-    //     cv::imshow( ss.str(), refBGR );
-    //     // cv::waitKey(0);
-    // }
-
-    // std::vector< double > updatedDepths;
-
     for ( auto& depthFilter : m_depthFilters )
     {
         Depth_Log( DEBUG ) << "depth filter " << depthFilter.m_id << ", mu: " << depthFilter.m_frameId
@@ -240,7 +215,6 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
         {
             depthFilter.m_validity = false;
             failedUpdated++;
-            // updatedDepths.push_back( 0.0 );
             continue;
         }
 
@@ -251,7 +225,6 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
         {
             depthFilter.m_validity = false;
             failedUpdated++;
-            // updatedDepths.push_back( 0.0 );
             continue;
         }
 
@@ -314,7 +287,6 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
         }
         Depth_Log( DEBUG ) << "updated depth filter " << depthFilter.m_id << ", mu: " << depthFilter.m_mu
                            << ", sigma: " << depthFilter.m_sigma;
-        // Depth_Log( DEBUG ) << "Filter id: " << depthFilter.m_id << ", mu: " << depthFilter.m_mu << ", sigma: " << depthFilter.m_sigma;
     }
 
     // remove bad filters

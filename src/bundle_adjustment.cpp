@@ -4,14 +4,24 @@
 #include "utils.hpp"
 #include "visualization.hpp"
 
-#include <algorithm>
-#include <deque>
-
+#include <easylogging++.h>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 
-#include "easylogging++.h"
+#include <g2o/core/block_solver.h>
+#include <g2o/core/optimization_algorithm_levenberg.h>
+#include <g2o/core/robust_kernel_impl.h>
+#include <g2o/core/solver.h>
+#include <g2o/solvers/cholmod/linear_solver_cholmod.h>
+#include <g2o/solvers/csparse/linear_solver_csparse.h>
+#include <g2o/solvers/dense/linear_solver_dense.h>
+#include <g2o/solvers/structure_only/structure_only_solver.h>
+
+#include <algorithm>
+#include <deque>
+
 #define Adjustment_Log( LEVEL ) CLOG( LEVEL, "Adjustment" )
+#define SCHUR_TRICK 1
 
 BundleAdjustment::BundleAdjustment( int32_t level, uint32_t numParameters ) : m_level( level ), m_optimizer( numParameters )
 {
@@ -24,7 +34,7 @@ double BundleAdjustment::optimizePose( std::shared_ptr< Frame >& frame )
     if ( frame->numberObservation() == 0 )
         return 0;
 
-    m_optimizer.setNumUnknowns(6);
+    m_optimizer.setNumUnknowns( 6 );
     // auto t1 = std::chrono::high_resolution_clock::now();
     const std::size_t numFeatures = frame->numberObservation();
     // const uint32_t numObservations = numFeatures;
@@ -60,7 +70,7 @@ double BundleAdjustment::optimizeStructure( std::shared_ptr< Frame >& frame, con
     if ( frame->numberObservation() == 0 )
         return 0;
 
-    m_optimizer.setNumUnknowns(3);
+    m_optimizer.setNumUnknowns( 3 );
     std::vector< std::shared_ptr< Point > > points;
     for ( const auto& feature : frame->m_features )
     {
@@ -76,7 +86,7 @@ double BundleAdjustment::optimizeStructure( std::shared_ptr< Frame >& frame, con
                       } );
 
     m_optimizer.m_numUnknowns = 3;
-    double error = 0.0;
+    double error              = 0.0;
     for ( uint32_t i( 0 ); i < setMaxNumerPoints; i++ )
     {
         auto& point                   = points[ i ];
@@ -226,9 +236,9 @@ void BundleAdjustment::computeJacobianStructure( const std::shared_ptr< Point >&
     uint32_t cntFeature = 0;
     for ( const auto& feature : point->m_features )
     {
-        const auto& pos                      = point->m_position;
+        const auto& pos = point->m_position;
         // const Eigen::Vector2d projectedPoint = feature->m_frame->world2image( pos );
-        const auto& camera                   = feature->m_frame->m_camera;
+        const auto& camera = feature->m_frame->m_camera;
         Eigen::Matrix< double, 2, 3 > imageJac;
         computeImageJacStructure( imageJac, pos, feature->m_frame->m_absPose.rotationMatrix(), camera->fx(), camera->fy() );
         m_optimizer.m_jacobian.block( 2 * cntFeature, 0, 2, 3 ) = imageJac;
@@ -298,4 +308,171 @@ void BundleAdjustment::updateStructure( const std::shared_ptr< Point >& point, c
 void BundleAdjustment::resetParameters()
 {
     std::fill( m_refVisibility.begin(), m_refVisibility.end(), false );
+}
+
+void BundleAdjustment::setupG2o( g2o::SparseOptimizer* optimizer )
+{
+    optimizer->setVerbose( false );
+
+#if SCHUR_TRICK
+    // solver
+    // g2o::BlockSolver_6_3::LinearSolverType* linearSolver;
+    // linearSolver                                = new g2o::LinearSolverCholmod< g2o::BlockSolver_6_3::PoseMatrixType >();
+    // g2o::BlockSolver_6_3* solver_ptr            = new g2o::BlockSolver_6_3( linearSolver );
+
+    // https://github.com/RainerKuemmerle/g2o/blob/master/unit_test/slam3d/optimization_slam3d.cpp
+    auto linearSolver = g2o::make_unique< g2o::LinearSolverCholmod< g2o::BlockSolver_6_3::PoseMatrixType > >();
+    // linearSolver->setBlockOrdering(false);
+    auto solver_ptr                             = g2o::make_unique< g2o::BlockSolver_6_3 >( std::move( linearSolver ) );
+    g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg( std::move( solver_ptr ) );
+#else
+    g2o::BlockSolverX::LinearSolverType* linearSolver;
+    linearSolver = new g2o::LinearSolverCholmod< g2o::BlockSolverX::PoseMatrixType >();
+    // linearSolver = new g2o::LinearSolverCSparse<g2o::BlockSolverX::PoseMatrixType>();
+    g2o::BlockSolverX* solver_ptr               = new g2o::BlockSolverX( linearSolver );
+    g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg( solver_ptr );
+#endif
+
+    solver->setMaxTrialsAfterFailure( 5 );
+    optimizer->setAlgorithm( solver );
+
+    // setup camera
+    g2o::CameraParameters* cam_params = new g2o::CameraParameters( 1.0, Eigen::Vector2d( 0., 0. ), 0. );
+    cam_params->setId( 0 );
+    if ( !optimizer->addParameter( cam_params ) )
+    {
+        assert( false );
+    }
+}
+
+BundleAdjustment::g2oFrameSE3* BundleAdjustment::createG2oFrameSE3( const std::shared_ptr< Frame >& frame,
+                                                                    const uint32_t id,
+                                                                    const bool fixed )
+{
+    g2oFrameSE3* v = new g2oFrameSE3();
+    v->setId( id );
+    v->setFixed( fixed );
+    v->setEstimate( g2o::SE3Quat( frame->m_absPose.unit_quaternion(), frame->m_absPose.translation() ) );
+    return v;
+}
+
+BundleAdjustment::g2oPoint* BundleAdjustment::createG2oPoint( const Eigen::Vector3d position, const uint32_t id, const bool fixed )
+{
+    g2oPoint* v = new g2oPoint;
+    v->setId( id );
+#if SCHUR_TRICK
+    v->setMarginalized( true );
+#endif
+    v->setFixed( fixed );
+    v->setEstimate( position );
+    return v;
+}
+
+BundleAdjustment::g2oEdgeSE3* BundleAdjustment::createG2oEdgeSE3(
+  g2oFrameSE3* v_kf, g2oPoint* v_mp, const Eigen::Vector2d& up, bool robustKernel, double huberWidth, double weight )
+{
+    g2oEdgeSE3* e = new g2oEdgeSE3();
+    e->setVertex( 0, dynamic_cast< g2o::OptimizableGraph::Vertex* >( v_mp ) );
+    e->setVertex( 1, dynamic_cast< g2o::OptimizableGraph::Vertex* >( v_kf ) );
+    e->setMeasurement( up );
+    e->information()           = weight * Eigen::Matrix2d::Identity( 2, 2 );
+    g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber();  // TODO: memory leak
+    rk->setDelta( huberWidth );
+    e->setRobustKernel( rk );
+    e->setParameterId( 0, 0 );  // old: e->setId(v_point->id());
+    return e;
+}
+
+void BundleAdjustment::runSparceBAOptimizer( g2o::SparseOptimizer* optimizer,
+                                             uint32_t numIterations,
+                                             double& initError,
+                                             double& finalError )
+{
+    optimizer->initializeOptimization();
+    optimizer->computeActiveErrors();
+    initError = optimizer->activeChi2();
+    optimizer->optimize( numIterations );
+    finalError = optimizer->activeChi2();
+}
+
+void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
+                                  std::shared_ptr< Frame >& secFrame,
+                                  double reprojectionError,
+                                  std::shared_ptr< Map >& map )
+{
+    // scale reprojection threshold in pixels to unit plane
+    reprojectionError /= fstFrame->m_camera->fx();
+
+    // init g2o
+    g2o::SparseOptimizer optimizer;
+    setupG2o( &optimizer );
+
+    std::vector< EdgeContainerSE3 > edges;
+    size_t v_id = 0;
+
+    // New Keyframe Vertex 1: This Keyframe is set to fixed!
+    g2oFrameSE3* v_frame1 = createG2oFrameSE3( fstFrame, v_id++, true );
+    optimizer.addVertex( v_frame1 );
+
+    // New Keyframe Vertex 2
+    g2oFrameSE3* v_frame2 = createG2oFrameSE3( secFrame, v_id++, false );
+    optimizer.addVertex( v_frame2 );
+
+    // Create Point Vertices
+    for ( auto& feature : fstFrame->m_features )
+    {
+        auto& point = feature->m_point;
+        if ( point == nullptr )
+            continue;
+        g2oPoint* v_pt = createG2oPoint( point->m_position, v_id++, false );
+        optimizer.addVertex( v_pt );
+        // point->v_pt_ = v_pt;
+        g2oEdgeSE3* e =
+          createG2oEdgeSE3( v_frame1, v_pt, feature->m_pixelPosition, true, reprojectionError * 1.0 );
+        optimizer.addEdge( e );
+        edges.push_back( EdgeContainerSE3( e, fstFrame, feature ) );  // TODO feature now links to frame, so we can simplify edge container!
+
+        // find at which index the second frame observes the point
+        auto& featureSecFrame = point->findFeature(secFrame);
+        e = createG2oEdgeSE3( v_frame2, v_pt, featureSecFrame->m_pixelPosition, true, reprojectionError * 1.0 );
+        optimizer.addEdge( e );
+        edges.push_back( EdgeContainerSE3( e, secFrame, featureSecFrame ) );
+    }
+
+    // Optimization
+    double initError, finalError;
+    runSparceBAOptimizer( &optimizer, 10, initError, finalError );
+    // printf( "2-View BA: Error before/after = %f / %f\n", initError, finalError );
+
+    // Update Keyframe Positions
+    fstFrame->m_absPose.rotationMatrix() = v_frame1->estimate().rotation().toRotationMatrix();
+    fstFrame->m_absPose.translation()     = v_frame1->estimate().translation();
+    secFrame->m_absPose.rotationMatrix() = v_frame2->estimate().rotation().toRotationMatrix();
+    secFrame->m_absPose.translation()     = v_frame2->estimate().translation();
+
+    // Update Mappoint Positions
+    for ( auto& feature : fstFrame->m_features )
+    {
+        if ( feature->m_point == nullptr )
+            continue;
+        //TODO: we need to add a parameters for optimization
+        // feature->m_point->m_position  = feature->m_point->v_pt_->estimate();
+        // feature->m_point->v_pt_ = NULL;
+    }
+
+    // Find Mappoints with too large reprojection error
+    const double reproj_thresh_squared = reprojectionError * reprojectionError;
+    size_t n_incorrect_edges           = 0;
+    for ( auto& edgeContainer : edges )
+        if ( edgeContainer.edge->chi2() > reproj_thresh_squared )
+        {
+            if ( edgeContainer.feature->m_point != nullptr )
+            {
+                map->removePoint( edgeContainer.feature->m_point );
+                edgeContainer.feature->m_point = NULL;
+            }
+            ++n_incorrect_edges;
+        }
+
+    // printf( "2-View BA: Wrong edges =  %zu\n", n_incorrect_edges );
 }

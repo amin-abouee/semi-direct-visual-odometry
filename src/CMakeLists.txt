@@ -11,6 +11,8 @@ find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Sophus REQUIRED)
 find_package(nlohmann_json REQUIRED)
+find_package(G2O REQUIRED)
+# find_package(SuiteSparse REQUIRED COMPONENTS CHOLMOD CSparse PATHS ${CMAKE_SOURCE_DIR}/3rd_party/suitesparce)
 
 # https://github.com/microsoft/LightGBM/issues/1898
 # cmake \
@@ -70,6 +72,8 @@ set (LIBRARY_INCLUDE
     ${CMAKE_SOURCE_DIR}/3rd_party/easy_logging/include
     ${CMAKE_SOURCE_DIR}/3rd_party/matplotlib_cpp
     ${CMAKE_SOURCE_DIR}/3rd_party/simd/include
+    ${CMAKE_SOURCE_DIR}/3rd_party/suitesparce/include
+    ${CMAKE_SOURCE_DIR}/3rd_party/EXTERNAL
     )
 
 set(LIBRARY_SOURCES
@@ -118,14 +122,14 @@ target_compile_options(visual_odometry PRIVATE "$<$<CONFIG:RELEASE>:-march=nativ
 
 
 # add matplotlibcpp
-target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE})
+target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE} ${G2O_INCLUDE_DIR})
 
 # http://www.brianlheim.com/2018/04/09/cmake-cheat-sheet.html
 # http://manpages.ubuntu.com/manpages/xenial/man7/cmake-generator-expressions.7.html
 # $<$<VERSION_LESS:$<CXX_COMPILER_VERSION>,4.2.0>:OLD_COMPILER>
 # target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads ${CMAKE_SOURCE_DIR}/3rd_party/simd/lib/libSIMD.a ${CMAKE_SOURCE_DIR}/3rd_party/easy_logging/lib/libeasylogging.a)
 target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads ${CMAKE_SOURCE_DIR}/3rd_party/simd/lib/libSIMD.a)
-target_link_libraries (visual_odometry PRIVATE ${CMAKE_SOURCE_DIR}/3rd_party/simd/lib/libSIMD.a)
+target_link_libraries (visual_odometry PRIVATE ${G2O_CORE_LIBRARY} ${G2O_STUFF_LIBRARY} ${G2O_SOLVER_CHOLMOD} ${G2O_SOLVER_CSPARSE} ${G2O_SOLVER_DENSE} ${G2O_SOLVER_PCG} ${G2O_TYPES_SBA} ${CMAKE_SOURCE_DIR}/3rd_party/suitesparce/lib/libcholmod.a ${CMAKE_SOURCE_DIR}/3rd_party/suitesparce/lib/libcxsparse.a )
 target_link_libraries (visual_odometry PRIVATE Python3::Python Python3::NumPy)
 
 # https://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
