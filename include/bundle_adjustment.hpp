@@ -6,11 +6,11 @@
 #include "optimizer.hpp"
 #include "point.hpp"
 
+#include <g2o/core/sparse_optimizer.h>
+#include <g2o/types/sba/types_six_dof_expmap.h>
 #include <Eigen/Core>
 #include <opencv2/core.hpp>
 #include <sophus/se3.hpp>
-#include <g2o/types/sba/types_six_dof_expmap.h>
-#include <g2o/core/sparse_optimizer.h>
 
 #include <iostream>
 #include <memory>
@@ -71,12 +71,16 @@ public:
 
     void runSparseBAOptimizer( g2o::SparseOptimizer* optimizer, uint32_t numIterations, double& initError, double& finalError );
 
-    g2oFrameSE3* createG2oFrameSE3( const std::shared_ptr< Frame >& frame, const uint32_t id, const bool fixed );
+    std::shared_ptr< g2oFrameSE3 > createG2oFrameSE3( const std::shared_ptr< Frame >& frame, const uint32_t id, const bool fixed );
 
-    g2oPoint* createG2oPoint( const Eigen::Vector3d position, const uint32_t id, const bool fixed );
+    std::shared_ptr< g2oPoint > createG2oPoint( const Eigen::Vector3d position, const uint32_t id, const bool fixed );
 
-    g2oEdgeSE3* createG2oEdgeSE3(
-      g2oFrameSE3* v_kf, g2oPoint* v_mp, const Eigen::Vector2d& up, bool robustKernel, double huberWidth, double weight = 1 );
+    std::shared_ptr< g2oEdgeSE3 > createG2oEdgeSE3( std::shared_ptr< g2oFrameSE3 >& v_kf,
+                                                    std::shared_ptr< g2oPoint >& v_mp,
+                                                    const Eigen::Vector2d& up,
+                                                    bool robustKernel,
+                                                    double huberWidth,
+                                                    double weight = 1 );
 
 private:
     uint32_t m_currentLevel;

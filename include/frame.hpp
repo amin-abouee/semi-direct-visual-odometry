@@ -14,9 +14,9 @@
 #include "image_pyramid.hpp"
 #include "pinhole_camera.hpp"
 
+#include <g2o/types/sba/vertex_se3_expmap.h>
 #include <Eigen/Core>
 #include <sophus/se3.hpp>
-#include <g2o/types/sba/vertex_se3_expmap.h>
 
 #include <iostream>
 #include <memory>
@@ -83,7 +83,7 @@ public:
                     const cv::Mat& img,
                     const uint32_t maxImagePyramid,
                     const uint64_t timestamp,
-                    const std::shared_ptr <Frame> lastKeyframe );
+                    const std::shared_ptr< Frame > lastKeyframe );
     // Copy C'tor
     Frame( const Frame& rhs ) = delete;  // non construction-copyable
     // move C'tor
@@ -188,14 +188,14 @@ public:
     static uint64_t m_frameCounter;                   ///< Counts the number of created frames. Used to set the unique id
     uint64_t m_id;                                    ///< Unique id of the frame
     const std::shared_ptr< PinholeCamera > m_camera;  ///< Camera model
-    Sophus::SE3d m_absPose;                      ///< Estimated 3D rigid body pose ([R|t]) to transforms from world to camera (W2C)
+    Sophus::SE3d m_absPose;                           ///< Estimated 3D rigid body pose ([R|t]) to transforms from world to camera (W2C)
     Eigen::Matrix< double, 6, 6 > m_covPose;          ///< Covariance matrix of pose. http://people.duke.edu/~hpgavin/ce281/lm.pdf, eq. 21
     ImagePyramid m_imagePyramid;                      ///< Image pyramid of image
     std::vector< std::shared_ptr< Feature > > m_features;  ///< List of features in the image
     bool m_keyFrame;                                       ///< Is this frames selected as keyframe?
-    uint64_t m_timestamp;                                    ///< Timestamp of when the image was recorded
-    std::shared_ptr <Frame> m_lastKeyframe;
-    g2o::VertexSE3Expmap* m_optG2oFrame;
+    uint64_t m_timestamp;                                  ///< Timestamp of when the image was recorded
+    std::shared_ptr< Frame > m_lastKeyframe;
+    std::shared_ptr< g2o::VertexSE3Expmap > m_optG2oFrame;
 
 private:
 };
