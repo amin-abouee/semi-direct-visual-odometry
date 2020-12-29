@@ -1,13 +1,14 @@
 #ifndef __POINT_HPP__
 #define __POINT_HPP__
 
-#include <iostream>
-#include <memory>
-#include <vector>
-
 #include "frame.hpp"
 
 #include <Eigen/Core>
+#include <g2o/types/slam3d/vertex_pointxyz.h>
+
+#include <iostream>
+#include <memory>
+#include <vector>
 
 class Feature;
 class Point final
@@ -35,6 +36,8 @@ public:
     uint32_t m_failedProjection;     //!< Number of failed reprojections. Used to assess the quality of the point.
     uint32_t m_succeededProjection;  //!< Number of succeeded reprojections. Used to assess the quality of the point.
     uint32_t m_lastOptimizedTime;    //!< Timestamp of last point optimization
+
+    g2o::VertexPointXYZ* m_optG2oPoint;
 
     explicit Point( const Eigen::Vector3d& point3D );
     explicit Point( const Eigen::Vector3d& point3D, const std::shared_ptr< Feature >& feature );

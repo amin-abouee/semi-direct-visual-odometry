@@ -15,6 +15,7 @@ Frame::Frame( const std::shared_ptr< PinholeCamera >& camera,
     , m_keyFrame( false )
     , m_timestamp( timestamp )
     , m_lastKeyframe( lastKeyframe )
+    , m_optG2oFrame (nullptr)
 {
     if ( img.empty() || img.type() != CV_8UC1 || img.cols != static_cast< int32_t >( m_camera->width() ) ||
          img.rows != static_cast< int32_t >( m_camera->height() ) )

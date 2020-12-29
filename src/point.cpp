@@ -14,7 +14,7 @@ Point::Point( const Eigen::Vector3d& point3D )
     , m_failedProjection( 0 )
     , m_succeededProjection( 0 )
     , m_lastOptimizedTime( 0 )
-
+    , m_optG2oPoint (nullptr)
 {
 }
 
@@ -28,6 +28,7 @@ Point::Point( const Eigen::Vector3d& point3D, const std::shared_ptr< Feature >& 
     , m_failedProjection( 0 )
     , m_succeededProjection( 0 )
     , m_lastOptimizedTime( 0 )
+    , m_optG2oPoint (nullptr)
 {
     m_features.push_back( feature );
 }

@@ -16,6 +16,7 @@
 
 #include <Eigen/Core>
 #include <sophus/se3.hpp>
+#include <g2o/types/sba/vertex_se3_expmap.h>
 
 #include <iostream>
 #include <memory>
@@ -194,6 +195,7 @@ public:
     bool m_keyFrame;                                       ///< Is this frames selected as keyframe?
     uint64_t m_timestamp;                                    ///< Timestamp of when the image was recorded
     std::shared_ptr <Frame> m_lastKeyframe;
+    g2o::VertexSE3Expmap* m_optG2oFrame;
 
 private:
 };

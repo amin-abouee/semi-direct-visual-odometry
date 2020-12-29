@@ -19,6 +19,9 @@
 
 #include <algorithm>
 #include <deque>
+#include <iostream>
+#include <set>
+#include <vector>
 
 #define Adjustment_Log( LEVEL ) CLOG( LEVEL, "Adjustment" )
 #define SCHUR_TRICK 1
@@ -383,7 +386,7 @@ BundleAdjustment::g2oEdgeSE3* BundleAdjustment::createG2oEdgeSE3(
     return e;
 }
 
-void BundleAdjustment::runSparceBAOptimizer( g2o::SparseOptimizer* optimizer,
+void BundleAdjustment::runSparseBAOptimizer( g2o::SparseOptimizer* optimizer,
                                              uint32_t numIterations,
                                              double& initError,
                                              double& finalError )
@@ -426,38 +429,36 @@ void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
             continue;
         g2oPoint* v_pt = createG2oPoint( point->m_position, v_id++, false );
         optimizer.addVertex( v_pt );
-        // point->v_pt_ = v_pt;
-        g2oEdgeSE3* e =
-          createG2oEdgeSE3( v_frame1, v_pt, feature->m_pixelPosition, true, reprojectionError * 1.0 );
+        point->m_optG2oPoint = v_pt;
+        g2oEdgeSE3* e = createG2oEdgeSE3( v_frame1, v_pt, feature->m_pixelPosition, true, reprojectionError * 1.0 );
         optimizer.addEdge( e );
         edges.push_back( EdgeContainerSE3( e, fstFrame, feature ) );  // TODO feature now links to frame, so we can simplify edge container!
 
         // find at which index the second frame observes the point
-        auto& featureSecFrame = point->findFeature(secFrame);
-        e = createG2oEdgeSE3( v_frame2, v_pt, featureSecFrame->m_pixelPosition, true, reprojectionError * 1.0 );
+        auto& featureSecFrame = point->findFeature( secFrame );
+        e                     = createG2oEdgeSE3( v_frame2, v_pt, featureSecFrame->m_pixelPosition, true, reprojectionError * 1.0 );
         optimizer.addEdge( e );
         edges.push_back( EdgeContainerSE3( e, secFrame, featureSecFrame ) );
     }
 
     // Optimization
     double initError, finalError;
-    runSparceBAOptimizer( &optimizer, 10, initError, finalError );
+    runSparseBAOptimizer( &optimizer, 10, initError, finalError );
     // printf( "2-View BA: Error before/after = %f / %f\n", initError, finalError );
 
     // Update Keyframe Positions
     fstFrame->m_absPose.rotationMatrix() = v_frame1->estimate().rotation().toRotationMatrix();
-    fstFrame->m_absPose.translation()     = v_frame1->estimate().translation();
+    fstFrame->m_absPose.translation()    = v_frame1->estimate().translation();
     secFrame->m_absPose.rotationMatrix() = v_frame2->estimate().rotation().toRotationMatrix();
-    secFrame->m_absPose.translation()     = v_frame2->estimate().translation();
+    secFrame->m_absPose.translation()    = v_frame2->estimate().translation();
 
     // Update Mappoint Positions
     for ( auto& feature : fstFrame->m_features )
     {
         if ( feature->m_point == nullptr )
             continue;
-        //TODO: we need to add a parameters for optimization
-        // feature->m_point->m_position  = feature->m_point->v_pt_->estimate();
-        // feature->m_point->v_pt_ = NULL;
+        feature->m_point->m_position  = feature->m_point->m_optG2oPoint->estimate();
+        feature->m_point->m_optG2oPoint = nullptr;
     }
 
     // Find Mappoints with too large reprojection error
@@ -469,10 +470,135 @@ void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
             if ( edgeContainer.feature->m_point != nullptr )
             {
                 map->removePoint( edgeContainer.feature->m_point );
-                edgeContainer.feature->m_point = NULL;
+                edgeContainer.feature->m_point = nullptr;
             }
             ++n_incorrect_edges;
         }
 
     // printf( "2-View BA: Wrong edges =  %zu\n", n_incorrect_edges );
+}
+
+void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
+                                std::shared_ptr< Map >& map,
+                                uint32_t& incoreectEdge1,
+                                uint32_t& incorrectEdge2,
+                                double& initError,
+                                double& finalError )
+{
+    // init g2o
+    g2o::SparseOptimizer optimizer;
+    setupG2o( &optimizer );
+
+    std::vector< EdgeContainerSE3 > edges;
+    std::set< std::shared_ptr< Point > > mps;
+    std::vector< std::shared_ptr< Frame > > neib_kfs;
+    size_t v_id      = 0;
+    size_t n_mps     = 0;
+    size_t n_fix_kfs = 0;
+    size_t n_var_kfs = 1;
+    size_t n_edges   = 0;
+    incoreectEdge1   = 0;
+    incorrectEdge2   = 0;
+
+    // Add all core keyframes
+    for ( auto& keyframe : map->m_keyFrames )
+    {
+        g2oFrameSE3* v_kf = createG2oFrameSE3( keyframe, v_id++, false );
+        //TODO: I need to add this one
+        keyframe->m_optG2oFrame = v_kf;
+        ++n_var_kfs;
+        assert( optimizer.addVertex( v_kf ) );
+
+        // all points that the core keyframes observe are also optimized:
+        for ( auto& feature : keyframe->m_features)
+            if ( feature->m_point != nullptr )
+                mps.insert( feature->m_point );
+    }
+
+    // Now go throug all the points and add a measurement. Add a fixed neighbour
+    // Keyframe if it is not in the set of core kfs
+    double reproj_thresh_2         = 2.0 / frame->m_camera->fx();
+    double reproj_thresh_1         = 2.0 / frame->m_camera->fx();
+    double reproj_thresh_1_squared = reproj_thresh_1 * reproj_thresh_1;
+    for ( auto& point : mps)
+    {
+        // Create point vertex
+        g2oPoint* v_pt    = createG2oPoint( point->m_position, v_id++, false );
+        //TODO: add g2o vertex to point
+        point->m_optG2oPoint = v_pt;
+        assert( optimizer.addVertex( v_pt ) );
+        ++n_mps;
+
+        // Add edges
+        for (auto& feature : point->m_features)
+        {
+            //TODO: double check this line
+            Eigen::Vector2d error = feature->m_pixelPosition - feature->m_frame->world2image(point->m_position);
+
+            if ( feature->m_frame->m_optG2oFrame == nullptr )
+            {
+                // frame does not have a vertex yet -> it belongs to the neib kfs and
+                // is fixed. create one:
+                g2oFrameSE3* v_kf         = createG2oFrameSE3( feature->m_frame, v_id++, true );
+                feature->m_frame->m_optG2oFrame = v_kf;
+                ++n_fix_kfs;
+                assert( optimizer.addVertex( v_kf ) );
+                neib_kfs.push_back( feature->m_frame );
+            }
+
+            // create edge
+            g2oEdgeSE3* e = createG2oEdgeSE3( feature->m_frame->m_optG2oFrame, v_pt, feature->m_pixelPosition, true,
+                                              reproj_thresh_2 * 1.0, 1.0 );
+            assert( optimizer.addEdge( e ) );
+            edges.push_back( EdgeContainerSE3( e, feature->m_frame, feature ) );
+            ++n_edges;
+        }
+    }
+
+    // structure only
+    g2o::StructureOnlySolver< 3 > structure_only_ba;
+    g2o::OptimizableGraph::VertexContainer points;
+    for ( g2o::OptimizableGraph::VertexIDMap::const_iterator it = optimizer.vertices().begin(); it != optimizer.vertices().end(); ++it )
+    {
+        g2o::OptimizableGraph::Vertex* v = static_cast< g2o::OptimizableGraph::Vertex* >( it->second );
+        if ( v->dimension() == 3 && v->edges().size() >= 2 )
+            points.push_back( v );
+    }
+    structure_only_ba.calc( points, 10 );
+
+    // Optimization
+    // if ( 10 > 0 )
+    runSparseBAOptimizer( &optimizer, 10, initError, finalError );
+
+    // Update Keyframes
+    // for ( set< FramePtr >::iterator it = core_kfs->begin(); it != core_kfs->end(); ++it )
+    // {
+    //     ( *it )->T_f_w_ = SE3( ( *it )->v_kf_->estimate().rotation(), ( *it )->v_kf_->estimate().translation() );
+    //     ( *it )->v_kf_  = NULL;
+    // }
+
+    for ( auto& frame : neib_kfs )
+        frame->m_optG2oFrame = nullptr;
+
+    // Update Mappoints
+    for ( auto& point : mps )
+    {
+        point->m_position  = point->m_optG2oPoint->estimate();
+        point->m_optG2oPoint = nullptr;
+    }
+
+    // Remove Measurements with too large reprojection error
+    double reproj_thresh_2_squared = reproj_thresh_2 * reproj_thresh_2;
+    for ( auto& edgeCointer : edges )
+    {
+        if ( edgeCointer.edge->chi2() > reproj_thresh_2_squared )  //*(1<<it->feature_->level))
+        {
+            map->removePoint( edgeCointer.feature->m_point );
+            ++incorrectEdge2;
+        }
+    }
+
+    // TODO: delete points and edges!
+    initError  = sqrt( initError ) * frame->m_camera->fx();
+    finalError = sqrt( finalError ) * frame->m_camera->fx();
 }
