@@ -313,9 +313,9 @@ void BundleAdjustment::resetParameters()
     std::fill( m_refVisibility.begin(), m_refVisibility.end(), false );
 }
 
-void BundleAdjustment::setupG2o( g2o::SparseOptimizer* optimizer )
+void BundleAdjustment::setupG2o( g2o::SparseOptimizer& optimizer )
 {
-    optimizer->setVerbose( false );
+    optimizer.setVerbose( false );
 
 #if SCHUR_TRICK
     // solver
@@ -331,12 +331,12 @@ void BundleAdjustment::setupG2o( g2o::SparseOptimizer* optimizer )
 #endif
 
     solver->setMaxTrialsAfterFailure( 5 );
-    optimizer->setAlgorithm( solver.get() );
+    optimizer.setAlgorithm( solver.get() );
 
     // setup camera
     auto cam_params = std::make_shared< g2o::CameraParameters >( 1.0, Eigen::Vector2d( 0., 0. ), 0. );
     cam_params->setId( 0 );
-    if ( !optimizer->addParameter( cam_params.get() ) )
+    if ( !optimizer.addParameter( cam_params.get() ) )
     {
         assert( false );
     }
@@ -347,6 +347,7 @@ std::shared_ptr< BundleAdjustment::g2oFrameSE3 > BundleAdjustment::createG2oFram
                                                                                       const bool fixed )
 {
     std::shared_ptr< g2oFrameSE3 > v = std::make_shared< g2oFrameSE3 >();
+    // set the parameter of base class g2o::HyperGraph and g2o::OptimizableGraph
     v->setId( id );
     v->setFixed( fixed );
     v->setEstimate( g2o::SE3Quat( frame->m_absPose.unit_quaternion(), frame->m_absPose.translation() ) );
@@ -388,16 +389,17 @@ std::shared_ptr< BundleAdjustment::g2oEdgeSE3 > BundleAdjustment::createG2oEdgeS
     return e;
 }
 
-void BundleAdjustment::runSparseBAOptimizer( g2o::SparseOptimizer* optimizer,
+void BundleAdjustment::runSparseBAOptimizer( g2o::SparseOptimizer& optimizer,
                                              uint32_t numIterations,
                                              double& initError,
                                              double& finalError )
 {
-    optimizer->initializeOptimization();
-    optimizer->computeActiveErrors();
-    initError = optimizer->activeChi2();
-    optimizer->optimize( numIterations );
-    finalError = optimizer->activeChi2();
+    optimizer.initializeOptimization();
+    optimizer.computeActiveErrors();
+    initError = optimizer.activeChi2();
+    optimizer.optimize( numIterations );
+    finalError = optimizer.activeChi2();
+    Adjustment_Log(DEBUG) << "init error: " << initError << ", final error: " << finalError; 
 }
 
 void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
@@ -410,7 +412,7 @@ void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
 
     // init g2o
     g2o::SparseOptimizer optimizer;
-    setupG2o( &optimizer );
+    setupG2o( optimizer );
 
     std::vector< EdgeContainerSE3 > edges;
     size_t v_id = 0;
@@ -447,7 +449,7 @@ void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
 
     // Optimization
     double initError, finalError;
-    runSparseBAOptimizer( &optimizer, 10, initError, finalError );
+    runSparseBAOptimizer( optimizer, 10, initError, finalError );
     // printf( "2-View BA: Error before/after = %f / %f\n", initError, finalError );
 
     // Update Keyframe Positions
@@ -479,7 +481,7 @@ void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
             ++n_incorrect_edges;
         }
 
-    // printf( "2-View BA: Wrong edges =  %zu\n", n_incorrect_edges );
+    Adjustment_Log (DEBUG) << "number of removed points: " << n_incorrect_edges;
 }
 
 void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
@@ -491,7 +493,7 @@ void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
 {
     // init g2o
     g2o::SparseOptimizer optimizer;
-    setupG2o( &optimizer );
+    setupG2o( optimizer );
 
     std::vector< EdgeContainerSE3 > edges;
     std::set< std::shared_ptr< Point > > mps;
@@ -572,7 +574,7 @@ void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
 
     // Optimization
     // if ( 10 > 0 )
-    runSparseBAOptimizer( &optimizer, 10, initError, finalError );
+    runSparseBAOptimizer( optimizer, 10, initError, finalError );
 
     // Update Keyframes
     // for ( set< FramePtr >::iterator it = core_kfs->begin(); it != core_kfs->end(); ++it )

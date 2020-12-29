@@ -129,7 +129,10 @@ target_include_directories(visual_odometry PRIVATE ${LIBRARY_INCLUDE} ${G2O_INCL
 # $<$<VERSION_LESS:$<CXX_COMPILER_VERSION>,4.2.0>:OLD_COMPILER>
 # target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads ${CMAKE_SOURCE_DIR}/3rd_party/simd/lib/libSIMD.a ${CMAKE_SOURCE_DIR}/3rd_party/easy_logging/lib/libeasylogging.a)
 target_link_libraries (visual_odometry PRIVATE ${OpenCV_LIBS} Eigen3::Eigen nlohmann_json::nlohmann_json Threads::Threads ${CMAKE_SOURCE_DIR}/3rd_party/simd/lib/libSIMD.a)
-target_link_libraries (visual_odometry PRIVATE ${G2O_CORE_LIBRARY} ${G2O_STUFF_LIBRARY} ${G2O_SOLVER_CHOLMOD} ${G2O_SOLVER_CSPARSE} ${G2O_SOLVER_DENSE} ${G2O_SOLVER_PCG} ${G2O_TYPES_SBA} ${CMAKE_SOURCE_DIR}/3rd_party/suitesparce/lib/libcholmod.a ${CMAKE_SOURCE_DIR}/3rd_party/suitesparce/lib/libcxsparse.a )
+message("G2O_CORE_LIBRARY:" ${G2O_CORE_LIBRARY})
+message("G2O_TYPES_SBA:" ${G2O_TYPES_SBA})
+# target_link_libraries (visual_odometry PRIVATE ${G2O_CORE_LIBRARY} ${G2O_STUFF_LIBRARY} ${G2O_SOLVER_CHOLMOD} ${G2O_SOLVER_CSPARSE} ${G2O_SOLVER_DENSE} ${G2O_SOLVER_PCG} ${G2O_TYPES_SBA} ${CMAKE_SOURCE_DIR}/3rd_party/suitesparce/lib/libcholmod.a ${CMAKE_SOURCE_DIR}/3rd_party/suitesparce/lib/libcxsparse.a )
+target_link_libraries (visual_odometry PRIVATE /usr/local/lib/libg2o_core.dylib /usr/local/lib/libg2o_solver_cholmod.dylib  /usr/local/lib/libg2o_solver_csparse.dylib /usr/local/lib/libg2o_types_sba.dylib ${CMAKE_SOURCE_DIR}/3rd_party/suitesparce/lib/libcholmod.a ${CMAKE_SOURCE_DIR}/3rd_party/suitesparce/lib/libcxsparse.a )
 target_link_libraries (visual_odometry PRIVATE Python3::Python Python3::NumPy)
 
 # https://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html

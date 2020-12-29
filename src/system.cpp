@@ -187,7 +187,7 @@ System::Result System::processSecondFrame()
     System_Log( INFO ) << "Init Points: " << pointsWorld.cols() << ", ref obs: " << m_refFrame->numberObservation()
                        << ", cur obs: " << m_curFrame->numberObservation() << ", number of removed: " << pointsWorld.cols() - cnt;
 
-    // FIXME: do BA
+    m_bundler->twoViewBA(m_refFrame, m_curFrame, 2.0, m_map);
 
     m_curFrame->setKeyframe();
     m_keyFrames.emplace_back( m_curFrame );
