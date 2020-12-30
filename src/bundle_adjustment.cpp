@@ -319,16 +319,9 @@ void BundleAdjustment::setupG2o( g2o::SparseOptimizer& optimizer )
 
 #if SCHUR_TRICK
     // solver
-    // g2o::BlockSolver_6_3::LinearSolverType* linearSolver;
-    // linearSolver                                = new g2o::LinearSolverCholmod< g2o::BlockSolver_6_3::PoseMatrixType >();
-    // g2o::BlockSolver_6_3* solver_ptr            = new g2o::BlockSolver_6_3( linearSolver );
-
     // https://github.com/RainerKuemmerle/g2o/blob/master/unit_test/slam3d/optimization_slam3d.cpp
     std::unique_ptr< g2o::BlockSolver_6_3::LinearSolverType > linearSolver =
       g2o::make_unique< g2o::LinearSolverCholmod< g2o::BlockSolver_6_3::PoseMatrixType > >();
-    // linearSolver->setBlockOrdering(false);
-    // auto solver_ptr                             = g2o::make_unique< g2o::BlockSolver_6_3 >( std::move( linearSolver ) );
-    // g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg( std::move( solver_ptr ) );
     g2o::OptimizationAlgorithmLevenberg* solver =
       new g2o::OptimizationAlgorithmLevenberg( g2o::make_unique< g2o::BlockSolver_6_3 >( std::move( linearSolver ) ) );
 #else
@@ -526,9 +519,8 @@ void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
 
     // Now go throug all the points and add a measurement. Add a fixed neighbour
     // Keyframe if it is not in the set of core kfs
-    double reproj_thresh_2         = 2.0 / frame->m_camera->fx();
-    double reproj_thresh_1         = 2.0 / frame->m_camera->fx();
-    double reproj_thresh_1_squared = reproj_thresh_1 * reproj_thresh_1;
+    double reproj_thresh         = 2.0 ;
+    double reproj_thresh_1_squared = reproj_thresh * reproj_thresh;
     for ( auto& point : mps )
     {
         // Create point vertex
@@ -557,7 +549,7 @@ void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
 
             // create edge
             g2oEdgeSE3* e =
-              createG2oEdgeSE3( feature->m_frame->m_optG2oFrame, v_pt, feature->m_pixelPosition, true, reproj_thresh_2 * 1.0, 1.0 );
+              createG2oEdgeSE3( feature->m_frame->m_optG2oFrame, v_pt, feature->m_pixelPosition, true, reproj_thresh * 1.0, 1.0 );
             assert( optimizer.addEdge( e ) );
             edges.push_back( EdgeContainerSE3( e, feature->m_frame, feature ) );
             ++n_edges;
@@ -580,11 +572,11 @@ void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
     runSparseBAOptimizer( optimizer, 10, initError, finalError );
 
     // Update Keyframes
-    // for ( set< FramePtr >::iterator it = core_kfs->begin(); it != core_kfs->end(); ++it )
-    // {
-    //     ( *it )->T_f_w_ = SE3( ( *it )->v_kf_->estimate().rotation(), ( *it )->v_kf_->estimate().translation() );
-    //     ( *it )->v_kf_  = NULL;
-    // }
+    for (auto& keyframe : map->m_keyFrames)
+    {
+        keyframe->m_absPose = Sophus::SE3d( keyframe->m_optG2oFrame->estimate().rotation(), keyframe->m_optG2oFrame->estimate().translation() );
+        keyframe->m_optG2oFrame = nullptr;
+    }
 
     for ( auto& frame : neib_kfs )
         frame->m_optG2oFrame = nullptr;
@@ -597,7 +589,7 @@ void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
     }
 
     // Remove Measurements with too large reprojection error
-    double reproj_thresh_2_squared = reproj_thresh_2 * reproj_thresh_2;
+    double reproj_thresh_2_squared = reproj_thresh * reproj_thresh;
     for ( auto& edgeCointer : edges )
     {
         if ( edgeCointer.edge->chi2() > reproj_thresh_2_squared )  //*(1<<it->feature_->level))

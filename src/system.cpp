@@ -87,7 +87,7 @@ System::Result System::processFirstFrame()
     }
 
     m_curFrame->setKeyframe();
-    m_keyFrames.emplace_back(m_curFrame);
+    m_keyFrames.emplace_back( m_curFrame );
     m_activeKeyframe = m_curFrame;
     m_map->addKeyframe( m_curFrame );
     System_Log( DEBUG ) << "Number of Features: " << m_curFrame->numberObservation();
@@ -187,7 +187,10 @@ System::Result System::processSecondFrame()
     System_Log( INFO ) << "Init Points: " << pointsWorld.cols() << ", ref obs: " << m_refFrame->numberObservation()
                        << ", cur obs: " << m_curFrame->numberObservation() << ", number of removed: " << pointsWorld.cols() - cnt;
 
-    m_bundler->twoViewBA(m_refFrame, m_curFrame, 2.0, m_map);
+    {
+        TIMED_SCOPE( timerBA, "timer twoViewBA" );
+        m_bundler->twoViewBA( m_refFrame, m_curFrame, 2.0, m_map );
+    }
 
     m_curFrame->setKeyframe();
     m_keyFrames.emplace_back( m_curFrame );
@@ -328,7 +331,7 @@ System::Result System::processNewFrame()
         // }
     }
 
-    m_map->addCandidateToFrame(m_curFrame->m_lastKeyframe);
+    m_map->addCandidateToFrame( m_curFrame->m_lastKeyframe );
 
     if ( m_config->m_enableVisualization == true )
     {
@@ -351,19 +354,19 @@ System::Result System::processNewFrame()
             cv::imwrite( ss.str(), stickImg );
         }
     }
-    
+
     // m_bundler->optimizePose( m_curFrame );
     m_bundler->optimizeStructure( m_curFrame, 50 );
     uint32_t obsWithPoints = 0;
-    for(const auto& feature : m_refFrame->m_features)
+    for ( const auto& feature : m_refFrame->m_features )
     {
-        if (feature->m_point != nullptr)
+        if ( feature->m_point != nullptr )
         {
             obsWithPoints++;
         }
     }
-    bool qualityCheck = computeTrackingQuality (m_curFrame, obsWithPoints);
-    if (qualityCheck == false)
+    bool qualityCheck = computeTrackingQuality( m_curFrame, obsWithPoints );
+    if ( qualityCheck == false )
     {
         m_curFrame->m_absPose = m_refFrame->m_absPose;
         return Result::Failed;
@@ -380,18 +383,21 @@ System::Result System::processNewFrame()
         m_depthEstimator->addFrame( m_curFrame );
         return Result::Success;
     }
-    
+
     m_curFrame->setKeyframe();
     m_keyFrames.emplace_back( m_curFrame );
 
-    // TODO: use bundle adjustment
+    uint32_t incorrectEdge1 = 0;
+    uint32_t incorrectEdge2 = 0;
+    double initError = 0.0;
+    double finalError = 0.0;
+    m_bundler->localBA(m_curFrame, m_map, incorrectEdge1, incorrectEdge2, initError, finalError);
 
     m_featureSelector->setExistingFeatures( m_curFrame->m_features );
     m_featureSelector->gradientMagnitudeWithSSC( m_curFrame, m_config->m_thresholdGradientMagnitude,
                                                  m_config->m_desiredDetectedPointsForInitialization, true );
 
-
-    //TODO: run feature selection for missing part
+    // TODO: run feature selection for missing part
     // run depth estimation for new points
     m_depthEstimator->addKeyframe( m_curFrame, depthMean, depthMin * 0.5 );
 
@@ -419,15 +425,15 @@ System::Result System::relocalizeFrame( Sophus::SE3d& pose, std::shared_ptr< Fra
     return Result::Success;
 }
 
-bool System::computeTrackingQuality (const std::shared_ptr< Frame >& frame, const uint32_t refFrameNumberObservations)
+bool System::computeTrackingQuality( const std::shared_ptr< Frame >& frame, const uint32_t refFrameNumberObservations )
 {
     const int32_t curNumberObservations = frame->numberObservation();
-    if (frame->numberObservation() < 50)
+    if ( frame->numberObservation() < 50 )
     {
         return false;
     }
     const int32_t droppedFeatures = refFrameNumberObservations - curNumberObservations;
-    if (droppedFeatures > 40)
+    if ( droppedFeatures > 40 )
     {
         return false;
     }
