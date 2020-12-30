@@ -195,7 +195,7 @@ public:
     bool m_keyFrame;                                       ///< Is this frames selected as keyframe?
     uint64_t m_timestamp;                                  ///< Timestamp of when the image was recorded
     std::shared_ptr< Frame > m_lastKeyframe;
-    std::shared_ptr< g2o::VertexSE3Expmap > m_optG2oFrame;
+    g2o::VertexSE3Expmap* m_optG2oFrame;
 
 private:
 };

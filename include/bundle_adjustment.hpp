@@ -71,16 +71,12 @@ public:
 
     void runSparseBAOptimizer( g2o::SparseOptimizer& optimizer, uint32_t numIterations, double& initError, double& finalError );
 
-    std::shared_ptr< g2oFrameSE3 > createG2oFrameSE3( const std::shared_ptr< Frame >& frame, const uint32_t id, const bool fixed );
+    g2oFrameSE3* createG2oFrameSE3( const std::shared_ptr< Frame >& frame, const uint32_t id, const bool fixed );
 
-    std::shared_ptr< g2oPoint > createG2oPoint( const Eigen::Vector3d position, const uint32_t id, const bool fixed );
+    g2oPoint* createG2oPoint( const Eigen::Vector3d position, const uint32_t id, const bool fixed );
 
-    std::shared_ptr< g2oEdgeSE3 > createG2oEdgeSE3( std::shared_ptr< g2oFrameSE3 >& v_kf,
-                                                    std::shared_ptr< g2oPoint >& v_mp,
-                                                    const Eigen::Vector2d& up,
-                                                    bool robustKernel,
-                                                    double huberWidth,
-                                                    double weight = 1 );
+    g2oEdgeSE3* createG2oEdgeSE3(
+      g2oFrameSE3* v_kf, g2oPoint* v_mp, const Eigen::Vector2d& up, double huberWidth, double weight = 1 );
 
 private:
     uint32_t m_currentLevel;

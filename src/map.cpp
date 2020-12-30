@@ -58,13 +58,12 @@ void Map::removePoint( std::shared_ptr< Point >& point )
     // Delete references to mappoints in all keyframes
     for ( auto& feature : point->m_features )
     {
-        feature->m_point = nullptr;
         feature->m_frame->removeFeature( feature );
     }
     point->m_features.clear();
 
     point->m_type = Point::PointType::DELETED;
-    // m_trashPoints.push_back( point );
+    point = nullptr;
 }
 
 void Map::removeFeature( std::shared_ptr< Feature >& feature )

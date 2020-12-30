@@ -37,7 +37,7 @@ public:
     uint32_t m_succeededProjection;  //!< Number of succeeded reprojections. Used to assess the quality of the point.
     uint32_t m_lastOptimizedTime;    //!< Timestamp of last point optimization
 
-    std::shared_ptr< g2o::VertexPointXYZ > m_optG2oPoint;
+    g2o::VertexPointXYZ* m_optG2oPoint;
 
     explicit Point( const Eigen::Vector3d& point3D );
     explicit Point( const Eigen::Vector3d& point3D, const std::shared_ptr< Feature >& feature );

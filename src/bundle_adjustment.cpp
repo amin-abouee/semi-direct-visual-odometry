@@ -326,15 +326,17 @@ void BundleAdjustment::setupG2o( g2o::SparseOptimizer& optimizer )
     auto solver     = std::make_shared< g2o::OptimizationAlgorithmLevenberg >( std::move( solver_ptr ) );
 #else
     auto linearSolver = g2o::make_unique< g2o::LinearSolverCholmod< g2o::BlockSolverX::PoseMatrixType > >();
-    auto solver_ptr = g2o::make_unique< g2o::BlockSolverX >( std::move( linearSolver ) );
-    auto solver     = std::make_shared< g2o::OptimizationAlgorithmLevenberg >( std::move( solver_ptr ) );
+    auto solver_ptr   = g2o::make_unique< g2o::BlockSolverX >( std::move( linearSolver ) );
+    auto solver       = std::make_shared< g2o::OptimizationAlgorithmLevenberg >( std::move( solver_ptr ) );
 #endif
 
     solver->setMaxTrialsAfterFailure( 5 );
     optimizer.setAlgorithm( solver.get() );
 
     // setup camera
-    auto cam_params = std::make_shared< g2o::CameraParameters >( 1.0, Eigen::Vector2d( 0., 0. ), 0. );
+    const double fx = 721.5377;
+    const Eigen::Vector2d principlePoint( 609.5593, 172.8540 );
+    auto cam_params = std::make_shared< g2o::CameraParameters >( fx, principlePoint, 0. );
     cam_params->setId( 0 );
     if ( !optimizer.addParameter( cam_params.get() ) )
     {
@@ -342,24 +344,21 @@ void BundleAdjustment::setupG2o( g2o::SparseOptimizer& optimizer )
     }
 }
 
-std::shared_ptr< BundleAdjustment::g2oFrameSE3 > BundleAdjustment::createG2oFrameSE3( const std::shared_ptr< Frame >& frame,
-                                                                                      const uint32_t id,
-                                                                                      const bool fixed )
+BundleAdjustment::g2oFrameSE3* BundleAdjustment::createG2oFrameSE3( const std::shared_ptr< Frame >& frame,
+                                                                    const uint32_t id,
+                                                                    const bool fixed )
 {
-    std::shared_ptr< g2oFrameSE3 > v = std::make_shared< g2oFrameSE3 >();
+    g2oFrameSE3* v = new g2oFrameSE3();
     // set the parameter of base class g2o::HyperGraph and g2o::OptimizableGraph
     v->setId( id );
     v->setFixed( fixed );
     v->setEstimate( g2o::SE3Quat( frame->m_absPose.unit_quaternion(), frame->m_absPose.translation() ) );
-    // https:  // stackoverflow.com/a/10643624/1804533
     return v;
 }
 
-std::shared_ptr< BundleAdjustment::g2oPoint > BundleAdjustment::createG2oPoint( const Eigen::Vector3d position,
-                                                                                const uint32_t id,
-                                                                                const bool fixed )
+BundleAdjustment::g2oPoint* BundleAdjustment::createG2oPoint( const Eigen::Vector3d position, const uint32_t id, const bool fixed )
 {
-    std::shared_ptr< g2oPoint > v = std::make_shared< g2oPoint >();
+    g2oPoint* v = new g2oPoint();
     v->setId( id );
 #if SCHUR_TRICK
     v->setMarginalized( true );
@@ -370,16 +369,12 @@ std::shared_ptr< BundleAdjustment::g2oPoint > BundleAdjustment::createG2oPoint( 
     return v;
 }
 
-std::shared_ptr< BundleAdjustment::g2oEdgeSE3 > BundleAdjustment::createG2oEdgeSE3( std::shared_ptr< g2oFrameSE3 >& v_kf,
-                                                                                    std::shared_ptr< g2oPoint >& v_mp,
-                                                                                    const Eigen::Vector2d& up,
-                                                                                    bool robustKernel,
-                                                                                    double huberWidth,
-                                                                                    double weight )
+BundleAdjustment::g2oEdgeSE3* BundleAdjustment::createG2oEdgeSE3(
+  g2oFrameSE3* v_kf, g2oPoint* v_mp, const Eigen::Vector2d& up, double huberWidth, double weight )
 {
-    std::shared_ptr< g2oEdgeSE3 > e = std::make_shared< g2oEdgeSE3 >();
-    e->setVertex( 0, dynamic_cast< g2o::OptimizableGraph::Vertex* >( v_mp.get() ) );
-    e->setVertex( 1, dynamic_cast< g2o::OptimizableGraph::Vertex* >( v_kf.get() ) );
+    g2oEdgeSE3* e = new g2oEdgeSE3();
+    e->setVertex( 0, dynamic_cast< g2o::OptimizableGraph::Vertex* >( v_mp ) );
+    e->setVertex( 1, dynamic_cast< g2o::OptimizableGraph::Vertex* >( v_kf ) );
     e->setMeasurement( up );
     e->information()                             = weight * Eigen::Matrix2d::Identity( 2, 2 );
     std::shared_ptr< g2o::RobustKernelHuber > rk = std::make_shared< g2o::RobustKernelHuber >();  // TODO: memory leak
@@ -399,7 +394,7 @@ void BundleAdjustment::runSparseBAOptimizer( g2o::SparseOptimizer& optimizer,
     initError = optimizer.activeChi2();
     optimizer.optimize( numIterations );
     finalError = optimizer.activeChi2();
-    Adjustment_Log(DEBUG) << "init error: " << initError << ", final error: " << finalError; 
+    Adjustment_Log( DEBUG ) << "init error: " << initError << ", final error: " << finalError;
 }
 
 void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
@@ -408,7 +403,7 @@ void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
                                   std::shared_ptr< Map >& map )
 {
     // scale reprojection threshold in pixels to unit plane
-    reprojectionError /= fstFrame->m_camera->fx();
+    // reprojectionError /= fstFrame->m_camera->fx();
 
     // init g2o
     g2o::SparseOptimizer optimizer;
@@ -418,12 +413,12 @@ void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
     size_t v_id = 0;
 
     // New Keyframe Vertex 1: This Keyframe is set to fixed!
-    std::shared_ptr< BundleAdjustment::g2oFrameSE3 > v_frame1 = createG2oFrameSE3( fstFrame, v_id++, true );
-    optimizer.addVertex( v_frame1.get() );
+    g2oFrameSE3* v_frame1 = createG2oFrameSE3( fstFrame, v_id++, true );
+    optimizer.addVertex( v_frame1 );
 
     // New Keyframe Vertex 2
-    std::shared_ptr< BundleAdjustment::g2oFrameSE3 > v_frame2 = createG2oFrameSE3( secFrame, v_id++, false );
-    optimizer.addVertex( v_frame2.get() );
+    g2oFrameSE3* v_frame2 = createG2oFrameSE3( secFrame, v_id++, false );
+    optimizer.addVertex( v_frame2 );
 
     // Create Point Vertices
     for ( auto& feature : fstFrame->m_features )
@@ -431,20 +426,18 @@ void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
         auto& point = feature->m_point;
         if ( point == nullptr )
             continue;
-        std::shared_ptr< BundleAdjustment::g2oPoint > v_pt = createG2oPoint( point->m_position, v_id++, false );
-        optimizer.addVertex( v_pt.get() );
+        g2oPoint* v_pt = createG2oPoint( point->m_position, v_id++, false );
+        optimizer.addVertex( v_pt );
         point->m_optG2oPoint = v_pt;
-        std::shared_ptr< BundleAdjustment::g2oEdgeSE3 > e =
-          createG2oEdgeSE3( v_frame1, v_pt, feature->m_pixelPosition, true, reprojectionError * 1.0 );
-        optimizer.addEdge( e.get() );
-        edges.push_back(
-          EdgeContainerSE3( e.get(), fstFrame, feature ) );  // TODO feature now links to frame, so we can simplify edge container!
+        g2oEdgeSE3* e        = createG2oEdgeSE3( v_frame1, v_pt, feature->m_pixelPosition, reprojectionError * 1.0 );
+        optimizer.addEdge( e );
+        edges.push_back( EdgeContainerSE3( e, fstFrame, feature ) );  // TODO feature now links to frame, so we can simplify edge container!
 
         // find at which index the second frame observes the point
         auto& featureSecFrame = point->findFeature( secFrame );
-        e                     = createG2oEdgeSE3( v_frame2, v_pt, featureSecFrame->m_pixelPosition, true, reprojectionError * 1.0 );
-        optimizer.addEdge( e.get() );
-        edges.push_back( EdgeContainerSE3( e.get(), secFrame, featureSecFrame ) );
+        e                     = createG2oEdgeSE3( v_frame2, v_pt, featureSecFrame->m_pixelPosition, reprojectionError * 1.0 );
+        optimizer.addEdge( e );
+        edges.push_back( EdgeContainerSE3( e, secFrame, featureSecFrame ) );
     }
 
     // Optimization
@@ -481,7 +474,7 @@ void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
             ++n_incorrect_edges;
         }
 
-    Adjustment_Log (DEBUG) << "number of removed points: " << n_incorrect_edges;
+    Adjustment_Log( DEBUG ) << "number of removed points: " << n_incorrect_edges;
 }
 
 void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
@@ -509,11 +502,11 @@ void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
     // Add all core keyframes
     for ( auto& keyframe : map->m_keyFrames )
     {
-        std::shared_ptr< BundleAdjustment::g2oFrameSE3 > v_kf = createG2oFrameSE3( keyframe, v_id++, false );
+        g2oFrameSE3* v_kf = createG2oFrameSE3( keyframe, v_id++, false );
         // TODO: I need to add this one
         keyframe->m_optG2oFrame = v_kf;
         ++n_var_kfs;
-        assert( optimizer.addVertex( v_kf.get() ) );
+        assert( optimizer.addVertex( v_kf ) );
 
         // all points that the core keyframes observe are also optimized:
         for ( auto& feature : keyframe->m_features )
@@ -529,10 +522,10 @@ void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
     for ( auto& point : mps )
     {
         // Create point vertex
-        std::shared_ptr< BundleAdjustment::g2oPoint > v_pt = createG2oPoint( point->m_position, v_id++, false );
+        g2oPoint* v_pt = createG2oPoint( point->m_position, v_id++, false );
         // TODO: add g2o vertex to point
         point->m_optG2oPoint = v_pt;
-        assert( optimizer.addVertex( v_pt.get() ) );
+        assert( optimizer.addVertex( v_pt ) );
         ++n_mps;
 
         // Add edges
@@ -545,18 +538,18 @@ void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
             {
                 // frame does not have a vertex yet -> it belongs to the neib kfs and
                 // is fixed. create one:
-                std::shared_ptr< BundleAdjustment::g2oFrameSE3 > v_kf = createG2oFrameSE3( feature->m_frame, v_id++, true );
-                feature->m_frame->m_optG2oFrame                       = v_kf;
+                g2oFrameSE3* v_kf               = createG2oFrameSE3( feature->m_frame, v_id++, true );
+                feature->m_frame->m_optG2oFrame = v_kf;
                 ++n_fix_kfs;
-                assert( optimizer.addVertex( v_kf.get() ) );
+                assert( optimizer.addVertex( v_kf ) );
                 neib_kfs.push_back( feature->m_frame );
             }
 
             // create edge
-            std::shared_ptr< BundleAdjustment::g2oEdgeSE3 > e =
-              createG2oEdgeSE3( feature->m_frame->m_optG2oFrame, v_pt, feature->m_pixelPosition, true, reproj_thresh_2 * 1.0, 1.0 );
-            assert( optimizer.addEdge( e.get() ) );
-            edges.push_back( EdgeContainerSE3( e.get(), feature->m_frame, feature ) );
+            g2oEdgeSE3* e =
+              createG2oEdgeSE3( feature->m_frame->m_optG2oFrame, v_pt, feature->m_pixelPosition, reproj_thresh_2 * 1.0, 1.0 );
+            assert( optimizer.addEdge( e ) );
+            edges.push_back( EdgeContainerSE3( e, feature->m_frame, feature ) );
             ++n_edges;
         }
     }
