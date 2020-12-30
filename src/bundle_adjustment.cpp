@@ -397,7 +397,7 @@ void BundleAdjustment::runSparseBAOptimizer( g2o::SparseOptimizer& optimizer,
     initError = optimizer.activeChi2();
     optimizer.optimize( numIterations );
     finalError = optimizer.activeChi2();
-    Adjustment_Log( DEBUG ) << "Init Error: " << initError << " -> Final Error: " << finalError;
+    Adjustment_Log (DEBUG) << "Init Error: " << initError << " -> Final Error: " << finalError;
 }
 
 void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
