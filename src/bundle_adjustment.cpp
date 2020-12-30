@@ -381,10 +381,13 @@ BundleAdjustment::g2oEdgeSE3* BundleAdjustment::createG2oEdgeSE3(
     e->setVertex( 1, dynamic_cast< g2o::OptimizableGraph::Vertex* >( v_kf ) );
     e->setMeasurement( up );
     e->information()           = weight * Eigen::Matrix2d::Identity( 2, 2 );
-    g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber();  // TODO: memory leak
-    rk->setDelta( huberWidth );
-    e->setRobustKernel( rk );
-    e->setParameterId( 0, 0 );  // old: e->setId(v_point->id());
+    if (robustKernel == true)
+    {
+        g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber();  // TODO: memory leak
+        rk->setDelta( huberWidth );
+        e->setRobustKernel( rk );
+    }
+    e->setParameterId( 0, 0 );
     return e;
 }
 
@@ -398,7 +401,7 @@ void BundleAdjustment::runSparseBAOptimizer( g2o::SparseOptimizer& optimizer,
     initError = optimizer.activeChi2();
     optimizer.optimize( numIterations );
     finalError = optimizer.activeChi2();
-    Adjustment_Log (DEBUG) << "Init Error: " << initError << " -> Final Error: " << finalError;
+    Adjustment_Log( DEBUG ) << "Init Error: " << initError << " -> Final Error: " << finalError;
 }
 
 void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
@@ -433,15 +436,16 @@ void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
         g2oPoint* v_pt = createG2oPoint( point->m_position, v_id++, false );
         optimizer.addVertex( v_pt );
         point->m_optG2oPoint = v_pt;
-        g2oEdgeSE3* e = createG2oEdgeSE3( v_frame1, v_pt, feature->m_pixelPosition, true, reprojectionError * 1.0 );
-        optimizer.addEdge( e );
-        edges.push_back( EdgeContainerSE3( e, fstFrame, feature ) );  // TODO feature now links to frame, so we can simplify edge container!
+        g2oEdgeSE3* e1       = createG2oEdgeSE3( v_frame1, v_pt, feature->m_pixelPosition, true, reprojectionError * 1.0 );
+        optimizer.addEdge( e1 );
+        edges.push_back(
+          EdgeContainerSE3( e1, fstFrame, feature ) );  // TODO feature now links to frame, so we can simplify edge container!
 
         // find at which index the second frame observes the point
         auto& featureSecFrame = point->findFeature( secFrame );
-        e                     = createG2oEdgeSE3( v_frame2, v_pt, featureSecFrame->m_pixelPosition, true, reprojectionError * 1.0 );
-        optimizer.addEdge( e );
-        edges.push_back( EdgeContainerSE3( e, secFrame, featureSecFrame ) );
+        e1        = createG2oEdgeSE3( v_frame2, v_pt, featureSecFrame->m_pixelPosition, true, reprojectionError * 1.0 );
+        optimizer.addEdge( e1 );
+        edges.push_back( EdgeContainerSE3( e1, secFrame, featureSecFrame ) );
     }
 
     // Optimization
@@ -460,7 +464,7 @@ void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
     {
         if ( feature->m_point == nullptr )
             continue;
-        feature->m_point->m_position  = feature->m_point->m_optG2oPoint->estimate();
+        feature->m_point->m_position    = feature->m_point->m_optG2oPoint->estimate();
         feature->m_point->m_optG2oPoint = nullptr;
     }
 
@@ -507,13 +511,13 @@ void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
     for ( auto& keyframe : map->m_keyFrames )
     {
         g2oFrameSE3* v_kf = createG2oFrameSE3( keyframe, v_id++, false );
-        //TODO: I need to add this one
+        // TODO: I need to add this one
         keyframe->m_optG2oFrame = v_kf;
         ++n_var_kfs;
         assert( optimizer.addVertex( v_kf ) );
 
         // all points that the core keyframes observe are also optimized:
-        for ( auto& feature : keyframe->m_features)
+        for ( auto& feature : keyframe->m_features )
             if ( feature->m_point != nullptr )
                 mps.insert( feature->m_point );
     }
@@ -523,26 +527,26 @@ void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
     double reproj_thresh_2         = 2.0 / frame->m_camera->fx();
     double reproj_thresh_1         = 2.0 / frame->m_camera->fx();
     double reproj_thresh_1_squared = reproj_thresh_1 * reproj_thresh_1;
-    for ( auto& point : mps)
+    for ( auto& point : mps )
     {
         // Create point vertex
-        g2oPoint* v_pt    = createG2oPoint( point->m_position, v_id++, false );
-        //TODO: add g2o vertex to point
+        g2oPoint* v_pt = createG2oPoint( point->m_position, v_id++, false );
+        // TODO: add g2o vertex to point
         point->m_optG2oPoint = v_pt;
         assert( optimizer.addVertex( v_pt ) );
         ++n_mps;
 
         // Add edges
-        for (auto& feature : point->m_features)
+        for ( auto& feature : point->m_features )
         {
-            //TODO: double check this line
-            Eigen::Vector2d error = feature->m_pixelPosition - feature->m_frame->world2image(point->m_position);
+            // TODO: double check this line
+            Eigen::Vector2d error = feature->m_pixelPosition - feature->m_frame->world2image( point->m_position );
 
             if ( feature->m_frame->m_optG2oFrame == nullptr )
             {
                 // frame does not have a vertex yet -> it belongs to the neib kfs and
                 // is fixed. create one:
-                g2oFrameSE3* v_kf         = createG2oFrameSE3( feature->m_frame, v_id++, true );
+                g2oFrameSE3* v_kf               = createG2oFrameSE3( feature->m_frame, v_id++, true );
                 feature->m_frame->m_optG2oFrame = v_kf;
                 ++n_fix_kfs;
                 assert( optimizer.addVertex( v_kf ) );
@@ -550,8 +554,8 @@ void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
             }
 
             // create edge
-            g2oEdgeSE3* e = createG2oEdgeSE3( feature->m_frame->m_optG2oFrame, v_pt, feature->m_pixelPosition, true,
-                                              reproj_thresh_2 * 1.0, 1.0 );
+            g2oEdgeSE3* e =
+              createG2oEdgeSE3( feature->m_frame->m_optG2oFrame, v_pt, feature->m_pixelPosition, true, reproj_thresh_2 * 1.0, 1.0 );
             assert( optimizer.addEdge( e ) );
             edges.push_back( EdgeContainerSE3( e, feature->m_frame, feature ) );
             ++n_edges;
@@ -586,7 +590,7 @@ void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
     // Update Mappoints
     for ( auto& point : mps )
     {
-        point->m_position  = point->m_optG2oPoint->estimate();
+        point->m_position    = point->m_optG2oPoint->estimate();
         point->m_optG2oPoint = nullptr;
     }
 

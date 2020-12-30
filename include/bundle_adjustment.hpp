@@ -16,14 +16,6 @@
 #include <memory>
 #include <vector>
 
-// namespace g2o
-// {
-// class EdgeProjectXYZ2UV;
-// class SparseOptimizer;
-// class VertexSE3Expmap;
-// class VertexSBAPointXYZ;
-// }  // namespace g2o
-
 class BundleAdjustment
 {
 public:
