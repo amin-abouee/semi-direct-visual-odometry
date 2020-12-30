@@ -324,10 +324,13 @@ void BundleAdjustment::setupG2o( g2o::SparseOptimizer& optimizer )
     // g2o::BlockSolver_6_3* solver_ptr            = new g2o::BlockSolver_6_3( linearSolver );
 
     // https://github.com/RainerKuemmerle/g2o/blob/master/unit_test/slam3d/optimization_slam3d.cpp
-    auto linearSolver = g2o::make_unique< g2o::LinearSolverCholmod< g2o::BlockSolver_6_3::PoseMatrixType > >();
+    std::unique_ptr< g2o::BlockSolver_6_3::LinearSolverType > linearSolver =
+      g2o::make_unique< g2o::LinearSolverCholmod< g2o::BlockSolver_6_3::PoseMatrixType > >();
     // linearSolver->setBlockOrdering(false);
-    auto solver_ptr                             = g2o::make_unique< g2o::BlockSolver_6_3 >( std::move( linearSolver ) );
-    g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg( std::move( solver_ptr ) );
+    // auto solver_ptr                             = g2o::make_unique< g2o::BlockSolver_6_3 >( std::move( linearSolver ) );
+    // g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg( std::move( solver_ptr ) );
+    g2o::OptimizationAlgorithmLevenberg* solver =
+      new g2o::OptimizationAlgorithmLevenberg( g2o::make_unique< g2o::BlockSolver_6_3 >( std::move( linearSolver ) ) );
 #else
     g2o::BlockSolverX::LinearSolverType* linearSolver;
     linearSolver = new g2o::LinearSolverCholmod< g2o::BlockSolverX::PoseMatrixType >();
@@ -380,8 +383,8 @@ BundleAdjustment::g2oEdgeSE3* BundleAdjustment::createG2oEdgeSE3(
     e->setVertex( 0, dynamic_cast< g2o::OptimizableGraph::Vertex* >( v_mp ) );
     e->setVertex( 1, dynamic_cast< g2o::OptimizableGraph::Vertex* >( v_kf ) );
     e->setMeasurement( up );
-    e->information()           = weight * Eigen::Matrix2d::Identity( 2, 2 );
-    if (robustKernel == true)
+    e->information() = weight * Eigen::Matrix2d::Identity( 2, 2 );
+    if ( robustKernel == true )
     {
         g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber();  // TODO: memory leak
         rk->setDelta( huberWidth );
@@ -443,7 +446,7 @@ void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
 
         // find at which index the second frame observes the point
         auto& featureSecFrame = point->findFeature( secFrame );
-        e1        = createG2oEdgeSE3( v_frame2, v_pt, featureSecFrame->m_pixelPosition, true, reprojectionError * 1.0 );
+        e1                    = createG2oEdgeSE3( v_frame2, v_pt, featureSecFrame->m_pixelPosition, true, reprojectionError * 1.0 );
         optimizer.addEdge( e1 );
         edges.push_back( EdgeContainerSE3( e1, secFrame, featureSecFrame ) );
     }
@@ -451,7 +454,6 @@ void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
     // Optimization
     double initError, finalError;
     runSparseBAOptimizer( optimizer, 10, initError, finalError );
-    // printf( "2-View BA: Error before/after = %f / %f\n", initError, finalError );
 
     // Update Keyframe Positions
     fstFrame->m_absPose.rotationMatrix() = v_frame1->estimate().rotation().toRotationMatrix();
@@ -472,6 +474,7 @@ void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
     const double reproj_thresh_squared = reprojectionError * reprojectionError;
     size_t n_incorrect_edges           = 0;
     for ( auto& edgeContainer : edges )
+    {
         if ( edgeContainer.edge->chi2() > reproj_thresh_squared )
         {
             if ( edgeContainer.feature->m_point != nullptr )
@@ -481,8 +484,7 @@ void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
             }
             ++n_incorrect_edges;
         }
-
-    // printf( "2-View BA: Wrong edges =  %zu\n", n_incorrect_edges );
+    }
 }
 
 void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
