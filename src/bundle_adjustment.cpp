@@ -313,9 +313,9 @@ void BundleAdjustment::resetParameters()
     std::fill( m_refVisibility.begin(), m_refVisibility.end(), false );
 }
 
-void BundleAdjustment::setupG2o( g2o::SparseOptimizer* optimizer )
+void BundleAdjustment::setupG2o( g2o::SparseOptimizer& optimizer )
 {
-    optimizer->setVerbose( false );
+    optimizer.setVerbose( false );
 
 #if SCHUR_TRICK
     // solver
@@ -337,12 +337,14 @@ void BundleAdjustment::setupG2o( g2o::SparseOptimizer* optimizer )
 #endif
 
     solver->setMaxTrialsAfterFailure( 5 );
-    optimizer->setAlgorithm( solver );
+    optimizer.setAlgorithm( solver );
 
     // setup camera
-    g2o::CameraParameters* cam_params = new g2o::CameraParameters( 1.0, Eigen::Vector2d( 0., 0. ), 0. );
+    const double fx = 721.5377;
+    const Eigen::Vector2d principlePoint( 609.5593, 172.8540 );
+    g2o::CameraParameters* cam_params = new g2o::CameraParameters( fx, principlePoint, 0. );
     cam_params->setId( 0 );
-    if ( !optimizer->addParameter( cam_params ) )
+    if ( !optimizer.addParameter( cam_params ) )
     {
         assert( false );
     }
@@ -386,16 +388,17 @@ BundleAdjustment::g2oEdgeSE3* BundleAdjustment::createG2oEdgeSE3(
     return e;
 }
 
-void BundleAdjustment::runSparseBAOptimizer( g2o::SparseOptimizer* optimizer,
+void BundleAdjustment::runSparseBAOptimizer( g2o::SparseOptimizer& optimizer,
                                              uint32_t numIterations,
                                              double& initError,
                                              double& finalError )
 {
-    optimizer->initializeOptimization();
-    optimizer->computeActiveErrors();
-    initError = optimizer->activeChi2();
-    optimizer->optimize( numIterations );
-    finalError = optimizer->activeChi2();
+    optimizer.initializeOptimization();
+    optimizer.computeActiveErrors();
+    initError = optimizer.activeChi2();
+    optimizer.optimize( numIterations );
+    finalError = optimizer.activeChi2();
+    Adjustment_Log (DEBUG) << "Init Error: " << initError << " -> Final Error: " << finalError;
 }
 
 void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
@@ -404,11 +407,11 @@ void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
                                   std::shared_ptr< Map >& map )
 {
     // scale reprojection threshold in pixels to unit plane
-    reprojectionError /= fstFrame->m_camera->fx();
+    // reprojectionError /= fstFrame->m_camera->fx();
 
     // init g2o
     g2o::SparseOptimizer optimizer;
-    setupG2o( &optimizer );
+    setupG2o( optimizer );
 
     std::vector< EdgeContainerSE3 > edges;
     size_t v_id = 0;
@@ -443,7 +446,7 @@ void BundleAdjustment::twoViewBA( std::shared_ptr< Frame >& fstFrame,
 
     // Optimization
     double initError, finalError;
-    runSparseBAOptimizer( &optimizer, 10, initError, finalError );
+    runSparseBAOptimizer( optimizer, 10, initError, finalError );
     // printf( "2-View BA: Error before/after = %f / %f\n", initError, finalError );
 
     // Update Keyframe Positions
@@ -487,7 +490,7 @@ void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
 {
     // init g2o
     g2o::SparseOptimizer optimizer;
-    setupG2o( &optimizer );
+    setupG2o( optimizer );
 
     std::vector< EdgeContainerSE3 > edges;
     std::set< std::shared_ptr< Point > > mps;
@@ -568,7 +571,7 @@ void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
 
     // Optimization
     // if ( 10 > 0 )
-    runSparseBAOptimizer( &optimizer, 10, initError, finalError );
+    runSparseBAOptimizer( optimizer, 10, initError, finalError );
 
     // Update Keyframes
     // for ( set< FramePtr >::iterator it = core_kfs->begin(); it != core_kfs->end(); ++it )

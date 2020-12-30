@@ -67,9 +67,9 @@ public:
 
     void globalBa( std::shared_ptr< Map >& map );
 
-    void setupG2o( g2o::SparseOptimizer* optimizer );
+    void setupG2o( g2o::SparseOptimizer& optimizer );
 
-    void runSparseBAOptimizer( g2o::SparseOptimizer* optimizer, uint32_t numIterations, double& initError, double& finalError );
+    void runSparseBAOptimizer( g2o::SparseOptimizer& optimizer, uint32_t numIterations, double& initError, double& finalError );
 
     g2oFrameSE3* createG2oFrameSE3( const std::shared_ptr< Frame >& frame, const uint32_t id, const bool fixed );
 
