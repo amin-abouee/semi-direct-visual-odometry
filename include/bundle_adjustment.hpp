@@ -76,7 +76,7 @@ public:
     g2oPoint* createG2oPoint( const Eigen::Vector3d position, const uint32_t id, const bool fixed );
 
     g2oEdgeSE3* createG2oEdgeSE3(
-      g2oFrameSE3* v_kf, g2oPoint* v_mp, const Eigen::Vector2d& up, double huberWidth, double weight = 1 );
+      g2oFrameSE3* v_kf, g2oPoint* v_mp, const Eigen::Vector2d& up, bool robustKernel, double huberWidth, double weight = 1 );
 
 private:
     uint32_t m_currentLevel;
