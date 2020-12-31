@@ -387,11 +387,14 @@ System::Result System::processNewFrame()
     m_curFrame->setKeyframe();
     m_keyFrames.emplace_back( m_curFrame );
 
-    uint32_t incorrectEdge1 = 0;
-    uint32_t incorrectEdge2 = 0;
-    double initError = 0.0;
-    double finalError = 0.0;
-    m_bundler->localBA(m_curFrame, m_map, incorrectEdge1, incorrectEdge2, initError, finalError);
+    {
+        TIMED_SCOPE( timerBA, "timer local BA" );
+        uint32_t incorrectEdge1 = 0;
+        uint32_t incorrectEdge2 = 0;
+        double initError        = 0.0;
+        double finalError       = 0.0;
+        m_bundler->localBA( m_curFrame, m_map, incorrectEdge1, incorrectEdge2, initError, finalError );
+    }
 
     m_featureSelector->setExistingFeatures( m_curFrame->m_features );
     m_featureSelector->gradientMagnitudeWithSSC( m_curFrame, m_config->m_thresholdGradientMagnitude,
@@ -411,6 +414,7 @@ System::Result System::processNewFrame()
     }
 
     m_map->addKeyframe( m_curFrame );
+    reportSummary();
     return Result::Keyframe;
 }
 
@@ -452,44 +456,94 @@ bool System::needKeyframe( const double sceneDepthMean, const std::vector< frame
     return true;
 }
 
-void System::reportSummaryFrames()
+void System::reportSummary()
 {
+    std::set< std::shared_ptr< Point > > points;
+
     //-------------------------------------------------------------------------------
     //    Frame ID        Num Features        Num Points        Active Shared Pointer
     //-------------------------------------------------------------------------------
 
-    std::cout << " ----------------------------- Report Summary Frames -------------------------------- " << std::endl;
-    std::cout << "|                                                                                    |" << std::endl;
     for ( const auto& frame : m_keyFrames )
     {
-        std::cout << "| Frame ID: " << frame->m_id << "\t\t"
-                  << "Num Features: " << frame->numberObservation() << "\t\t"
-                  << "Active Shared Pointer: " << frame.use_count() << "     |" << std::endl;
-    }
-    std::cout << "|                                                                                    |" << std::endl;
-    std::cout << " ------------------------------------------------------------------------------------ " << std::endl;
-}
-
-void System::reportSummaryFeatures()
-{
-    std::cout << " -------------------------- Report Summary Features ---------------------------- " << std::endl;
-    for ( const auto& frame : m_keyFrames )
-    {
-        std::cout << "|                                                                               |" << std::endl;
-        std::cout << " -------------------------------- Frame ID: " << frame->m_id << " ---------------------------------- " << std::endl;
-        std::cout << "|                                                                               |" << std::endl;
         for ( const auto& feature : frame->m_features )
         {
-            std::cout << "| Feature ID: " << std::left << std::setw( 12 ) << feature->m_id << "Point ID: " << std::left << std::setw( 12 )
-                      << feature->m_point->m_id << "Cnt Shared Pointer Point: " << std::left << std::setw( 6 )
-                      << feature->m_point.use_count() << "|" << std::endl;
+            if ( feature->m_point != nullptr )
+            {
+                points.insert( feature->m_point );
+            }
         }
-        std::cout << " ------------------------------------------------------------------------------- " << std::endl;
     }
-}
 
-void System::reportSummaryPoints()
-{
+    System_Log( INFO ) << " -------------------------------------------- Summary Frames -------------------------------------------- ";
+    System_Log( INFO ) << "|                                                                                                         ";
+    for ( const auto& frame : m_keyFrames )
+    {
+        uint32_t cntFeatureWithPoints = 0;
+        for ( const auto& feature : frame->m_features )
+        {
+            if ( feature->m_point != nullptr )
+            {
+                cntFeatureWithPoints++;
+            }
+        }
+
+        System_Log( INFO ) << "| Frame ID: " << std::left << std::setw( 12 ) << frame->m_id << "Num Features: " << std::left
+                           << std::setw( 12 ) << frame->numberObservation() << "Num Features With Points: " << std::left << std::setw( 12 )
+                           << cntFeatureWithPoints << "Use Count: " << frame.use_count();
+    }
+    System_Log( INFO ) << " -------------------------------------------------------------------------------------------------------- \n";
+
+    System_Log( INFO ) << " ------------------------------------------- Summary Features ------------------------------------------- ";
+    System_Log( INFO ) << "|                                                                                                         ";
+    for ( const auto& frame : m_keyFrames )
+    {
+        // System_Log( INFO ) << "|                                                                               |";
+        System_Log( INFO ) << " ---------------------------------------------- Frame ID: " << frame->m_id
+                           << " --------------------------------------------- ";
+        // System_Log( INFO ) << "|                                                                               |";
+        for ( const auto& feature : frame->m_features )
+        {
+            if ( feature->m_point != nullptr )
+            {
+                System_Log( INFO ) << "| Feature ID: " << std::left << std::setw( 12 ) << feature->m_id << "Point ID: " << std::left
+                                   << std::setw( 12 ) << feature->m_point->m_id << "Position: " << feature->m_pixelPosition.transpose()
+                                   << "\t\tUse Count: " << std::left << std::setw( 6 ) << feature.use_count();
+                points.insert( feature->m_point );
+            }
+            else
+            {
+                System_Log( INFO ) << "| Feature ID: " << std::left << std::setw( 12 ) << feature->m_id << "No Point\t\t  "
+                                   << "Position: " << feature->m_pixelPosition.transpose() << "\t\tUse Count: " << std::left
+                                   << std::setw( 6 ) << feature.use_count();
+            }
+        }
+        System_Log( INFO )
+          << " -------------------------------------------------------------------------------------------------------- \n";
+        // System_Log( INFO );
+    }
+
+    System_Log( INFO ) << " -------------------------------- Summary Points ( " << points.size() << " ) --------------------------------- ";
+    System_Log( INFO ) << "|                                                                                                       ";
+    for ( const auto& point : points )
+    {
+        System_Log( INFO ) << " --------------------------------------------- Point ID: " << point->m_id
+                           << " --------------------------------------------- ";
+        // System_Log( INFO ) << "|                                                                               |";
+
+        System_Log( INFO ) << "| Num Features: " << std::left << std::setw( 10 ) << point->numberObservation()
+                           << "Position: " << point->m_position.transpose() << "\t\tUse Count: " << std::left << std::setw( 6 )
+                           << point.use_count();
+        System_Log( INFO ) << " -------------------------------------------------------------------------------------------------------- ";
+
+        for ( const auto& feature : point->m_features )
+        {
+            System_Log( INFO ) << "| Frame ID: " << std::left << std::setw( 12 ) << feature->m_frame->m_id << "Feature ID: " << std::left
+                               << std::setw( 12 ) << feature->m_id << "Position: " << feature->m_pixelPosition.transpose();
+        }
+        System_Log( INFO )
+          << " --------------------------------------------------------------------------------------------------------\n ";
+    }
 }
 
 bool System::loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs )

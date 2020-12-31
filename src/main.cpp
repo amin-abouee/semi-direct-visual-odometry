@@ -89,7 +89,7 @@ int main( int argc, char* argv[] )
         curFrame.setKeyframe();
     */
 
-    for ( int i( 0 ); i < 4; i++ )
+    for ( int i( 0 ); i < 3; i++ )
     {
         std::stringstream ss;
         ss << "input/000000000" << i << ".png";

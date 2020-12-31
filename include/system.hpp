@@ -47,9 +47,7 @@ public:
 
     void addImage( const cv::Mat& img, const uint64_t timestamp );
 
-    void reportSummaryFrames();
-    void reportSummaryFeatures();
-    void reportSummaryPoints();
+    void reportSummary();
 
 private:
 
