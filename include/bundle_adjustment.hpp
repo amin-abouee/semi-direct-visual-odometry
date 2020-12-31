@@ -35,7 +35,7 @@ public:
         }
     };
 
-    explicit BundleAdjustment( int32_t level, uint32_t numParameters );
+    explicit BundleAdjustment( const std::shared_ptr< PinholeCamera >& camera, int32_t level, uint32_t numParameters );
     BundleAdjustment( const BundleAdjustment& rhs );
     BundleAdjustment( BundleAdjustment&& rhs );
     BundleAdjustment& operator=( const BundleAdjustment& rhs );
@@ -47,30 +47,15 @@ public:
 
     void twoViewBA( std::shared_ptr< Frame >& fstFrame,
                     std::shared_ptr< Frame >& secFrame,
-                    double reprojectionError,
-                    std::shared_ptr< Map >& map );
+                    std::shared_ptr< Map >& map,
+                    const double reprojectionError );
 
-    void localBA( std::shared_ptr< Frame >& frame,
-                  std::shared_ptr< Map >& map,
-                  uint32_t& incoreectEdge1,
-                  uint32_t& incorrectEdge2,
-                  double& initError,
-                  double& finalError );
+    void localBA( std::shared_ptr< Map >& map, const double reprojectionError );
 
-    void globalBa( std::shared_ptr< Map >& map );
-
-    void setupG2o( g2o::SparseOptimizer& optimizer );
-
-    void runSparseBAOptimizer( g2o::SparseOptimizer& optimizer, uint32_t numIterations, double& initError, double& finalError );
-
-    g2oFrameSE3* createG2oFrameSE3( const std::shared_ptr< Frame >& frame, const uint32_t id, const bool fixed );
-
-    g2oPoint* createG2oPoint( const Eigen::Vector3d position, const uint32_t id, const bool fixed );
-
-    g2oEdgeSE3* createG2oEdgeSE3(
-      g2oFrameSE3* v_kf, g2oPoint* v_mp, const Eigen::Vector2d& up, bool robustKernel, double huberWidth, double weight = 1 );
+    // void globalBa( std::shared_ptr< Map >& map );
 
 private:
+    std::shared_ptr< PinholeCamera > m_camera;
     uint32_t m_currentLevel;
     int32_t m_level;
 
@@ -92,6 +77,17 @@ private:
     void updateStructure( const std::shared_ptr< Point >& point, const Eigen::Vector3d& dx );
 
     void resetParameters();
+
+    void setupG2o( g2o::SparseOptimizer& optimizer );
+
+    void runSparseBAOptimizer( g2o::SparseOptimizer& optimizer, uint32_t numIterations, double& initError, double& finalError );
+
+    g2oFrameSE3* createG2oFrameSE3( const std::shared_ptr< Frame >& frame, const uint32_t id, const bool fixed );
+
+    g2oPoint* createG2oPoint( const Eigen::Vector3d position, const uint32_t id, const bool fixed );
+
+    g2oEdgeSE3* createG2oEdgeSE3(
+      g2oFrameSE3* v_kf, g2oPoint* v_mp, const Eigen::Vector2d& up, bool robustKernel, double huberWidth, double weight = 1 );
 };
 
 #endif /* __BUNDLE_ADJUSTMENT_HPP__ */

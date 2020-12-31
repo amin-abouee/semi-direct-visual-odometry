@@ -24,7 +24,7 @@ System::System( const std::shared_ptr< Config >& config )
     m_featureSelector = std::make_shared< FeatureSelection >( m_config->m_imgWidth, m_config->m_imgHeight, m_config->m_cellPixelSize );
     m_map             = std::make_shared< Map >( m_camera, m_config->m_cellPixelSize );
     m_depthEstimator  = std::make_unique< DepthEstimator >( m_map, m_featureSelector );
-    m_bundler         = std::make_shared< BundleAdjustment >( 0, 6 );
+    m_bundler         = std::make_shared< BundleAdjustment >( m_camera, 0, 6 );
 }
 
 void System::addImage( const cv::Mat& img, const uint64_t timestamp )
@@ -92,6 +92,7 @@ System::Result System::processFirstFrame()
     m_map->addKeyframe( m_curFrame );
     System_Log( DEBUG ) << "Number of Features: " << m_curFrame->numberObservation();
     m_systemStatus = System::Status::Process_Second_Frame;
+    reportSummary();
     return Result::Success;
 }
 
@@ -189,7 +190,7 @@ System::Result System::processSecondFrame()
 
     {
         TIMED_SCOPE( timerBA, "timer twoViewBA" );
-        m_bundler->twoViewBA( m_refFrame, m_curFrame, 2.0, m_map );
+        m_bundler->twoViewBA( m_refFrame, m_curFrame, m_map, 2.0 );
     }
 
     m_curFrame->setKeyframe();
@@ -265,6 +266,7 @@ System::Result System::processSecondFrame()
     }
 
     m_systemStatus = System::Status::Procese_New_Frame;
+    reportSummary();
     return Result::Success;
 }
 
@@ -390,11 +392,11 @@ System::Result System::processNewFrame()
 
     {
         TIMED_SCOPE( timerBA, "timer local BA" );
-        uint32_t incorrectEdge1 = 0;
-        uint32_t incorrectEdge2 = 0;
-        double initError        = 0.0;
-        double finalError       = 0.0;
-        m_bundler->localBA( m_curFrame, m_map, incorrectEdge1, incorrectEdge2, initError, finalError );
+        // uint32_t incorrectEdge1 = 0;
+        // uint32_t incorrectEdge2 = 0;
+        // double initError        = 0.0;
+        // double finalError       = 0.0;
+        m_bundler->localBA( m_map, 2.0 );
     }
 
     m_featureSelector->setExistingFeatures( m_curFrame->m_features );
@@ -406,7 +408,7 @@ System::Result System::processNewFrame()
     m_depthEstimator->addKeyframe( m_curFrame, depthMean, depthMin * 0.5 );
 
     // remove old key frame from map
-    if ( m_map->m_keyFrames.size() > 10 )
+    if ( m_map->m_keyFrames.size() > 5 )
     {
         std::shared_ptr< Frame > furthestFrame{ nullptr };
         m_map->getFurthestKeyframe( m_curFrame->cameraInWorld(), furthestFrame );
@@ -490,9 +492,10 @@ void System::reportSummary( const bool withDetail )
             }
         }
 
-        System_Log( INFO ) << "| Frame ID: " << std::left << std::setw( 12 ) << frame->m_id << "Num Features: " << std::left
-                           << std::setw( 12 ) << frame->numberObservation() << "Num Features With Points: " << std::left << std::setw( 12 )
-                           << cntFeatureWithPoints << "Use Count: " << frame.use_count();
+        System_Log( INFO ) << "| Frame ID: " << std::left << std::setw( 8 ) << frame->m_id << "KeyFrame: " << std::boolalpha
+                           << frame->isKeyframe() << "\tNum Features: " << std::left << std::setw( 8 ) << frame->numberObservation()
+                           << "Num Features With Points: " << std::left << std::setw( 8 ) << cntFeatureWithPoints
+                           << "Use Count: " << frame.use_count();
     }
     System_Log( INFO ) << "| Num Features: " << features.size();
     System_Log( INFO ) << "| Num Points: " << points.size();

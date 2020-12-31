@@ -56,6 +56,7 @@ void configLogger( const std::string& logFilePath )
 
 int main( int argc, char* argv[] )
 {
+    TIMED_FUNC (timerMain);
     // Main_Log(DEBUG) << "Number of Threads: " << Eigen::nbThreads( );
     // Eigen::setNbThreads(4);
     // Main_Log(DEBUG) << "Number of Threads: " << Eigen::nbThreads( );
@@ -89,7 +90,7 @@ int main( int argc, char* argv[] )
         curFrame.setKeyframe();
     */
 
-    for ( int i( 0 ); i < 4; i++ )
+    for ( int i( 0 ); i < 10; i++ )
     {
         std::stringstream ss;
         ss << "input/000000000" << i << ".png";

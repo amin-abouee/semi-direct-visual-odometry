@@ -23,32 +23,33 @@ void Map::reset()
 
 void Map::removeFrame( std::shared_ptr< Frame >& frame )
 {
-    // auto find = [ &frame ]( std::shared_ptr< Frame >& f ) -> bool {
-    //     // TODO: check with get() and raw pointer
-    //     if ( f == frame )
-    //         return true;
-    //     return false;
-    // };
-    // auto element = std::remove_if( m_keyFrames.begin(), m_keyFrames.end(), find );
-    // m_keyFrames.erase( element, m_keyFrames.end() );
-    int32_t delIdx = 0;
-    for ( auto& fr : m_keyFrames )
-    {
-        if ( fr == frame )
-        {
-            for ( auto& feature : fr->m_features )
-            {
-                if ( feature->m_point != nullptr )
-                {
-                    removeFeature( feature );
-                }
-            }
-            break;
-        }
-        delIdx++;
-    }
+    auto find = [ &frame ]( std::shared_ptr< Frame >& f ) -> bool {
+        // TODO: check with get() and raw pointer
+        if ( f.get() == frame.get() )
+            return true;
+        return false;
+    };
+    auto element = std::remove_if( m_keyFrames.begin(), m_keyFrames.end(), find );
+    m_keyFrames.erase( element, m_keyFrames.end() );
 
-    m_keyFrames.erase( m_keyFrames.begin() + delIdx );
+    // int32_t delIdx = 0;
+    // for ( auto& fr : m_keyFrames )
+    // {
+    //     if ( fr == frame )
+    //     {
+    //         for ( auto& feature : fr->m_features )
+    //         {
+    //             if ( feature->m_point != nullptr )
+    //             {
+    //                 removeFeature( feature );
+    //             }
+    //         }
+    //         break;
+    //     }
+    //     delIdx++;
+    // }
+
+    // m_keyFrames.erase( m_keyFrames.begin() + delIdx );
 
     // TODO: also remove from point candidate
 }
@@ -63,12 +64,11 @@ void Map::removePoint( std::shared_ptr< Point >& point )
     point->m_features.clear();
 
     point->m_type = Point::PointType::DELETED;
-    point = nullptr;
+    point         = nullptr;
 }
 
 void Map::removeFeature( std::shared_ptr< Feature >& feature )
 {
-    feature->m_point = nullptr;
     if ( feature->m_point->numberObservation() <= 2 )
     {
         removePoint( feature->m_point );
@@ -77,6 +77,8 @@ void Map::removeFeature( std::shared_ptr< Feature >& feature )
     // FIXME:  implement removeFeature in point class
     feature->m_point->removeFrame( feature->m_frame );
     feature->m_frame->removeFeature( feature );
+    // feature->m_point = nullptr;
+    feature = nullptr;
 }
 
 void Map::addKeyframe( std::shared_ptr< Frame >& frame )
@@ -119,7 +121,6 @@ void Map::getCloseKeyframes( const std::shared_ptr< Frame >& frame, std::vector<
         const auto keyFrame = *it;
         if ( keyFrame == frame )
             continue;
-        // FIXME: m_features -> features
         for ( auto& feature : keyFrame->m_features )
         {
             if ( feature == nullptr )
@@ -380,18 +381,17 @@ void Map::addNewCandidate( const std::shared_ptr< Feature >& feature, const std:
 void Map::addCandidateToFrame( std::shared_ptr< Frame >& frame )
 {
     std::unique_lock< std::mutex > lock( m_mutexCandidates );
+    uint32_t cntAddedFeature = 0;
     for ( auto& candidate : m_candidates )
     {
-        Map_Log (DEBUG) << "frame id: " << frame->m_id << ", feature id: " << candidate.m_feature->m_id;
         if ( candidate.m_feature->m_frame.get() == frame.get() )
         {
             candidate.m_point->m_type             = Point::PointType::UNKNOWN;
             candidate.m_point->m_failedProjection = 0;
-            frame->addFeature( candidate.m_feature );
-            // TODO: we assume the feature and point have already linked
-            // Map_Log (WARNING) << "new candidate added";
+            cntAddedFeature++;
         }
     }
+    Map_Log( DEBUG ) << cntAddedFeature << " features added to frame " << frame->m_id;
     removeFrameCandidate( frame );
 }
 

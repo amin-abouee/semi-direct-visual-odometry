@@ -255,7 +255,7 @@ void FeatureSelection::computeImageGradient( const cv::Mat& imgGray )
     // https://docs.opencv.org/2.4/doc/tutorials/imgproc/imgtrans/sobel_derivatives/sobel_derivatives.html
     // http://ninghang.blogspot.com/2012/11/list-of-mat-type-in-opencv.html
 
-    TIMED_FUNC( timerObj );
+    // TIMED_FUNC( timerObj );
 
     m_imgGradientMagnitude   = cv::Mat( imgGray.size(), CV_8U );
     m_imgGradientOrientation = cv::Mat( imgGray.size(), CV_8U, cv::Scalar( 0 ) );
@@ -263,7 +263,6 @@ void FeatureSelection::computeImageGradient( const cv::Mat& imgGray )
     Simd::View< Simd::Allocator > src = imgGray;
     Simd::View< Simd::Allocator > dst = m_imgGradientMagnitude;
     Simd::AbsGradientSaturatedSum( src, dst );
-    // Simd::PrintInfo(std::cout);
 
 }
 

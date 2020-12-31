@@ -289,7 +289,6 @@ void visualization::projectPointsWithRelativePose(
             cnt++;
         }
     }
-    Visualization_Log(WARNING) << "(projectPointsWithRelativePose) number of points: " << cnt;
 }
 
 void visualization::projectLinesWithRelativePose(
