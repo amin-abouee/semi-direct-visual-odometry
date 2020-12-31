@@ -456,9 +456,10 @@ bool System::needKeyframe( const double sceneDepthMean, const std::vector< frame
     return true;
 }
 
-void System::reportSummary()
+void System::reportSummary( const bool withDetail )
 {
     std::set< std::shared_ptr< Point > > points;
+    std::set< std::shared_ptr< Feature > > features;
 
     //-------------------------------------------------------------------------------
     //    Frame ID        Num Features        Num Points        Active Shared Pointer
@@ -472,6 +473,7 @@ void System::reportSummary()
             {
                 points.insert( feature->m_point );
             }
+            features.insert( feature );
         }
     }
 
@@ -492,57 +494,65 @@ void System::reportSummary()
                            << std::setw( 12 ) << frame->numberObservation() << "Num Features With Points: " << std::left << std::setw( 12 )
                            << cntFeatureWithPoints << "Use Count: " << frame.use_count();
     }
+    System_Log( INFO ) << "| Num Features: " << features.size();
+    System_Log( INFO ) << "| Num Points: " << points.size();
     System_Log( INFO ) << " -------------------------------------------------------------------------------------------------------- \n";
 
-    System_Log( INFO ) << " ------------------------------------------- Summary Features ------------------------------------------- ";
-    System_Log( INFO ) << "|                                                                                                         ";
-    for ( const auto& frame : m_keyFrames )
+    if ( withDetail == true )
     {
-        // System_Log( INFO ) << "|                                                                               |";
-        System_Log( INFO ) << " ---------------------------------------------- Frame ID: " << frame->m_id
-                           << " --------------------------------------------- ";
-        // System_Log( INFO ) << "|                                                                               |";
-        for ( const auto& feature : frame->m_features )
+        System_Log( INFO ) << " ------------------------------------------- Summary Features ------------------------------------------- ";
+        System_Log( INFO ) << "|                                                                                                         ";
+        for ( const auto& frame : m_keyFrames )
         {
-            if ( feature->m_point != nullptr )
+            // System_Log( INFO ) << "|                                                                               |";
+            System_Log( INFO ) << " ---------------------------------------------- Frame ID: " << frame->m_id
+                               << " --------------------------------------------- ";
+            // System_Log( INFO ) << "|                                                                               |";
+            for ( const auto& feature : frame->m_features )
             {
-                System_Log( INFO ) << "| Feature ID: " << std::left << std::setw( 12 ) << feature->m_id << "Point ID: " << std::left
-                                   << std::setw( 12 ) << feature->m_point->m_id << "Position: " << feature->m_pixelPosition.transpose()
-                                   << "\t\tUse Count: " << std::left << std::setw( 6 ) << feature.use_count();
-                points.insert( feature->m_point );
+                if ( feature->m_point != nullptr )
+                {
+                    System_Log( INFO ) << "| Feature ID: " << std::left << std::setw( 12 ) << feature->m_id << "Point ID: " << std::left
+                                       << std::setw( 12 ) << feature->m_point->m_id << "Position: " << feature->m_pixelPosition.transpose()
+                                       << "\t\tUse Count: " << std::left << std::setw( 6 ) << feature.use_count();
+                    points.insert( feature->m_point );
+                }
+                else
+                {
+                    System_Log( INFO ) << "| Feature ID: " << std::left << std::setw( 12 ) << feature->m_id << "No Point\t\t  "
+                                       << "Position: " << feature->m_pixelPosition.transpose() << "\t\tUse Count: " << std::left
+                                       << std::setw( 6 ) << feature.use_count();
+                }
             }
-            else
-            {
-                System_Log( INFO ) << "| Feature ID: " << std::left << std::setw( 12 ) << feature->m_id << "No Point\t\t  "
-                                   << "Position: " << feature->m_pixelPosition.transpose() << "\t\tUse Count: " << std::left
-                                   << std::setw( 6 ) << feature.use_count();
-            }
+            System_Log( INFO )
+              << " -------------------------------------------------------------------------------------------------------- \n";
+            // System_Log( INFO );
         }
-        System_Log( INFO )
-          << " -------------------------------------------------------------------------------------------------------- \n";
-        // System_Log( INFO );
-    }
 
-    System_Log( INFO ) << " -------------------------------- Summary Points ( " << points.size() << " ) --------------------------------- ";
-    System_Log( INFO ) << "|                                                                                                       ";
-    for ( const auto& point : points )
-    {
-        System_Log( INFO ) << " --------------------------------------------- Point ID: " << point->m_id
-                           << " --------------------------------------------- ";
-        // System_Log( INFO ) << "|                                                                               |";
-
-        System_Log( INFO ) << "| Num Features: " << std::left << std::setw( 10 ) << point->numberObservation()
-                           << "Position: " << point->m_position.transpose() << "\t\tUse Count: " << std::left << std::setw( 6 )
-                           << point.use_count();
-        System_Log( INFO ) << " -------------------------------------------------------------------------------------------------------- ";
-
-        for ( const auto& feature : point->m_features )
+        System_Log( INFO ) << " -------------------------------- Summary Points ( " << points.size()
+                           << " ) --------------------------------- ";
+        System_Log( INFO ) << "|                                                                                                       ";
+        for ( const auto& point : points )
         {
-            System_Log( INFO ) << "| Frame ID: " << std::left << std::setw( 12 ) << feature->m_frame->m_id << "Feature ID: " << std::left
-                               << std::setw( 12 ) << feature->m_id << "Position: " << feature->m_pixelPosition.transpose();
+            System_Log( INFO ) << " --------------------------------------------- Point ID: " << point->m_id
+                               << " --------------------------------------------- ";
+            // System_Log( INFO ) << "|                                                                               |";
+
+            System_Log( INFO ) << "| Num Features: " << std::left << std::setw( 10 ) << point->numberObservation()
+                               << "Position: " << point->m_position.transpose() << "\t\tUse Count: " << std::left << std::setw( 6 )
+                               << point.use_count();
+            System_Log( INFO )
+              << " -------------------------------------------------------------------------------------------------------- ";
+
+            for ( const auto& feature : point->m_features )
+            {
+                System_Log( INFO ) << "| Frame ID: " << std::left << std::setw( 12 ) << feature->m_frame->m_id
+                                   << "Feature ID: " << std::left << std::setw( 12 ) << feature->m_id
+                                   << "Position: " << feature->m_pixelPosition.transpose();
+            }
+            System_Log( INFO )
+              << " --------------------------------------------------------------------------------------------------------\n ";
         }
-        System_Log( INFO )
-          << " --------------------------------------------------------------------------------------------------------\n ";
     }
 }
 

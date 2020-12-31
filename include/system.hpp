@@ -32,8 +32,8 @@ class System final
 
     enum class Result : uint8_t
     {
-        Success = 0,
-        Failed = 1,
+        Success  = 0,
+        Failed   = 1,
         Keyframe = 2
     };
 
@@ -47,10 +47,9 @@ public:
 
     void addImage( const cv::Mat& img, const uint64_t timestamp );
 
-    void reportSummary();
+    void reportSummary( const bool withDetail = false );
 
 private:
-
     Result processFirstFrame();
     Result processSecondFrame();
     Result processNewFrame();
@@ -58,11 +57,11 @@ private:
 
     bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs );
     bool needKeyframe( const double sceneDepthMean, const std::vector< frameSize >& overlapKeyFrames );
-    bool computeTrackingQuality (const std::shared_ptr< Frame >& curFrame, const uint32_t refFrameNumberObservations);
+    bool computeTrackingQuality( const std::shared_ptr< Frame >& curFrame, const uint32_t refFrameNumberObservations );
 
     const std::shared_ptr< Config > m_config;
     std::shared_ptr< PinholeCamera > m_camera;
-    std::shared_ptr<Frame> m_activeKeyframe;
+    std::shared_ptr< Frame > m_activeKeyframe;
     std::shared_ptr< Frame > m_refFrame;
     std::shared_ptr< Frame > m_curFrame;
     std::shared_ptr< FeatureSelection > m_featureSelector;
