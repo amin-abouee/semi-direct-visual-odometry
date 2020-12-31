@@ -386,6 +386,7 @@ System::Result System::processNewFrame()
 
     m_curFrame->setKeyframe();
     m_keyFrames.emplace_back( m_curFrame );
+    m_map->addKeyframe( m_curFrame );
 
     {
         TIMED_SCOPE( timerBA, "timer local BA" );
@@ -413,7 +414,6 @@ System::Result System::processNewFrame()
         m_map->removeFrame( furthestFrame );
     }
 
-    m_map->addKeyframe( m_curFrame );
     reportSummary();
     return Result::Keyframe;
 }

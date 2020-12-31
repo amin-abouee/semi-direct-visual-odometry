@@ -138,8 +138,6 @@ void visualization::featurePoints(
             drawingFunctor( img, feature->m_pixelPosition, radiusSize, colors.at( "cyan" ) );
         }
     }
-    Visualization_Log(WARNING) << "(featurePoints) number of points: " << cnt;
-
 }
 
 void visualization::imageGrid( cv::Mat& img, const int32_t gridSize, const std::string& color )

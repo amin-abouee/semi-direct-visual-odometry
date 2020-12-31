@@ -382,14 +382,14 @@ void Map::addCandidateToFrame( std::shared_ptr< Frame >& frame )
     std::unique_lock< std::mutex > lock( m_mutexCandidates );
     for ( auto& candidate : m_candidates )
     {
-        Map_Log (DEBUG) << "id candidate: " << candidate.m_feature->m_frame->m_id << ", frame id: " << frame->m_id;
+        Map_Log (DEBUG) << "frame id: " << frame->m_id << ", feature id: " << candidate.m_feature->m_id;
         if ( candidate.m_feature->m_frame.get() == frame.get() )
         {
             candidate.m_point->m_type             = Point::PointType::UNKNOWN;
             candidate.m_point->m_failedProjection = 0;
             frame->addFeature( candidate.m_feature );
             // TODO: we assume the feature and point have already linked
-            Map_Log (WARNING) << "new candidate added";
+            // Map_Log (WARNING) << "new candidate added";
         }
     }
     removeFrameCandidate( frame );

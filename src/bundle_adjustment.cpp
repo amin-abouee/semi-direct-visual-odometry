@@ -496,9 +496,9 @@ void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
     std::vector< std::shared_ptr< Frame > > neib_kfs;
     size_t v_id      = 0;
     size_t n_mps     = 0;
-    size_t n_fix_kfs = 0;
-    size_t n_var_kfs = 1;
-    size_t n_edges   = 0;
+    // size_t n_fix_kfs = 0;
+    // size_t n_var_kfs = 1;
+    // size_t n_edges   = 0;
     incoreectEdge1   = 0;
     incorrectEdge2   = 0;
 
@@ -508,33 +508,34 @@ void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
         g2oFrameSE3* v_kf = createG2oFrameSE3( keyframe, v_id++, false );
         // TODO: I need to add this one
         keyframe->m_optG2oFrame = v_kf;
-        ++n_var_kfs;
-        assert( optimizer.addVertex( v_kf ) );
+        // ++n_var_kfs;
+        optimizer.addVertex( v_kf );
 
         // all points that the core keyframes observe are also optimized:
         for ( auto& feature : keyframe->m_features )
             if ( feature->m_point != nullptr )
                 mps.insert( feature->m_point );
     }
+    Adjustment_Log (DEBUG) << "Num Keyframes: " << map->m_keyFrames.size() << ", points: " << mps.size();
 
     // Now go throug all the points and add a measurement. Add a fixed neighbour
     // Keyframe if it is not in the set of core kfs
     double reproj_thresh         = 2.0 ;
-    double reproj_thresh_1_squared = reproj_thresh * reproj_thresh;
+    // double reproj_thresh_1_squared = reproj_thresh * reproj_thresh;
     for ( auto& point : mps )
     {
         // Create point vertex
         g2oPoint* v_pt = createG2oPoint( point->m_position, v_id++, false );
         // TODO: add g2o vertex to point
         point->m_optG2oPoint = v_pt;
-        assert( optimizer.addVertex( v_pt ) );
+        optimizer.addVertex( v_pt );
         ++n_mps;
 
         // Add edges
         for ( auto& feature : point->m_features )
         {
             // TODO: double check this line
-            Eigen::Vector2d error = feature->m_pixelPosition - feature->m_frame->world2image( point->m_position );
+            // Eigen::Vector2d error = feature->m_pixelPosition - feature->m_frame->world2image( point->m_position );
 
             if ( feature->m_frame->m_optG2oFrame == nullptr )
             {
@@ -542,17 +543,17 @@ void BundleAdjustment::localBA( std::shared_ptr< Frame >& frame,
                 // is fixed. create one:
                 g2oFrameSE3* v_kf               = createG2oFrameSE3( feature->m_frame, v_id++, true );
                 feature->m_frame->m_optG2oFrame = v_kf;
-                ++n_fix_kfs;
-                assert( optimizer.addVertex( v_kf ) );
+                // ++n_fix_kfs;
+                optimizer.addVertex( v_kf );
                 neib_kfs.push_back( feature->m_frame );
             }
 
             // create edge
             g2oEdgeSE3* e =
               createG2oEdgeSE3( feature->m_frame->m_optG2oFrame, v_pt, feature->m_pixelPosition, true, reproj_thresh * 1.0, 1.0 );
-            assert( optimizer.addEdge( e ) );
+            optimizer.addEdge( e );
             edges.push_back( EdgeContainerSE3( e, feature->m_frame, feature ) );
-            ++n_edges;
+            // ++n_edges;
         }
     }
 
