@@ -227,11 +227,11 @@ System::Result System::processSecondFrame()
         cv::Mat stickImg;
         visualization::stickTwoImageVertically( refBGR, curBGR, stickImg );
 
-        cv::Mat curBGR2 = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
-        visualization::featurePoints( curBGR2, m_curFrame, 6, "orange", false, visualization::drawingCircle );
-        visualization::imageGrid( curBGR2, m_config->m_cellPixelSize, "green" );
+        // cv::Mat curBGR2 = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
+        // visualization::featurePoints( curBGR2, m_curFrame, 6, "orange", false, visualization::drawingCircle );
+        // visualization::imageGrid( curBGR2, m_config->m_cellPixelSize, "green" );
 
-        visualization::stickTwoImageVertically( stickImg, curBGR2, stickImg );
+        // visualization::stickTwoImageVertically( stickImg, curBGR2, stickImg );
 
         // cv::Mat curBGR3 = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
         // visualization::project3DPoints( curBGR3, m_curFrame, 6, "red", visualization::drawingCircle );
@@ -250,19 +250,6 @@ System::Result System::processSecondFrame()
             ss << "../output/images/" << m_refFrame->m_id << " -> " << m_curFrame->m_id << ".png";
             cv::imwrite( ss.str(), stickImg );
         }
-
-        // cv::Mat imageDepth = m_featureSelector->m_imgGradientMagnitude.clone();
-        // visualization::colormapDepth( imageDepth, m_curFrame, 7, "amber" );
-        // cv::imshow( "depth", imageDepth );
-
-        // if ( m_config->m_savingType == "LiveShow" )
-        // {
-        //     cv::imshow( "depth", imageDepth );
-        // }
-        // else if ( m_config->m_savingType == "File" )
-        // {
-        //     cv::imwrite( "../output/images/depth.png", imageDepth );
-        // }
     }
 
     m_systemStatus = System::Status::Procese_New_Frame;
@@ -284,13 +271,19 @@ System::Result System::processNewFrame()
     cv::Mat stickImg;
     if ( m_config->m_enableVisualization == true )
     {
+        cv::Mat lastBGR = visualization::getColorImage( m_refFrame->m_lastKeyframe->m_imagePyramid.getBaseGradientImage() );
+        visualization::featurePoints( lastBGR, m_refFrame, 6, "green", true, visualization::drawingRectangle );
+
         cv::Mat refBGR = visualization::getColorImage( m_refFrame->m_imagePyramid.getBaseGradientImage() );
-        visualization::featurePoints( refBGR, m_refFrame, 6, "pink", false, visualization::drawingRectangle );
+        visualization::featurePoints( refBGR, m_refFrame, 6, "pink", true, visualization::drawingRectangle );
 
+        visualization::stickTwoImageVertically( lastBGR, refBGR, stickImg, 20 );
+
+        // just projected with computed pose
         cv::Mat curBGR = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
-        visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 6, "orange", visualization::drawingCircle );
+        visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 6, "yellow", visualization::drawingCircle );
 
-        visualization::stickTwoImageVertically( refBGR, curBGR, stickImg );
+        visualization::stickTwoImageVertically( stickImg, curBGR, stickImg, 20 );
 
         // if ( m_config->m_savingType == "LiveShow" )
         // {
@@ -312,12 +305,21 @@ System::Result System::processNewFrame()
 
     if ( m_config->m_enableVisualization == true )
     {
+        // points projected and added
         cv::Mat curBGR = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
         visualization::featurePoints( curBGR, m_curFrame, 6, "orange", false, visualization::drawingCircle );
-        visualization::imageGrid( curBGR, m_config->m_cellPixelSize, "green" );
 
         // cv::Mat stickImg;
-        visualization::stickTwoImageVertically( stickImg, curBGR, stickImg );
+        visualization::stickTwoImageVertically( stickImg, curBGR, stickImg, 20 );
+
+        // if ( m_map->m_candidates.size() > 0 )
+        // {
+        //     cv::Mat curBGRFilter = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
+        //     // visualization::featurePoints( curBGRFilter, m_curFrame, 6, "orange", false, visualization::drawingCircle );
+        //     // visualization::imageGrid( curBGR, m_config->m_cellPixelSize, "green" );
+        //     visualization::drawCandidate( curBGRFilter, m_curFrame, m_map, 6, "aqua", visualization::drawingCircle );
+        //     visualization::stickTwoImageVertically( stickImg, curBGRFilter, stickImg );
+        // }
 
         // if ( m_config->m_savingType == "LiveShow" )
         // {
@@ -337,11 +339,16 @@ System::Result System::processNewFrame()
 
     if ( m_config->m_enableVisualization == true )
     {
+        cv::Mat lastBGR = visualization::getColorImage( m_refFrame->m_lastKeyframe->m_imagePyramid.getBaseGradientImage() );
+        visualization::featurePoints( lastBGR, m_refFrame, 6, "green", true, visualization::drawingRectangle );
+
+        visualization::stickTwoImageVertically( stickImg, lastBGR, stickImg, 20 );
+
         cv::Mat refBGR = visualization::getColorImage( m_refFrame->m_imagePyramid.getBaseGradientImage() );
-        visualization::featurePoints( refBGR, m_refFrame, 6, "pink", false, visualization::drawingRectangle );
+        visualization::featurePoints( refBGR, m_refFrame, 6, "pink", true, visualization::drawingRectangle );
 
         // cv::Mat stickImg;
-        visualization::stickTwoImageVertically( stickImg, refBGR, stickImg );
+        visualization::stickTwoImageVertically( stickImg, refBGR, stickImg, 20 );
 
         if ( m_config->m_savingType == "LiveShow" )
         {
@@ -389,6 +396,7 @@ System::Result System::processNewFrame()
     m_curFrame->setKeyframe();
     m_keyFrames.emplace_back( m_curFrame );
     m_map->addKeyframe( m_curFrame );
+    // m_activeKeyframe = m_curFrame;
 
     {
         TIMED_SCOPE( timerBA, "timer local BA" );
@@ -483,19 +491,16 @@ void System::reportSummary( const bool withDetail )
     System_Log( INFO ) << "|                                                                                                         ";
     for ( const auto& frame : m_keyFrames )
     {
-        uint32_t cntFeatureWithPoints = 0;
-        for ( const auto& feature : frame->m_features )
+        uint32_t cntFeatureWithPoints = frame->numberObservationWithPoints();
+        int64_t LastKFId              = -1;
+        if ( frame->m_lastKeyframe != nullptr )
         {
-            if ( feature->m_point != nullptr )
-            {
-                cntFeatureWithPoints++;
-            }
+            LastKFId = frame->m_lastKeyframe->m_id;
         }
-
         System_Log( INFO ) << "| Frame ID: " << std::left << std::setw( 8 ) << frame->m_id << "KeyFrame: " << std::boolalpha
                            << frame->isKeyframe() << "\tNum Features: " << std::left << std::setw( 8 ) << frame->numberObservation()
                            << "Num Features With Points: " << std::left << std::setw( 8 ) << cntFeatureWithPoints
-                           << "Use Count: " << frame.use_count();
+                           << "Last Key Frame id: " << std::left << std::setw( 8 ) << LastKFId << "Use Count: " << frame.use_count();
     }
     System_Log( INFO ) << "| Num Features: " << features.size();
     System_Log( INFO ) << "| Num Points: " << points.size();

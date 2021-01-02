@@ -12,18 +12,19 @@
 #ifndef __VISUALIZATION_H__
 #define __VISUALIZATION_H__
 
+// #include "depth_estimator.hpp"
+#include "frame.hpp"
+#include "map.hpp"
+#include "matplotlibcpp.h"
+
+#include <Eigen/Core>
+#include <opencv2/core.hpp>
+
 #include <any>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <unordered_map>
-
-#include <Eigen/Core>
-#include <opencv2/core.hpp>
-
-#include "depth_estimator.hpp"
-#include "frame.hpp"
-#include "matplotlibcpp.h"
 
 namespace visualization
 {
@@ -61,9 +62,9 @@ cv::Mat getHSVImageWithMagnitude( const cv::Mat& img, const uint8_t minMagnitude
 
 cv::Scalar generateColor( const uint8_t min, const uint8_t max, const uint8_t value );
 
-void stickTwoImageVertically( const cv::Mat& refImg, const cv::Mat& curImg, cv::Mat& img );
+void stickTwoImageVertically( const cv::Mat& refImg, const cv::Mat& curImg, cv::Mat& img, const uint32_t margin = 20 );
 
-void stickTwoImageHorizontally( const cv::Mat& refImg, const cv::Mat& curImg, cv::Mat& img );
+void stickTwoImageHorizontally( const cv::Mat& refImg, const cv::Mat& curImg, cv::Mat& img, const uint32_t margin = 20 );
 
 void featurePoints(
   cv::Mat& img,
@@ -119,6 +120,15 @@ void epipole( cv::Mat& img,
               const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >&
                 drawingFunctor );
 
+void drawCandidate(
+  cv::Mat& img,
+  const std::shared_ptr< Frame >& frame,
+  const std::shared_ptr< Map >& map,
+  const u_int32_t radiusSize,
+  const std::string& color,
+  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >&
+    drawingFunctor );
+
 cv::Mat referencePatches( const cv::Mat& patches,
                           const uint32_t numberPatches,
                           const uint32_t patchSize,
@@ -135,24 +145,24 @@ cv::Mat residualsPatches( const Eigen::VectorXd& residuals,
 
 void drawHistogram( std::map< std::string, std::any >& pack );
 
-void projectDepthFilters(
-  cv::Mat& img,
-  const std::shared_ptr< Frame >& frame,
-  const std::vector< MixedGaussianFilter >& depthFilters,
-  const u_int32_t radiusSize,
-  const std::string& color,
-  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
-    drawingFunctor );
+// void projectDepthFilters(
+//   cv::Mat& img,
+//   const std::shared_ptr< Frame >& frame,
+//   const std::vector< MixedGaussianFilter >& depthFilters,
+//   const u_int32_t radiusSize,
+//   const std::string& color,
+//   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
+//     drawingFunctor );
 
-void projectDepthFilters(
-  cv::Mat& img,
-  const std::shared_ptr< Frame >& frame,
-  const std::vector< MixedGaussianFilter >& depthFilters,
-  const std::vector< double >& updatedDepths,
-  const u_int32_t radiusSize,
-  const std::string& color,
-  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
-    drawingFunctor );
+// void projectDepthFilters(
+//   cv::Mat& img,
+//   const std::shared_ptr< Frame >& frame,
+//   const std::vector< MixedGaussianFilter >& depthFilters,
+//   const std::vector< double >& updatedDepths,
+//   const u_int32_t radiusSize,
+//   const std::string& color,
+//   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
+//     drawingFunctor );
 
 }  // namespace visualization
 

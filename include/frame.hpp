@@ -113,6 +113,13 @@ public:
     /// @return std::size_t Size of features list
     std::size_t numberObservation() const;
 
+    /**
+     * @brief Number of features with corresponding points
+     * 
+     * @return uint32_t 
+     */
+    uint32_t numberObservationWithPoints() const;
+
     /// @brief If the point is in the front of camera (z>0) and can projectable into image
     ///  For this one, First the point transfers to camera cordinare with abs pose and then project into image
     ///  point3D_c = abs_pose * point3d_w

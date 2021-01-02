@@ -16,7 +16,6 @@ class Map final
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    std::vector< std::shared_ptr< Frame > > m_keyFrames;
     // std::vector< std::shared_ptr< Point > > m_trashPoints;
 
     explicit Map( const std::shared_ptr< PinholeCamera >& camera, const uint32_t cellSize );
@@ -71,12 +70,6 @@ public:
 
     void resetCandidates();
 
-    uint32_t m_matches;
-    uint32_t m_trials;
-
-private:
-    std::shared_ptr< FeatureAlignment > m_alignment;
-
     /// A candidate is a point that projects into the image plane and for which we
     /// will search a maching feature in the image.
     struct Candidate
@@ -93,6 +86,15 @@ private:
     using CandidateList = std::vector< Candidate >;
     using CandidateGrid = std::vector< std::shared_ptr< CandidateList > >;
 
+    uint32_t m_matches;
+    uint32_t m_trials;
+    std::vector< std::shared_ptr< Frame > > m_keyFrames;
+    CandidateList m_candidates;
+
+private:
+    // std::shared_ptr< FeatureAlignment > m_alignment;
+
+    
     /// The grid stores a set of candidate matches. For every grid cell we try to find one match.
     struct Grid
     {
@@ -107,7 +109,7 @@ private:
     Grid m_grid;
 
     // To get the new candidate points from depth filter
-    CandidateList m_candidates;
+    // CandidateList m_candidates;
     std::mutex m_mutexCandidates;
 
     bool pointQualityComparator( Candidate& lhs, Candidate& rhs );

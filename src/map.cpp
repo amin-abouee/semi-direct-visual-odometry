@@ -371,6 +371,12 @@ bool Map::reprojectCell( std::shared_ptr< CandidateList >& candidates, std::shar
     return false;
 }
 
+// const std::vector< Map::Candidate >& Map::getCandidateList () const
+// {
+//     return m_candidates;
+// }
+
+
 void Map::addNewCandidate( const std::shared_ptr< Feature >& feature, const std::shared_ptr< Point >& point )
 {
     point->m_type = Point::PointType::CANDIDATE;
@@ -384,14 +390,16 @@ void Map::addCandidateToFrame( std::shared_ptr< Frame >& frame )
     uint32_t cntAddedFeature = 0;
     for ( auto& candidate : m_candidates )
     {
-        if ( candidate.m_feature->m_frame.get() == frame.get() )
+        if ( candidate.m_feature->m_frame == frame )
         {
+            candidate.m_feature->setPoint( candidate.m_point );
+            candidate.m_point->addFeature( candidate.m_feature );
             candidate.m_point->m_type             = Point::PointType::UNKNOWN;
             candidate.m_point->m_failedProjection = 0;
             cntAddedFeature++;
         }
     }
-    Map_Log( DEBUG ) << cntAddedFeature << " features added to frame " << frame->m_id;
+    Map_Log( DEBUG ) << cntAddedFeature << " features added to frame id " << frame->m_id;
     removeFrameCandidate( frame );
 }
 

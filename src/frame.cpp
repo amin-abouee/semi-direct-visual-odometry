@@ -15,7 +15,7 @@ Frame::Frame( const std::shared_ptr< PinholeCamera >& camera,
     , m_keyFrame( false )
     , m_timestamp( timestamp )
     , m_lastKeyframe( lastKeyframe )
-    , m_optG2oFrame (nullptr)
+    , m_optG2oFrame( nullptr )
 {
     if ( img.empty() || img.type() != CV_8UC1 || img.cols != static_cast< int32_t >( m_camera->width() ) ||
          img.rows != static_cast< int32_t >( m_camera->height() ) )
@@ -51,6 +51,19 @@ void Frame::removeFeature( std::shared_ptr< Feature >& feature )
 std::size_t Frame::numberObservation() const
 {
     return m_features.size();
+}
+
+uint32_t Frame::numberObservationWithPoints() const
+{
+    uint32_t cntFeatures = 0;
+    for ( const auto& feature : m_features )
+    {
+        if ( feature->m_point != nullptr )
+        {
+            cntFeatures++;
+        }
+    }
+    return cntFeatures;
 }
 
 bool Frame::isVisible( const Eigen::Vector3d& point3d_w ) const

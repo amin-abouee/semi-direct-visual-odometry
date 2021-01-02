@@ -30,7 +30,7 @@ bool algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame,
                                           const uint32_t patchSize,
                                           const double disparityThreshold )
 {
-    TIMED_FUNC( timerOpticalFlow );
+    // TIMED_FUNC( timerOpticalFlow );
 
     const cv::Mat& refImg         = refFrame->m_imagePyramid.getBaseImage();
     const cv::Mat& curImg         = curFrame->m_imagePyramid.getBaseImage();
@@ -108,7 +108,7 @@ void algorithm::computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
                                         const double reproError,
                                         Eigen::Matrix3d& E )
 {
-    TIMED_FUNC( timerComputeEssentialMatrix );
+    // TIMED_FUNC( timerComputeEssentialMatrix );
 
     std::vector< cv::Point2f > refPoints;
     std::vector< cv::Point2f > curPoints;
@@ -182,7 +182,7 @@ bool algorithm::recoverPose( const Eigen::Matrix3d& E,
                              Eigen::Matrix3d& R,
                              Eigen::Vector3d& t )
 {
-    TIMED_FUNC( timerRecoverPose );
+    // TIMED_FUNC( timerRecoverPose );
 
     Eigen::Matrix3d R1;
     Eigen::Matrix3d R2;
@@ -588,11 +588,6 @@ void algorithm::triangulatePointHomogenousDLT( const std::shared_ptr< Frame >& r
     A.row( 2 ) = ( curFeature.x() * P2.row( 2 ) ) - P2.row( 0 );
     A.row( 3 ) = ( curFeature.y() * P2.row( 2 ) ) - P2.row( 1 );
 
-    // A.row(0) = refFeature.y() * P1.row(2) - P1.row(1);
-    // A.row(1) = P1.row(0) - refFeature.x() * P1.row(2);
-    // A.row(0) = curFeature.y() * P2.row(2) - P2.row(1);
-    // A.row(1) = P2.row(0) - curFeature.x() * P2.row(2);
-
     A.row( 0 ) /= A.row( 0 ).norm();
     A.row( 1 ) /= A.row( 1 ).norm();
     A.row( 2 ) /= A.row( 2 ).norm();
@@ -602,14 +597,6 @@ void algorithm::triangulatePointHomogenousDLT( const std::shared_ptr< Frame >& r
     Eigen::VectorXd res = svd_A.matrixV().col( 3 );
     res /= res.w();
 
-    // Eigen::Vector2d project1 = refFrame.world2image( res.head( 2 ) );
-    // Eigen::Vector2d project2 = curFrame.world2image( res.head( 2 ) );
-    // std::cout << "Error in ref: " << ( project1 - refFeature ).norm()
-    //           << ", Error in cur: " << ( project2 - curFeature ).norm() << std::endl;
-    // std::cout << "project 1: " << project1.transpose() << std::endl;
-    // std::cout << "project 2: " << project2.transpose() << std::endl;
-    // std::cout << "point in reference camera: " << refFrame.world2camera( res.head( 2 ) ).transpose() << std::endl;
-    // std::cout << "point in current camera: " << curFrame.world2camera( res.head( 2 ) ).transpose() << std::endl;
     point = res.head( 2 );
 }
 
@@ -688,14 +675,9 @@ Sophus::SE3d algorithm::computeRelativePose( const std::shared_ptr< Frame >& ref
     // T_K-1_K = T_K-1_W * T_W_K
     // return refFrame->m_absPose.inverse() * curFrame->m_absPose;
 
-    // ^{K}_{K-1}T = ^{K}_{W}T \, * \,^{W}_{K-1}T = ^{K}_{W}T \, * \,^{K-1}_{W}T^{-1}
+    // T{K}_{K-1} = T{K}_{W}T * T{W}_{K-1} = T{K}_{W} * T{K-1}_{W}^{-1}
     return curFrame->m_absPose * refFrame->m_absPose.inverse();
 }
-
-// bool algorithm::checkCheirality()
-// {
-//     return true;
-// }
 
 Eigen::Matrix3d algorithm::hat( const Eigen::Vector3d& vec )
 {
@@ -789,12 +771,12 @@ float algorithm::bilinearInterpolation( const MapXRowConst& image, const double 
 
 double algorithm::bilinearInterpolationDouble( const MapXRowConst& image, const double x, const double y )
 {
-    const int32_t x1  = static_cast< int32_t >( x );
-    const int32_t y1  = static_cast< int32_t >( y );
-    const int32_t x2  = x1 + 1;
-    const int32_t y2  = y1 + 1;
-    const double a = ( x2 - x ) * image( y1, x1 ) + ( x - x1 ) * image( y1, x2 );
-    const double b = ( x2 - x ) * image( y2, x1 ) + ( x - x1 ) * image( y2, x2 );
+    const int32_t x1 = static_cast< int32_t >( x );
+    const int32_t y1 = static_cast< int32_t >( y );
+    const int32_t x2 = x1 + 1;
+    const int32_t y2 = y1 + 1;
+    const double a   = ( x2 - x ) * image( y1, x1 ) + ( x - x1 ) * image( y1, x2 );
+    const double b   = ( x2 - x ) * image( y2, x1 ) + ( x - x1 ) * image( y2, x2 );
     return ( ( y2 - y ) * a + ( y - y1 ) * b );
 }
 

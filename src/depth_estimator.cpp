@@ -96,7 +96,6 @@ void DepthEstimator::reset()
     m_haltUpdatingDepthFilter = true;
     std::unique_lock< std::mutex > threadLocker( m_mutexFilter );
     m_depthFilters.clear();
-    // seeds_.clear();
     // TODO: check this line
     // std::unique_lock< std::mutex > threadLocker();
     while ( !m_queueFrames.empty() )
@@ -157,6 +156,7 @@ void DepthEstimator::updateFiltersLoop()
 void DepthEstimator::removeKeyframe()
 {
     std::unique_lock< std::mutex > threadLocker( m_mutexFilter );
+    uint32_t sizeFilters = m_depthFilters.size();
     auto element = std::remove_if( m_depthFilters.begin(), m_depthFilters.end(), [ this ]( auto& depthFilter ) -> bool {
         if ( depthFilter.m_feature->m_frame == m_deletedKeyframe )
             return true;
@@ -164,12 +164,11 @@ void DepthEstimator::removeKeyframe()
     } );
     m_depthFilters.erase( element, m_depthFilters.end() );
     m_deletedKeyframe = nullptr;
+    Depth_Log( INFO ) << "Number of deleted filters: " << sizeFilters - m_depthFilters.size();
 }
 
 void DepthEstimator::initializeFilters( std::shared_ptr< Frame >& frame )
 {
-    Depth_Log( DEBUG ) << "initializeFilters";
-
     m_haltUpdatingDepthFilter = true;
     std::unique_lock< std::mutex > threadLocker( m_mutexFilter );
 
@@ -191,7 +190,7 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
     // for all the seeds in every frame!
     uint32_t successUpdated = 0.0;
     uint32_t failedUpdated  = 0.0;
-    Depth_Log( DEBUG ) << "updateFilters";
+    // Depth_Log( DEBUG ) << "updateFilters";
     Depth_Log( DEBUG ) << "m_haltUpdatingDepthFilter: " << m_haltUpdatingDepthFilter;
 
     std::unique_lock< std::mutex > threadLocker( m_mutexFilter );  // by locking the updateSeeds function stops
@@ -270,9 +269,8 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
             const Eigen::Vector3d pointInWorld =
               depthFilter.m_feature->m_frame->image2world( depthFilter.m_feature->m_pixelPosition, 1.0 / depthFilter.m_mu );
             auto point = std::make_shared< Point >( pointInWorld, depthFilter.m_feature );
-            depthFilter.m_feature->setPoint( point );
-            point->addFeature( depthFilter.m_feature );
-
+            // depthFilter.m_feature->setPoint( point );
+            // point->addFeature( depthFilter.m_feature );
             {
                 m_map->addNewCandidate(depthFilter.m_feature, point);
                 Depth_Log( DEBUG ) << "A new candidate added at position: " << point->m_position.transpose();
