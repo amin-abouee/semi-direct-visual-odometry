@@ -679,6 +679,18 @@ Sophus::SE3d algorithm::computeRelativePose( const std::shared_ptr< Frame >& ref
     return curFrame->m_absPose * refFrame->m_absPose.inverse();
 }
 
+double algorithm::computeStructureError (const std::shared_ptr< Point >& point)
+{
+    double errors = 0;
+    for(const auto& feature : point->m_features)
+    {
+        const auto& frame = feature->m_frame;
+        const Eigen::Vector2d projectPoint = frame->world2image(point->m_position);
+        errors += (feature->m_pixelPosition - projectPoint).norm();
+    }
+    return errors;
+}
+
 Eigen::Matrix3d algorithm::hat( const Eigen::Vector3d& vec )
 {
     Eigen::Matrix3d skew;

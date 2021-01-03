@@ -30,6 +30,7 @@ System::System( const std::shared_ptr< Config >& config )
 void System::addImage( const cv::Mat& img, const uint64_t timestamp )
 {
     m_curFrame = std::make_shared< Frame >( m_camera, img, m_config->m_maxLevelImagePyramid + 1, timestamp, m_activeKeyframe );
+    m_keyFrames.emplace_back( m_curFrame );
     System_Log( INFO ) << "Processing frame id: " << m_curFrame->m_id;
     System::Result res;
 
@@ -87,7 +88,7 @@ System::Result System::processFirstFrame()
     }
 
     m_curFrame->setKeyframe();
-    m_keyFrames.emplace_back( m_curFrame );
+    // m_keyFrames.emplace_back( m_curFrame );
     m_activeKeyframe = m_curFrame;
     m_map->addKeyframe( m_curFrame );
     System_Log( DEBUG ) << "Number of Features: " << m_curFrame->numberObservation();
@@ -194,7 +195,7 @@ System::Result System::processSecondFrame()
     }
 
     m_curFrame->setKeyframe();
-    m_keyFrames.emplace_back( m_curFrame );
+    // m_keyFrames.emplace_back( m_curFrame );
     m_activeKeyframe = m_curFrame;
     numObserves      = m_curFrame->numberObservation();
     Eigen::VectorXd newCurDepths( numObserves );
@@ -213,7 +214,7 @@ System::Result System::processSecondFrame()
     System_Log( INFO ) << "Size observation after detect: " << m_curFrame->numberObservation();
 
     m_depthEstimator->addKeyframe( m_curFrame, medianDepth, 0.5 * minDepth );
-    // m_depthEstimator->addKeyframe(m_curFrame, medianDepth, 0.5 * minDepth);
+
     m_map->addKeyframe( m_curFrame );
 
     if ( m_config->m_enableVisualization == true )
@@ -272,7 +273,7 @@ System::Result System::processNewFrame()
     if ( m_config->m_enableVisualization == true )
     {
         cv::Mat lastBGR = visualization::getColorImage( m_refFrame->m_lastKeyframe->m_imagePyramid.getBaseGradientImage() );
-        visualization::featurePoints( lastBGR, m_refFrame, 6, "green", true, visualization::drawingRectangle );
+        visualization::featurePoints( lastBGR, m_refFrame->m_lastKeyframe, 6, "green", true, visualization::drawingRectangle );
 
         cv::Mat refBGR = visualization::getColorImage( m_refFrame->m_imagePyramid.getBaseGradientImage() );
         visualization::featurePoints( refBGR, m_refFrame, 6, "pink", true, visualization::drawingRectangle );
@@ -284,19 +285,6 @@ System::Result System::processNewFrame()
         visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 6, "yellow", visualization::drawingCircle );
 
         visualization::stickTwoImageVertically( stickImg, curBGR, stickImg, 20 );
-
-        // if ( m_config->m_savingType == "LiveShow" )
-        // {
-        //     std::stringstream ss;
-        //     ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
-        //     cv::imshow( ss.str(), stickImg );
-        // }
-        // else if ( m_config->m_savingType == "File" )
-        // {
-        //     std::stringstream ss;
-        //     ss << "../output/images/" << m_refFrame->m_id << " -> " << m_curFrame->m_id << ".png";
-        //     cv::imwrite( ss.str(), stickImg );
-        // }
     }
 
     std::vector< frameSize > overlapKeyFrames;
@@ -311,36 +299,18 @@ System::Result System::processNewFrame()
 
         // cv::Mat stickImg;
         visualization::stickTwoImageVertically( stickImg, curBGR, stickImg, 20 );
-
-        // if ( m_map->m_candidates.size() > 0 )
-        // {
-        //     cv::Mat curBGRFilter = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
-        //     // visualization::featurePoints( curBGRFilter, m_curFrame, 6, "orange", false, visualization::drawingCircle );
-        //     // visualization::imageGrid( curBGR, m_config->m_cellPixelSize, "green" );
-        //     visualization::drawCandidate( curBGRFilter, m_curFrame, m_map, 6, "aqua", visualization::drawingCircle );
-        //     visualization::stickTwoImageVertically( stickImg, curBGRFilter, stickImg );
-        // }
-
-        // if ( m_config->m_savingType == "LiveShow" )
-        // {
-        //     std::stringstream ss;
-        //     ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
-        //     cv::imshow( ss.str(), stickImg );
-        // }
-        // else if ( m_config->m_savingType == "File" )
-        // {
-        //     std::stringstream ss;
-        //     ss << "../output/images/" << m_refFrame->m_id << " -> " << m_curFrame->m_id << ".png";
-        //     cv::imwrite( ss.str(), stickImg );
-        // }
     }
 
-    m_map->addCandidateToFrame( m_curFrame->m_lastKeyframe );
+    // System_Log (DEBUG) << "m_curFrame->m_lastKeyframe id: " << m_curFrame->m_lastKeyframe->m_id;
+    // m_map->addCandidateToFrame( m_curFrame->m_lastKeyframe );
+
+    // we don't add features, if visited frame is key frame, because it can change or distribution
+    m_map->addCandidateToAllActiveKeyframes();
 
     if ( m_config->m_enableVisualization == true )
     {
         cv::Mat lastBGR = visualization::getColorImage( m_refFrame->m_lastKeyframe->m_imagePyramid.getBaseGradientImage() );
-        visualization::featurePoints( lastBGR, m_refFrame, 6, "green", true, visualization::drawingRectangle );
+        visualization::featurePoints( lastBGR, m_refFrame->m_lastKeyframe, 6, "green", true, visualization::drawingRectangle );
 
         visualization::stickTwoImageVertically( stickImg, lastBGR, stickImg, 20 );
 
@@ -365,15 +335,16 @@ System::Result System::processNewFrame()
     }
 
     // m_bundler->optimizePose( m_curFrame );
-    m_bundler->optimizeStructure( m_curFrame, 50 );
-    uint32_t obsWithPoints = 0;
-    for ( const auto& feature : m_refFrame->m_features )
-    {
-        if ( feature->m_point != nullptr )
-        {
-            obsWithPoints++;
-        }
-    }
+    // m_bundler->optimizeStructure( m_curFrame, 50 );
+    // uint32_t obsWithPoints = 0;
+    // for ( const auto& feature : m_refFrame->m_features )
+    // {
+    //     if ( feature->m_point != nullptr )
+    //     {
+    //         obsWithPoints++;
+    //     }
+    // }
+    uint32_t obsWithPoints = m_refFrame->numberObservationWithPoints();
     bool qualityCheck = computeTrackingQuality( m_curFrame, obsWithPoints );
     if ( qualityCheck == false )
     {
@@ -387,16 +358,17 @@ System::Result System::processNewFrame()
     const double depthMean = algorithm::computeMedian( depthsInCurFrame );
     const double depthMin  = depthsInCurFrame.minCoeff();
 
-    if ( needKeyframe( depthMean, overlapKeyFrames ) )
+    if ( needKeyframe( depthsInCurFrame, depthMean ) )
     {
         m_depthEstimator->addFrame( m_curFrame );
+        reportSummary();
         return Result::Success;
     }
 
     m_curFrame->setKeyframe();
-    m_keyFrames.emplace_back( m_curFrame );
+    // m_keyFrames.emplace_back( m_curFrame );
     m_map->addKeyframe( m_curFrame );
-    // m_activeKeyframe = m_curFrame;
+    m_activeKeyframe = m_curFrame;
 
     {
         TIMED_SCOPE( timerBA, "timer local BA" );
@@ -454,16 +426,36 @@ bool System::computeTrackingQuality( const std::shared_ptr< Frame >& frame, cons
     return true;
 }
 
-bool System::needKeyframe( const double sceneDepthMean, const std::vector< frameSize >& overlapKeyFrames )
+bool System::needKeyframe( const Eigen::VectorXd& depthsInCurFrame, const double sceneDepthMean )
 {
-    for ( const auto& frame : overlapKeyFrames )
+    // for ( const auto& frame : overlapKeyFrames )
+    // {
+    //     const Eigen::Vector3d diffPose = m_curFrame->world2camera( frame.first->cameraInWorld() );
+    //     if ( std::abs( diffPose.x() ) / sceneDepthMean < 0.12 && std::abs( diffPose.y() ) / sceneDepthMean < 0.12 * 0.8 &&
+    //          std::abs( diffPose.z() ) / sceneDepthMean < 0.12 * 1.3 )
+    //         return false;
+    // }
+    // return true;
+
+    const auto& relativePose = algorithm::computeRelativePose(m_refFrame, m_curFrame);
+    const double diffTranslation = relativePose.translation().norm();
+    System_Log(DEBUG) << "Diff Translation: " << diffTranslation;
+
+    const uint64_t diffTime = m_curFrame->m_timestamp - m_refFrame->m_timestamp;
+    System_Log(DEBUG) << "Diff Timestamp: " << diffTime;
+
+    const uint32_t diffId = m_curFrame->m_id - m_refFrame->m_id;
+    System_Log(DEBUG) << "Diff ID: " << diffId;
+
+    const uint32_t numberVisiblePoints = m_curFrame->numberObservationWithPoints();
+    System_Log(DEBUG) << "Number Visible Pints: " << numberVisiblePoints;
+
+    if (diffTranslation < 3.5 && diffId < 10 && numberVisiblePoints > 50 )
     {
-        const Eigen::Vector3d diffPose = m_curFrame->world2camera( frame.first->cameraInWorld() );
-        if ( std::abs( diffPose.x() ) / sceneDepthMean < 0.12 && std::abs( diffPose.y() ) / sceneDepthMean < 0.12 * 0.8 &&
-             std::abs( diffPose.z() ) / sceneDepthMean < 0.12 * 1.3 )
-            return false;
+        return true;
     }
-    return true;
+
+    return false;
 }
 
 void System::reportSummary( const bool withDetail )

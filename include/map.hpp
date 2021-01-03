@@ -62,9 +62,11 @@ public:
     /// overlapping field of view and projects only those map-points.
     void reprojectMap( std::shared_ptr< Frame >& frame, std::vector< FrameSize >& overlapKeyFrames );
 
-    void addNewCandidate( const std::shared_ptr< Feature >& feature, const std::shared_ptr< Point >& point );
+    void addNewCandidate( const std::shared_ptr< Feature >& feature, const std::shared_ptr< Point >& point, const std::shared_ptr< Frame >& visitedFrame );
 
     void addCandidateToFrame( std::shared_ptr< Frame >& frame );
+
+    void addCandidateToAllActiveKeyframes();
 
     void removeFrameCandidate( std::shared_ptr< Frame >& frame );
 
@@ -77,8 +79,11 @@ public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         std::shared_ptr< Feature > m_feature;  //!< Feature in reference frame
         std::shared_ptr< Point > m_point;      //!< projected 2D pixel location.
-        Candidate( const std::shared_ptr< Feature >& feature, const std::shared_ptr< Point >& point )
-            : m_feature( feature ), m_point( point )
+        std::shared_ptr< Frame > m_visitedFrame;
+        Candidate( const std::shared_ptr< Feature >& feature,
+                   const std::shared_ptr< Point >& point,
+                   const std::shared_ptr< Frame >& visitedFrame )
+            : m_feature( feature ), m_point( point ), m_visitedFrame( visitedFrame )
         {
         }
     };
@@ -92,9 +97,6 @@ public:
     CandidateList m_candidates;
 
 private:
-    // std::shared_ptr< FeatureAlignment > m_alignment;
-
-    
     /// The grid stores a set of candidate matches. For every grid cell we try to find one match.
     struct Grid
     {

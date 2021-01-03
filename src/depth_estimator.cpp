@@ -269,12 +269,9 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
             const Eigen::Vector3d pointInWorld =
               depthFilter.m_feature->m_frame->image2world( depthFilter.m_feature->m_pixelPosition, 1.0 / depthFilter.m_mu );
             auto point = std::make_shared< Point >( pointInWorld, depthFilter.m_feature );
-            // depthFilter.m_feature->setPoint( point );
-            // point->addFeature( depthFilter.m_feature );
-            {
-                m_map->addNewCandidate(depthFilter.m_feature, point);
-                Depth_Log( DEBUG ) << "A new candidate added at position: " << point->m_position.transpose();
-            }
+
+            m_map->addNewCandidate(depthFilter.m_feature, point, frame);
+            Depth_Log( DEBUG ) << "A new candidate added at position: " << point->m_position.transpose();
             depthFilter.m_validity = false;
         }
         else if ( std::isnan( inverseMinDepth ) )

@@ -142,6 +142,28 @@ void visualization::featurePoints(
             drawingFunctor( img, feature->m_pixelPosition, radiusSize, colors.at( "cyan" ) );
         }
     }
+
+    std::stringstream ss;
+    ss << "# feature: " << szPoints; 
+    cv::putText(img, 
+            ss.str(),
+            cv::Point(15,15), // Coordinates
+            cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
+            1.0, // Scale. 2.0 = 2x bigger
+            colors.at( "white" ),
+            1 // Line Thickness (Optional)
+            ); // Anti-alias (Optional)
+
+    ss.str("");
+    ss << "# points: " << frame->numberObservationWithPoints();
+    cv::putText(img, 
+            ss.str(),
+            cv::Point(15,45), // Coordinates
+            cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
+            1.0, // Scale. 2.0 = 2x bigger
+            colors.at( "white" ),
+            1 // Line Thickness (Optional)
+            ); // Anti-alias (Optional)
 }
 
 void visualization::imageGrid( cv::Mat& img, const int32_t gridSize, const std::string& color )

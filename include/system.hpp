@@ -56,7 +56,7 @@ private:
     Result relocalizeFrame( Sophus::SE3d& pose, std::shared_ptr< Frame >& closestKeyframe );
 
     bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs );
-    bool needKeyframe( const double sceneDepthMean, const std::vector< frameSize >& overlapKeyFrames );
+    bool needKeyframe( const Eigen::VectorXd& depthsInCurFrame, const double sceneDepthMean );
     bool computeTrackingQuality( const std::shared_ptr< Frame >& curFrame, const uint32_t refFrameNumberObservations );
 
     const std::shared_ptr< Config > m_config;

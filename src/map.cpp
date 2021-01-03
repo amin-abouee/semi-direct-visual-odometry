@@ -293,7 +293,7 @@ bool Map::reprojectPoint( const std::shared_ptr< Frame >& frame, const std::shar
     {
         const int32_t k = static_cast< int32_t >( pixel.y() ) / m_grid.m_cellSize * m_grid.m_gridCols +
                           static_cast< int32_t >( pixel.x() ) / m_grid.m_cellSize;
-        m_grid.m_cells[ k ]->emplace_back( Candidate( feature, feature->m_point ) );
+        m_grid.m_cells[ k ]->emplace_back( Candidate( feature, feature->m_point, frame ) );
         return true;
     }
     return false;
@@ -376,12 +376,13 @@ bool Map::reprojectCell( std::shared_ptr< CandidateList >& candidates, std::shar
 //     return m_candidates;
 // }
 
-
-void Map::addNewCandidate( const std::shared_ptr< Feature >& feature, const std::shared_ptr< Point >& point )
+void Map::addNewCandidate( const std::shared_ptr< Feature >& feature,
+                           const std::shared_ptr< Point >& point,
+                           const std::shared_ptr< Frame >& visitedFrame )
 {
     point->m_type = Point::PointType::CANDIDATE;
     std::unique_lock< std::mutex > lock( m_mutexCandidates );
-    m_candidates.push_back( Candidate( feature, point ) );
+    m_candidates.push_back( Candidate( feature, point, visitedFrame ) );
 }
 
 void Map::addCandidateToFrame( std::shared_ptr< Frame >& frame )
@@ -401,6 +402,39 @@ void Map::addCandidateToFrame( std::shared_ptr< Frame >& frame )
     }
     Map_Log( DEBUG ) << cntAddedFeature << " features added to frame id " << frame->m_id;
     removeFrameCandidate( frame );
+}
+
+void Map::addCandidateToAllActiveKeyframes()
+{
+    std::unique_lock< std::mutex > lock( m_mutexCandidates );
+    for ( auto& keyframe : m_keyFrames )
+    {
+        uint32_t cntAddedFeature = 0;
+        for ( auto& candidate : m_candidates )
+        {
+            if ( candidate.m_feature->m_frame == keyframe )
+            {
+                candidate.m_feature->setPoint( candidate.m_point );
+                candidate.m_point->addFeature( candidate.m_feature );
+
+                if (candidate.m_visitedFrame->isKeyframe() == false)
+                {
+                    const Eigen::Vector2d pixelPosition = candidate.m_visitedFrame->world2image( candidate.m_point->m_position );
+                    std::shared_ptr< Feature > feature =
+                    std::make_shared< Feature >( candidate.m_visitedFrame, pixelPosition, 0.0, 0.0, 0, Feature::FeatureType::EDGE );
+                    candidate.m_visitedFrame->addFeature( feature );
+                    feature->setPoint( candidate.m_point );
+                    candidate.m_point->addFeature( feature );
+                }
+
+                candidate.m_point->m_type             = Point::PointType::UNKNOWN;
+                candidate.m_point->m_failedProjection = 0;
+                cntAddedFeature++;
+            }
+        }
+        Map_Log( DEBUG ) << cntAddedFeature << " features added to frame id " << keyframe->m_id;
+        removeFrameCandidate( keyframe );
+    }
 }
 
 void Map::removeFrameCandidate( std::shared_ptr< Frame >& frame )

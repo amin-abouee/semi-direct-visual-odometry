@@ -116,7 +116,8 @@ if(COMPILE_WITH_OFAST)
     # target_compile_options(visual_odometry PRIVATE "$<$<CONFIG:RELEASE>:${CMAKE_CXX_FLAGS_RELEASE}>")
 endif()
 
-target_compile_options(visual_odometry PRIVATE "$<$<CONFIG:RELEASE>:-march=native>")
+# target_compile_options(visual_odometry PRIVATE "$<$<CONFIG:RELEASE>:-march=native>")
+target_compile_options(visual_odometry PRIVATE "-march=native")
 # target_compile_options(visual_odometry PRIVATE "$<$<CONFIG:RELEASE>:-stdlib=libc++ -lc++abi>")
 # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
 

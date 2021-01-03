@@ -108,6 +108,8 @@ bool depthFromTriangulation( const Sophus::SE3d& relativePose,
 
 Sophus::SE3d computeRelativePose( const std::shared_ptr< Frame >& refFrame, const std::shared_ptr< Frame >& curFrame );
 
+double computeStructureError (const std::shared_ptr< Point >& point);
+
 Eigen::Matrix3d hat( const Eigen::Vector3d& vec );
 
 double computeMedian( const Eigen::VectorXd& input );

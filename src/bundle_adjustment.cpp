@@ -67,54 +67,6 @@ double BundleAdjustment::optimizePose( std::shared_ptr< Frame >& frame )
     return error;
 }
 
-double BundleAdjustment::optimizeStructure( std::shared_ptr< Frame >& frame, const uint32_t maxNumberPoints )
-{
-    if ( frame->numberObservation() == 0 )
-        return 0;
-
-    m_optimizer.setNumUnknowns( 3 );
-    std::vector< std::shared_ptr< Point > > points;
-    for ( const auto& feature : frame->m_features )
-    {
-        if ( feature->m_point == nullptr )
-        {
-            points.push_back( feature->m_point );
-        }
-    }
-    uint32_t setMaxNumerPoints = maxNumberPoints < points.size() ? maxNumberPoints : points.size();
-    std::nth_element( points.begin(), points.begin() + maxNumberPoints, points.end(),
-                      []( const std::shared_ptr< Point >& lhs, const std::shared_ptr< Point >& rhs ) -> bool {
-                          return lhs->m_lastOptimizedTime < rhs->m_lastOptimizedTime;
-                      } );
-
-    m_optimizer.m_numUnknowns = 3;
-    double error              = 0.0;
-    for ( uint32_t i( 0 ); i < setMaxNumerPoints; i++ )
-    {
-        auto& point                   = points[ i ];
-        const std::size_t numFeatures = point->m_features.size();
-        m_optimizer.initParameters( numFeatures * 2 );
-        m_refVisibility.resize( numFeatures, false );
-
-        Sophus::SE3d absolutePose = frame->m_absPose;
-
-        auto lambdaUpdateFunctor = [ this ]( std::shared_ptr< Point >& point, const Eigen::Vector3d& dx ) -> void {
-            updateStructure( point, dx );
-        };
-        Optimizer::Status optimizationStatus;
-
-        // t1 = std::chrono::high_resolution_clock::now();
-        computeJacobianStructure( point );
-
-        auto lambdaResidualFunctor = [ this ]( std::shared_ptr< Point >& point ) -> uint32_t { return computeResidualsStructure( point ); };
-        // t1 = std::chrono::high_resolution_clock::now();
-        std::tie( optimizationStatus, error ) =
-          m_optimizer.optimizeGN< std::shared_ptr< Point > >( point, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor );
-    }
-
-    return error;
-}
-
 void BundleAdjustment::computeJacobianPose( const std::shared_ptr< Frame >& frame )
 {
     resetParameters();
@@ -233,6 +185,58 @@ void BundleAdjustment::updatePose( Sophus::SE3d& pose, const Eigen::VectorXd& dx
     pose = pose * Sophus::SE3d::exp( -dx );
 }
 
+
+double BundleAdjustment::optimizeStructure( std::shared_ptr< Frame >& frame, const uint32_t maxNumberPoints )
+{
+    if ( frame->numberObservationWithPoints() == 0 )
+        return 0;
+
+    m_optimizer.setNumUnknowns( 3 );
+    std::vector< std::shared_ptr< Point > > points;
+    for ( const auto& feature : frame->m_features )
+    {
+        if ( feature->m_point != nullptr )
+        {
+            points.push_back( feature->m_point );
+        }
+    }
+    uint32_t setMaxNumerPoints = maxNumberPoints < points.size() ? maxNumberPoints : points.size();
+    std::nth_element( points.begin(), points.begin() + maxNumberPoints, points.end(),
+                      []( const std::shared_ptr< Point >& lhs, const std::shared_ptr< Point >& rhs ) -> bool {
+                          return lhs->m_lastOptimizedTime < rhs->m_lastOptimizedTime;
+                      } );
+
+    // m_optimizer.m_numUnknowns = 3;
+    double error              = 0.0;
+    for ( uint32_t i( 0 ); i < setMaxNumerPoints; i++ )
+    {
+        auto& point                   = points[ i ];
+        Adjustment_Log (DEBUG) << "Point id " << point->m_id;
+        Adjustment_Log (DEBUG) << "Old Position:  " << point->m_position.transpose() << ", error: " << algorithm::computeStructureError(point);
+        const std::size_t numFeatures = point->m_features.size();
+        m_optimizer.initParameters( numFeatures * 2 );
+        m_refVisibility.resize( numFeatures, false );
+
+        Sophus::SE3d absolutePose = frame->m_absPose;
+
+        auto lambdaUpdateFunctor = [ this ]( std::shared_ptr< Point >& point, const Eigen::Vector3d& dx ) -> void {
+            updateStructure( point, dx );
+        };
+        Optimizer::Status optimizationStatus;
+
+        // t1 = std::chrono::high_resolution_clock::now();
+        computeJacobianStructure( point );
+
+        auto lambdaResidualFunctor = [ this ]( std::shared_ptr< Point >& point ) -> uint32_t { return computeResidualsStructure( point ); };
+        // t1 = std::chrono::high_resolution_clock::now();
+        std::tie( optimizationStatus, error ) =
+          m_optimizer.optimizeGN< std::shared_ptr< Point > >( point, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor );
+        Adjustment_Log (DEBUG) << "New Position:  " << point->m_position.transpose() << ", error: " << algorithm::computeStructureError(point);
+    }
+
+    return error;
+}
+
 void BundleAdjustment::computeJacobianStructure( const std::shared_ptr< Point >& point )
 {
     uint32_t cntFeature = 0;
@@ -286,7 +290,7 @@ uint32_t BundleAdjustment::computeResidualsStructure( const std::shared_ptr< Poi
     {
         const auto& pos                      = point->m_position;
         const Eigen::Vector2d projectedPoint = feature->m_frame->world2image( pos );
-        const Eigen::Vector2d error          = projectedPoint - feature->m_pixelPosition;
+        const Eigen::Vector2d error          = - projectedPoint + feature->m_pixelPosition;
         // ****
         // IF we compute the error of inverse compositional as r = T(x) - I(W), then we should solve (delta p) = -(JtWT).inverse() *
         // JtWr BUt if we take r = I(W) - T(x) a residual error, then (delta p) = (JtWT).inverse() * JtWr
@@ -512,6 +516,10 @@ void BundleAdjustment::localBA( std::shared_ptr< Map >& map, const double reproj
     // Now go throug all the points and add a measurement. Add a fixed neighbour keyframe if it is not in the set of core kfs
     for ( const auto& point : points )
     {
+        if (point->numberObservation() == 1)
+        {
+            Adjustment_Log (WARNING) << "point " << point->m_id << " has just one observation";
+        }
         // Create point vertex
         g2oPoint* vertexPoint = createG2oPoint( point->m_position, verticesIdx++, false );
         point->m_optG2oPoint = vertexPoint;
