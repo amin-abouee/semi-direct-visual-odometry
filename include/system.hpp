@@ -45,9 +45,8 @@ public:
     System& operator=( System&& rhs ) = delete;
     ~System()                         = default;
 
-    void addImage( const cv::Mat& img, const uint64_t timestamp );
-
-    void reportSummary( const bool withDetail = false );
+    bool addImage( const cv::Mat& img, const uint64_t timestamp );
+    void writeInFile( std::ofstream& fileWriter );
 
 private:
     Result processFirstFrame();
@@ -58,6 +57,7 @@ private:
     bool loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraMatrix, cv::Mat& distortionCoeffs );
     bool needKeyframe( const Eigen::VectorXd& depthsInCurFrame, const double sceneDepthMean );
     bool computeTrackingQuality( const std::shared_ptr< Frame >& curFrame, const uint32_t refFrameNumberObservations );
+    void reportSummary( const bool withDetail = false );
 
     const std::shared_ptr< Config > m_config;
     std::shared_ptr< PinholeCamera > m_camera;
@@ -65,7 +65,7 @@ private:
     std::shared_ptr< Frame > m_refFrame;
     std::shared_ptr< Frame > m_curFrame;
     std::shared_ptr< FeatureSelection > m_featureSelector;
-    std::vector< std::shared_ptr< Frame > > m_keyFrames;
+    std::vector< std::shared_ptr< Frame > > m_allFrames;
     std::unique_ptr< DepthEstimator > m_depthEstimator;
     std::shared_ptr< Map > m_map;
     std::shared_ptr< ImageAlignment > m_alignment;

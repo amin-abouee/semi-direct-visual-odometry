@@ -5,6 +5,11 @@ Eigen::IOFormat utils::eigenFormat()
     return Eigen::IOFormat( 6, Eigen::DontAlignCols, ", ", " , ", "[", "]", "[", "]" );
 }
 
+Eigen::IOFormat utils::eigenFormatIO()
+{
+    return Eigen::IOFormat( 6, Eigen::DontAlignCols, " ", " ", "", "", "", "" );
+}
+
 std::string utils::findAbsoluteFilePath( const std::string& relativeFilePath )
 {
     // https://stackoverflow.com/a/56645283/1804533

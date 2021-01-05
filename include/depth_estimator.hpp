@@ -77,6 +77,8 @@ public:
     /// when a frame is removed from the map.
     void removeKeyframe( std::shared_ptr< Frame >& frame );
 
+    uint32_t numberFilters () const;
+
     /// If the map is reset, call this function such that we don't have pointers
     /// to old frames.
     void reset();

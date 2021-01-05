@@ -13,6 +13,8 @@ namespace utils
 
 Eigen::IOFormat eigenFormat();
 
+Eigen::IOFormat eigenFormatIO();
+
 std::string findAbsoluteFilePath( const std::string& relativeFilePath );
 
 namespace constants

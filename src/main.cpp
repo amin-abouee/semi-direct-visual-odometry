@@ -89,7 +89,8 @@ int main( int argc, char* argv[] )
         // std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
         curFrame.setKeyframe();
     */
-
+   std::ofstream fileWriter ("../output/out.txt");
+    bool res;
     for ( int i( 0 ); i < 9; i++ )
     {
         std::stringstream ss;
@@ -99,11 +100,20 @@ int main( int argc, char* argv[] )
         // auto t1        = std::chrono::high_resolution_clock::now();
         {
             TIMED_SCOPE( timernewImage, "New Image" );
-            system.addImage( newImg, i );
+            res = system.addImage( newImg, i );
         }
         // auto t2 = std::chrono::high_resolution_clock::now();
         // Main_Log( DEBUG ) << "Elapsed time for matching: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
         //   << " milli sec";
+        if (res == true)
+        {
+            system.writeInFile(fileWriter);
+        }
+        else
+        {
+            fileWriter << "Failed" << std::endl;
+        }
+        
 
         if ( config->m_enableVisualization == true )
         {

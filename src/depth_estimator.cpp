@@ -91,6 +91,11 @@ void DepthEstimator::removeKeyframe( std::shared_ptr< Frame >& frame )
     m_deletedKeyframe = frame;
 }
 
+uint32_t DepthEstimator::numberFilters () const
+{
+    return m_depthFilters.size();
+}
+
 void DepthEstimator::reset()
 {
     m_haltUpdatingDepthFilter = true;

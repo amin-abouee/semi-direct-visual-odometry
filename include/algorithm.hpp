@@ -21,9 +21,10 @@ bool computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame,
                                const uint32_t patchSize,
                                const double disparityThreshold );
 
-void computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
+bool computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
                              std::shared_ptr< Frame >& curFrame,
                              const double reproError,
+                             const uint32_t thresholdCorrespondingPoints,
                              Eigen::Matrix3d& E );
 
 // https://paperpile.com/app/p/5bafd339-43e6-0f8e-b976-951e527f7a45
@@ -108,7 +109,9 @@ bool depthFromTriangulation( const Sophus::SE3d& relativePose,
 
 Sophus::SE3d computeRelativePose( const std::shared_ptr< Frame >& refFrame, const std::shared_ptr< Frame >& curFrame );
 
-double computeStructureError (const std::shared_ptr< Point >& point);
+double computeStructureError( const std::shared_ptr< Point >& point );
+
+uint32_t computeNumberProjectedPoints( const std::shared_ptr< Frame >& curFrame );
 
 Eigen::Matrix3d hat( const Eigen::Vector3d& vec );
 

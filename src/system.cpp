@@ -8,6 +8,7 @@
 #include <opencv2/highgui.hpp>
 
 #include <chrono>
+#include <iostream>
 
 #define System_Log( LEVEL ) CLOG( LEVEL, "System" )
 
@@ -27,12 +28,12 @@ System::System( const std::shared_ptr< Config >& config )
     m_bundler         = std::make_shared< BundleAdjustment >( m_camera, 0, 6 );
 }
 
-void System::addImage( const cv::Mat& img, const uint64_t timestamp )
+bool System::addImage( const cv::Mat& img, const uint64_t timestamp )
 {
     m_curFrame = std::make_shared< Frame >( m_camera, img, m_config->m_maxLevelImagePyramid + 1, timestamp, m_activeKeyframe );
-    m_keyFrames.emplace_back( m_curFrame );
+    m_allFrames.emplace_back( m_curFrame );
     System_Log( INFO ) << "Processing frame id: " << m_curFrame->m_id;
-    System::Result res;
+    System::Result res = System::Result::Failed;
 
     if ( m_systemStatus == System::Status::Procese_New_Frame )
     {
@@ -56,6 +57,16 @@ void System::addImage( const cv::Mat& img, const uint64_t timestamp )
     }
 
     m_refFrame = std::move( m_curFrame );
+    
+    if (res == System::Result::Failed)
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+    
 }
 
 System::Result System::processFirstFrame()
@@ -83,12 +94,11 @@ System::Result System::processFirstFrame()
         }
         else if ( m_config->m_savingType == "File" )
         {
-            cv::imwrite( "../output/images/features_first_image.png", refBGR );
+            cv::imwrite( "../output/images/0.png", refBGR );
         }
     }
 
     m_curFrame->setKeyframe();
-    // m_keyFrames.emplace_back( m_curFrame );
     m_activeKeyframe = m_curFrame;
     m_map->addKeyframe( m_curFrame );
     System_Log( DEBUG ) << "Number of Features: " << m_curFrame->numberObservation();
@@ -100,6 +110,8 @@ System::Result System::processFirstFrame()
 System::Result System::processSecondFrame()
 {
     TIMED_FUNC( timerSecondFrame );
+
+    //TODO: check current id and ref id. if is more than n frame, reset ref frame
 
     Eigen::Matrix3d E;
     Eigen::Matrix3d R;
@@ -114,9 +126,13 @@ System::Result System::processSecondFrame()
         return Result::Failed;
     }
 
-    algorithm::computeEssentialMatrix( m_refFrame, m_curFrame, 1.0, E );
-
-    // TODO: check the number of matched!!!
+    const uint32_t thresholdCorrespondingPoints = m_config->m_minDetectedPointsSuccessInitialization * 0.5;
+    bool resEssentialMatrix = algorithm::computeEssentialMatrix( m_refFrame, m_curFrame, 1.0, thresholdCorrespondingPoints, E );
+    if ( resEssentialMatrix == false )
+    {
+        System_Log( WARNING ) << "Number of corresponding Points between ref and current is less than you threshold";
+        return Result::Failed;
+    }
 
     // decompose essential matrix to R and t and set the absolute pose of reference frame
     bool resRecoverPose = algorithm::recoverPose( E, m_refFrame, m_curFrame, R, t );
@@ -195,7 +211,6 @@ System::Result System::processSecondFrame()
     }
 
     m_curFrame->setKeyframe();
-    // m_keyFrames.emplace_back( m_curFrame );
     m_activeKeyframe = m_curFrame;
     numObserves      = m_curFrame->numberObservation();
     Eigen::VectorXd newCurDepths( numObserves );
@@ -345,7 +360,7 @@ System::Result System::processNewFrame()
     //     }
     // }
     uint32_t obsWithPoints = m_refFrame->numberObservationWithPoints();
-    bool qualityCheck = computeTrackingQuality( m_curFrame, obsWithPoints );
+    bool qualityCheck      = computeTrackingQuality( m_curFrame, obsWithPoints );
     if ( qualityCheck == false )
     {
         m_curFrame->m_absPose = m_refFrame->m_absPose;
@@ -366,7 +381,6 @@ System::Result System::processNewFrame()
     }
 
     m_curFrame->setKeyframe();
-    // m_keyFrames.emplace_back( m_curFrame );
     m_map->addKeyframe( m_curFrame );
     m_activeKeyframe = m_curFrame;
 
@@ -437,20 +451,26 @@ bool System::needKeyframe( const Eigen::VectorXd& depthsInCurFrame, const double
     // }
     // return true;
 
-    const auto& relativePose = algorithm::computeRelativePose(m_refFrame, m_curFrame);
+    const auto& relativePose     = algorithm::computeRelativePose( m_refFrame, m_curFrame );
     const double diffTranslation = relativePose.translation().norm();
-    System_Log(DEBUG) << "Diff Translation: " << diffTranslation;
+    System_Log( DEBUG ) << "Diff Translation: " << diffTranslation;
 
-    const uint64_t diffTime = m_curFrame->m_timestamp - m_refFrame->m_timestamp;
-    System_Log(DEBUG) << "Diff Timestamp: " << diffTime;
+    const uint64_t diffTime = m_curFrame->m_timestamp - m_curFrame->m_lastKeyframe->m_timestamp;
+    System_Log( DEBUG ) << "Diff Timestamp: " << diffTime;
 
-    const uint32_t diffId = m_curFrame->m_id - m_refFrame->m_id;
-    System_Log(DEBUG) << "Diff ID: " << diffId;
+    const uint32_t diffId = m_curFrame->m_id - m_curFrame->m_lastKeyframe->m_id;
+    System_Log( DEBUG ) << "Diff ID: " << diffId;
 
     const uint32_t numberVisiblePoints = m_curFrame->numberObservationWithPoints();
-    System_Log(DEBUG) << "Number Visible Pints: " << numberVisiblePoints;
+    System_Log( DEBUG ) << "Number Visible Pints: " << numberVisiblePoints;
 
-    if (diffTranslation < 3.5 && diffId < 10 && numberVisiblePoints > 50 )
+    const uint32_t visibleFeatureInCurrentFrame = algorithm::computeNumberProjectedPoints( m_curFrame );
+    const double featuresPropertion =
+      static_cast< double >( visibleFeatureInCurrentFrame ) / m_curFrame->m_lastKeyframe->numberObservationWithPoints();
+    System_Log( DEBUG ) << "feature Propertion: " << featuresPropertion;
+
+    // if ( diffTranslation < 3.5 && diffId < 10 && numberVisiblePoints > 50 && featuresPropertion > 0.6 )
+    if ( diffTranslation < 3.5 && diffId < 10 && numberVisiblePoints > 50 )
     {
         return true;
     }
@@ -467,7 +487,7 @@ void System::reportSummary( const bool withDetail )
     //    Frame ID        Num Features        Num Points        Active Shared Pointer
     //-------------------------------------------------------------------------------
 
-    for ( const auto& frame : m_keyFrames )
+    for ( const auto& frame : m_allFrames )
     {
         for ( const auto& feature : frame->m_features )
         {
@@ -481,7 +501,7 @@ void System::reportSummary( const bool withDetail )
 
     System_Log( INFO ) << " -------------------------------------------- Summary Frames -------------------------------------------- ";
     System_Log( INFO ) << "|                                                                                                         ";
-    for ( const auto& frame : m_keyFrames )
+    for ( const auto& frame : m_allFrames )
     {
         uint32_t cntFeatureWithPoints = frame->numberObservationWithPoints();
         int64_t LastKFId              = -1;
@@ -496,13 +516,14 @@ void System::reportSummary( const bool withDetail )
     }
     System_Log( INFO ) << "| Num Features: " << features.size();
     System_Log( INFO ) << "| Num Points: " << points.size();
+    System_Log( INFO ) << "| Num Filters: " << m_depthEstimator->numberFilters();
     System_Log( INFO ) << " -------------------------------------------------------------------------------------------------------- \n";
 
     if ( withDetail == true )
     {
         System_Log( INFO ) << " ------------------------------------------- Summary Features ------------------------------------------- ";
         System_Log( INFO ) << "|                                                                                                         ";
-        for ( const auto& frame : m_keyFrames )
+        for ( const auto& frame : m_allFrames )
         {
             // System_Log( INFO ) << "|                                                                               |";
             System_Log( INFO ) << " ---------------------------------------------- Frame ID: " << frame->m_id
@@ -577,4 +598,15 @@ bool System::loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraM
         std::cout << e.what() << std::endl;
         return false;
     }
+}
+
+void System::writeInFile( std::ofstream& fileWriter )
+{
+    const Eigen::Matrix4d extrinsic = m_allFrames.back()->m_absPose.matrix();
+    // fileWriter << extrinsic << std::endl;
+    fileWriter << extrinsic.format( utils::eigenFormatIO() ) << std::endl;
+    // fileWriter << extrinsic( 0, 0 ) << " " << extrinsic( 0, 1 ) << " " << extrinsic( 0, 2 ) << " " << extrinsic( 0, 3 ) << " "
+    //            << extrinsic( 1, 0 ) << " " << extrinsic( 1, 1 ) << " " << extrinsic( 1, 2 ) << " " << extrinsic( 1, 3 ) << " "
+    //            << extrinsic( 2, 0 ) << " " << extrinsic( 2, 1 ) << " " << extrinsic( 2, 2 ) << " " << extrinsic( 2, 3 ) << " "
+    //            << extrinsic( 3, 0 ) << " " << extrinsic( 3, 1 ) << " " << extrinsic( 3, 2 ) << " " << extrinsic( 3, 3 ) << std::endl;
 }

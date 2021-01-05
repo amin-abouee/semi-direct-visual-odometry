@@ -103,9 +103,10 @@ bool algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame,
     return true;
 }
 
-void algorithm::computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
+bool algorithm::computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
                                         std::shared_ptr< Frame >& curFrame,
                                         const double reproError,
+                                        const uint32_t thresholdCorrespondingPoints,
                                         Eigen::Matrix3d& E )
 {
     // TIMED_FUNC( timerComputeEssentialMatrix );
@@ -152,6 +153,12 @@ void algorithm::computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
     };
     auto curResult = std::remove_if( curFrame->m_features.begin(), curFrame->m_features.end(), isNotValidCurFrame );
     curFrame->m_features.erase( curResult, curFrame->m_features.end() );
+
+    if ( refFrame->numberObservation() > thresholdCorrespondingPoints && curFrame->numberObservation() > thresholdCorrespondingPoints )
+    {
+        return true;
+    }
+    return false;
 }
 
 // 9.6.2 Extraction of cameras from the essential matrix, multi view geometry
@@ -679,16 +686,39 @@ Sophus::SE3d algorithm::computeRelativePose( const std::shared_ptr< Frame >& ref
     return curFrame->m_absPose * refFrame->m_absPose.inverse();
 }
 
-double algorithm::computeStructureError (const std::shared_ptr< Point >& point)
+double algorithm::computeStructureError( const std::shared_ptr< Point >& point )
 {
     double errors = 0;
-    for(const auto& feature : point->m_features)
+    for ( const auto& feature : point->m_features )
     {
-        const auto& frame = feature->m_frame;
-        const Eigen::Vector2d projectPoint = frame->world2image(point->m_position);
-        errors += (feature->m_pixelPosition - projectPoint).norm();
+        const auto& frame                  = feature->m_frame;
+        const Eigen::Vector2d projectPoint = frame->world2image( point->m_position );
+        errors += ( feature->m_pixelPosition - projectPoint ).norm();
     }
     return errors;
+}
+
+uint32_t algorithm::computeNumberProjectedPoints( const std::shared_ptr< Frame >& curFrame )
+{
+    const auto& lastKFrame          = curFrame->m_lastKeyframe;
+    const Sophus::SE3d relativePose = computeRelativePose( lastKFrame, curFrame );
+    const Eigen::Vector3d C         = curFrame->cameraInWorld();
+    uint32_t cntProjected           = 0;
+    for ( const auto& feature : curFrame->m_features )
+    {
+        if ( feature->m_point != nullptr )
+        {
+            const double depthNorm = ( feature->m_point->m_position - C ).norm();
+            const Eigen::Vector3d refPoint( feature->m_bearingVec * depthNorm );
+            const Eigen::Vector3d curPoint( relativePose * refPoint );
+            const Eigen::Vector2d curFeature( curFrame->camera2image( curPoint ) );
+            if ( curFrame->m_camera->isInFrame( curFeature, 5.0 ) )
+            {
+                cntProjected++;
+            }
+        }
+    }
+    return cntProjected;
 }
 
 Eigen::Matrix3d algorithm::hat( const Eigen::Vector3d& vec )
