@@ -60,7 +60,7 @@ public:
 
     /// Project points from the map into the image. First finds keyframes with
     /// overlapping field of view and projects only those map-points.
-    void reprojectMap( std::shared_ptr< Frame >& frame, std::vector< FrameSize >& overlapKeyFrames );
+    void reprojectMap( const std::shared_ptr< Frame >& refFrame, std::shared_ptr< Frame >& curFrame, std::vector< FrameSize >& overlapKeyFrames );
 
     void addNewCandidate( const std::shared_ptr< Feature >& feature, const std::shared_ptr< Point >& point, const std::shared_ptr< Frame >& visitedFrame );
 

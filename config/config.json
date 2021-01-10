@@ -2,17 +2,18 @@
     "file_paths": 
     {
         "camera_calibration_file": "resource/kitti.yaml",
-        "log_file" : "./config/log.conf"
+        "log_file" : "./config/log.conf",
+        "image_data_path": "/Users/amin/Workspace/cplusplus/semi-direct-visual-odometry/input/image_0/"
     },
     "camera":
     {
-        "img_width" : 1242,
-        "img_height" : 375
+        "img_width" : 1241,
+        "img_height" : 376
     },
     "visualization":
     {
         "enable_visualization": true,
-        "saving_type": "File"        
+        "saving_type": "File"
     },
     "initialization":
     {
@@ -25,7 +26,7 @@
     },
     "algorithm":
     {
-        "cell_pixel_size" : 50,
+        "cell_pixel_size" : 30,
         "patch_size_image_alignment" : 5,
         "min_level_image_pyramid": 0,
         "max_level_image_pyramid": 3

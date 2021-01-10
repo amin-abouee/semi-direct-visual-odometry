@@ -95,6 +95,16 @@ cv::Mat& ImagePyramid::getBaseGradientImage()
     return m_vecGradientImages [0];
 }
 
+const cv::Mat& ImagePyramid::getGradientAtLevel( const std::size_t level ) const
+{
+    return m_vecGradientImages[level];
+}
+
+cv::Mat& ImagePyramid::getGradientAtLevel( const std::size_t level )
+{
+    return m_vecGradientImages[level];
+}
+
 std::size_t ImagePyramid::getSizeImagePyramid() const
 {
     return m_vecImages.size();

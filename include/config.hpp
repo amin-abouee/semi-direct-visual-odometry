@@ -40,6 +40,7 @@ public:
 
     std::string m_logFilePath;            ///< Path of easylogging log file
     std::string m_cameraCalibrationPath;  ///< Path of camera calibration file
+    std::string m_imageDataPath;          ///< Path of images
 
     int32_t m_imgWidth;   ///< Image width in pixel
     int32_t m_imgHeight;  ///< Image Height in pixel

@@ -58,15 +58,14 @@ double FeatureAlignment::align( const std::shared_ptr< Feature >& refFeature,
 void FeatureAlignment::computeJacobian( const std::shared_ptr< Feature >& refFeature )
 {
     resetParameters();
-    const int32_t border    = m_halfPatchSize + 1;
-    const cv::Mat& refImage = refFeature->m_frame->m_imagePyramid.getImageAtLevel( m_level );
+    const int32_t border    = m_halfPatchSize + 2;
+    const cv::Mat& refImage = refFeature->m_frame->m_imagePyramid.getGradientAtLevel( m_level );
     const algorithm::MapXRowConst refImageEigen( refImage.ptr< uint8_t >(), refImage.rows, refImage.cols );
     const Eigen::Vector2d pixelPos = refFeature->m_pixelPosition;
 
     // check for unsuccessful points
-    if ( refFeature->m_point == nullptr || refFeature->m_frame->m_camera->isInFrame( pixelPos, border ) == false )
+    if ( refFeature->m_frame->m_camera->isInFrame( pixelPos, border ) == false )
     {
-        // m_refVisibility[ 0 ] = false;
         return;
     }
 
@@ -110,17 +109,12 @@ uint32_t FeatureAlignment::computeResiduals( const std::shared_ptr< Feature >& r
                                              const std::shared_ptr< Frame >& curFrame,
                                              Sophus::SE2d& pose )
 {
-    const int32_t border    = m_halfPatchSize + 1;
-    const cv::Mat& curImage = curFrame->m_imagePyramid.getImageAtLevel( m_level );
+    const int32_t border    = m_halfPatchSize + 2;
+    const cv::Mat& curImage = curFrame->m_imagePyramid.getGradientAtLevel( m_level );
     const algorithm::MapXRowConst curImageEigen( curImage.ptr< uint8_t >(), curImage.rows, curImage.cols );
     const Eigen::Vector2d pixelPos = refFeature->m_pixelPosition;
     Eigen::Vector2d warpedPoint = pose * pixelPos;
     // const uint32_t stride            = curImage.cols;
-
-    // if ( m_refVisibility[ 0 ] == false )
-    // {
-    //     return 0;
-    // }
 
     if ( curFrame->m_camera->isInFrame( warpedPoint, border ) == false )
     {
@@ -138,9 +132,9 @@ uint32_t FeatureAlignment::computeResiduals( const std::shared_ptr< Feature >& r
         for ( int32_t x{ beginIdx }; x <= endIdx; x++, cntPixel++, cntTotalProjectedPixels++ )
         {
             // we apply or warping to all pixels of out patch
-            warpedPoint = pose * Eigen::Vector2d( x, y );
-            const double rowIdx               = pixelPos.y() + warpedPoint.y();
-            const double colIdx               = pixelPos.x() + warpedPoint.x();
+            // warpedPoint = pose * Eigen::Vector2d( x, y );
+            const double rowIdx               = warpedPoint.y() + y;
+            const double colIdx               = warpedPoint.x() + x;
             const float curPixelValue         = algorithm::bilinearInterpolationDouble( curImageEigen, colIdx, rowIdx );
 
             // ****

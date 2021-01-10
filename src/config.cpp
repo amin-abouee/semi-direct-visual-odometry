@@ -37,6 +37,9 @@ Config::Config( const std::string& configFile )
     m_logFilePath = utils::findAbsoluteFilePath( filePathJson[ "log_file" ].get< std::string >() );
     CONFIG_LOG_IF( m_logFilePath.empty(), FATAL ) << "log config path is empty. Please update your params.json";
 
+    m_imageDataPath = utils::findAbsoluteFilePath( filePathJson[ "image_data_path" ].get< std::string >() );
+    CONFIG_LOG_IF( m_imageDataPath.empty(), FATAL ) << "image data path is empty. Please update your params.json";
+
     // read camera params
     const nlohmann::json& cameraJson = m_configJson[ "camera" ];
 

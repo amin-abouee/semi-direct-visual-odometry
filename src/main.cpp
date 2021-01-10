@@ -56,7 +56,7 @@ void configLogger( const std::string& logFilePath )
 
 int main( int argc, char* argv[] )
 {
-    TIMED_FUNC (timerMain);
+    TIMED_FUNC( timerMain );
     // Main_Log(DEBUG) << "Number of Threads: " << Eigen::nbThreads( );
     // Eigen::setNbThreads(4);
     // Main_Log(DEBUG) << "Number of Threads: " << Eigen::nbThreads( );
@@ -89,13 +89,15 @@ int main( int argc, char* argv[] )
         // std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
         curFrame.setKeyframe();
     */
-   std::ofstream fileWriter ("../output/out.txt");
+    const std::string imageDataPath = config->m_imageDataPath;
+
+    std::ofstream fileWriter( "../output/out.txt" );
     bool res;
-    for ( int i( 0 ); i < 9; i++ )
+    for ( int i( 0 ); i < 4500; i++ )
     {
         std::stringstream ss;
-        ss << "input/000000000" << i << ".png";
-        Main_Log( INFO ) << "filename: " << ss.str();
+        ss << imageDataPath << std::setw( 6 ) << std::setfill( '0' ) << i << ".png";
+        Main_Log( INFO ) << "filename: " << utils::findAbsoluteFilePath( ss.str());
         cv::Mat newImg = cv::imread( utils::findAbsoluteFilePath( ss.str() ), cv::IMREAD_GRAYSCALE );
         // auto t1        = std::chrono::high_resolution_clock::now();
         {
@@ -105,15 +107,14 @@ int main( int argc, char* argv[] )
         // auto t2 = std::chrono::high_resolution_clock::now();
         // Main_Log( DEBUG ) << "Elapsed time for matching: " << std::chrono::duration_cast< std::chrono::milliseconds >( t2 - t1 ).count()
         //   << " milli sec";
-        if (res == true)
+        if ( res == true )
         {
-            system.writeInFile(fileWriter);
+            system.writeInFile( fileWriter );
         }
         else
         {
             fileWriter << "Failed" << std::endl;
         }
-        
 
         if ( config->m_enableVisualization == true )
         {

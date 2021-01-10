@@ -32,7 +32,6 @@ private:
     int32_t m_level;
 
     Optimizer m_optimizer;
-    // cv::Mat m_refPatches;
     Eigen::VectorXd m_refPatches;
     std::vector< bool > m_refVisibility;
 

@@ -110,6 +110,18 @@ public:
     /// @return cv::Mat& Reference to gradient image at level 0
     cv::Mat& getBaseGradientImage();
 
+       /// @brief Get the const reference of gradient data at required level
+    ///
+    /// @param[in] level required level
+    /// @return const cv::Mat& Const reference to required gradient level
+    const cv::Mat& getGradientAtLevel( const std::size_t level ) const;
+
+    /// @brief Get the reference of gradient data at required level
+    ///
+    /// @param[in] level Required level
+    /// @return cv::Mat& Reference to required gradient level
+    cv::Mat& getGradientAtLevel( const std::size_t level );
+
     /// @brief Get the size of image pyramid (maxPyramidLevel + 1)
     ///
     /// @return std::size_t Size of image pyramid

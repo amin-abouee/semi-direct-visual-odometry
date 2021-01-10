@@ -69,7 +69,7 @@ void DepthEstimator::addKeyframe( std::shared_ptr< Frame >& frame, double depthM
     m_newKeyframeMeanDepth = depthMean;
     m_newKeyframeMinDepth  = depthMin;
 
-    Depth_Log( DEBUG ) << "newKeyframeMinDepth: " << m_newKeyframeMinDepth << ", newKeyframeMeanDepth: " << m_newKeyframeMeanDepth;
+    Depth_Log( WARNING ) << "newKeyframeMinDepth: " << m_newKeyframeMinDepth << ", newKeyframeMeanDepth: " << m_newKeyframeMeanDepth;
 
     if ( m_thread != nullptr )
     {
@@ -91,7 +91,7 @@ void DepthEstimator::removeKeyframe( std::shared_ptr< Frame >& frame )
     m_deletedKeyframe = frame;
 }
 
-uint32_t DepthEstimator::numberFilters () const
+uint32_t DepthEstimator::numberFilters() const
 {
     return m_depthFilters.size();
 }
@@ -162,7 +162,7 @@ void DepthEstimator::removeKeyframe()
 {
     std::unique_lock< std::mutex > threadLocker( m_mutexFilter );
     uint32_t sizeFilters = m_depthFilters.size();
-    auto element = std::remove_if( m_depthFilters.begin(), m_depthFilters.end(), [ this ]( auto& depthFilter ) -> bool {
+    auto element         = std::remove_if( m_depthFilters.begin(), m_depthFilters.end(), [ this ]( auto& depthFilter ) -> bool {
         if ( depthFilter.m_feature->m_frame == m_deletedKeyframe )
             return true;
         return false;
@@ -207,18 +207,21 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
 
     Depth_Log( DEBUG ) << "Frame: " << frame->m_id << ", size of depthFilters " << m_depthFilters.size();
 
-    for ( auto& depthFilter : m_depthFilters )
+    // for ( auto& depthFilter : m_depthFilters )
+    const uint32_t depthFiltersSz = m_depthFilters.size();
+    for ( int32_t i = depthFiltersSz - 1; i >= 0; i-- )
     {
-        Depth_Log( DEBUG ) << "depth filter " << depthFilter.m_id << ", mu: " << depthFilter.m_frameId
-                           << ", sigma: " << depthFilter.m_sigma;
+        auto& depthFilter = m_depthFilters[ i ];
+        Depth_Log( DEBUG ) << "depth filter " << depthFilter.m_id << ", mu: " << depthFilter.m_mu << ", sigma: " << depthFilter.m_sigma;
 
         if ( m_haltUpdatingDepthFilter == true )
             return;
         // if the current depth filter is very old, delete it
-        if ( MixedGaussianFilter::m_frameCounter - depthFilter.m_frameCounter > 2 )
+        if ( MixedGaussianFilter::m_frameCounter - depthFilter.m_frameCounter > 5 )
         {
             depthFilter.m_validity = false;
             failedUpdated++;
+            Depth_Log( DEBUG ) << "rejected due to old frame";
             continue;
         }
 
@@ -229,6 +232,7 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
         {
             depthFilter.m_validity = false;
             failedUpdated++;
+            Depth_Log( DEBUG ) << "rejected due to projection";
             continue;
         }
 
@@ -238,17 +242,20 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
         double updatedDepth          = 0.0;
 
         // TODO:check in epipolar distance
-        algorithm::matchEpipolarConstraint( depthFilter.m_feature->m_frame, frame, depthFilter.m_feature, 7, 1.0 / depthFilter.m_mu,
+        bool resEpipolarCheck = algorithm::matchEpipolarConstraint( depthFilter.m_feature->m_frame, frame, depthFilter.m_feature, 7, 1.0 / depthFilter.m_mu,
                                             1.0 / inverseMinDepth, 1.0 / inverseMaxDepth, updatedDepth );
+
+        Depth_Log (DEBUG) << "updated depth: " << updatedDepth;
 
         // updatedDepths.push_back( updatedDepth );
         // TODO: check the result of epipolar. what about the failed case
-        // {
-        //     it->b++; // increase outlier probability when no match was found
-        //     ++it;
-        //     ++n_failed_matches;
-        //     continue;
-        // }
+        if (resEpipolarCheck == false)
+        {
+            // it->b++; // increase outlier probability when no match was found
+            depthFilter.m_b++;
+            failedUpdated++;
+            continue;
+        }
 
         // compute tau
         const double tau        = computeTau( relativePose, depthFilter.m_feature->m_bearingVec, updatedDepth, pixelErrorAngle );
@@ -258,14 +265,17 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
         updateFilter( 1.0 / updatedDepth, inverseTau * inverseTau, depthFilter );
         successUpdated++;
 
-        if ( frame->isKeyframe() )
-        {
-            // The feature detector should not initialize new seeds close to this location
-            const Eigen::Vector2d newLocation =
-              frame->camera2image( relativePose * frame->image2camera( depthFilter.m_feature->m_pixelPosition, 1.0 / depthFilter.m_mu ) );
-            // TODO: we need to set the corresponding location in our grid
-            m_featureSelector->setCellInGridOccupancy( newLocation );
-        }
+        Depth_Log( DEBUG ) << "updated depth filter " << depthFilter.m_id << ", mu: " << depthFilter.m_mu
+                           << ", sigma: " << depthFilter.m_sigma;
+
+        // if ( frame->isKeyframe() )
+        // {
+        //     // The feature detector should not initialize new seeds close to this location
+        //     const Eigen::Vector2d newLocation =
+        //       frame->camera2image( relativePose * frame->image2camera( depthFilter.m_feature->m_pixelPosition, 1.0 / depthFilter.m_mu ) );
+        //     // TODO: we need to set the corresponding location in our grid
+        //     m_featureSelector->setCellInGridOccupancy( newLocation );
+        // }
 
         // if the filter has converged, we initialize a new candidate point and remove the seed
         if ( sqrt( depthFilter.m_var ) * 10.0 < depthFilter.m_maxDepth )
@@ -275,7 +285,7 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
               depthFilter.m_feature->m_frame->image2world( depthFilter.m_feature->m_pixelPosition, 1.0 / depthFilter.m_mu );
             auto point = std::make_shared< Point >( pointInWorld, depthFilter.m_feature );
 
-            m_map->addNewCandidate(depthFilter.m_feature, point, frame);
+            m_map->addNewCandidate( depthFilter.m_feature, point, frame );
             Depth_Log( DEBUG ) << "A new candidate added at position: " << point->m_position.transpose();
             depthFilter.m_validity = false;
         }
@@ -285,17 +295,17 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
             depthFilter.m_validity = false;
             failedUpdated++;
         }
-        Depth_Log( DEBUG ) << "updated depth filter " << depthFilter.m_id << ", mu: " << depthFilter.m_mu
-                           << ", sigma: " << depthFilter.m_sigma;
     }
 
     // remove bad filters
+    Depth_Log( DEBUG ) << "Size before delete: " << m_depthFilters.size();
     auto removedElements = std::remove_if( m_depthFilters.begin(), m_depthFilters.end(), []( auto& depthFilter ) -> bool {
         if ( depthFilter.m_validity == false )
             return true;
         return false;
     } );
     m_depthFilters.erase( removedElements, m_depthFilters.end() );
+    Depth_Log( DEBUG ) << "Size after delete: " << m_depthFilters.size();
 }
 
 void DepthEstimator::updateFilter( const double x, const double tau2, MixedGaussianFilter& depthFilter )

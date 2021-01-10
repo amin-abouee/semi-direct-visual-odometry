@@ -144,7 +144,7 @@ void visualization::featurePoints(
     }
 
     std::stringstream ss;
-    ss << "# feature: " << szPoints; 
+    ss << "id: " << frame->m_id; 
     cv::putText(img, 
             ss.str(),
             cv::Point(15,15), // Coordinates
@@ -155,10 +155,21 @@ void visualization::featurePoints(
             ); // Anti-alias (Optional)
 
     ss.str("");
-    ss << "# points: " << frame->numberObservationWithPoints();
+    ss << "features: " << szPoints; 
     cv::putText(img, 
             ss.str(),
             cv::Point(15,45), // Coordinates
+            cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
+            1.0, // Scale. 2.0 = 2x bigger
+            colors.at( "white" ),
+            1 // Line Thickness (Optional)
+            ); // Anti-alias (Optional)
+
+    ss.str("");
+    ss << "points: " << frame->numberObservationWithPoints();
+    cv::putText(img, 
+            ss.str(),
+            cv::Point(15,75), // Coordinates
             cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
             1.0, // Scale. 2.0 = 2x bigger
             colors.at( "white" ),

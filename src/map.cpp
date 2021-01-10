@@ -228,13 +228,15 @@ void Map::resetGrid()
     }
 }
 
-void Map::reprojectMap( std::shared_ptr< Frame >& frame, std::vector< FrameSize >& overlapKeyFrames )
+void Map::reprojectMap( const std::shared_ptr< Frame >& refFrame, std::shared_ptr< Frame >& curFrame, std::vector< FrameSize >& overlapKeyFrames )
 {
     resetGrid();
 
     // Identify those Keyframes which share a common field of view.
     std::vector< KeyframeDistance > closeKeyframes;
-    getCloseKeyframes( frame, closeKeyframes );
+    getCloseKeyframes( curFrame, closeKeyframes );
+    // closeKeyframes.push_back( std::make_pair( refFrame, ( curFrame->m_absPose.translation() - refFrame->m_absPose.translation() ).norm() ) );
+    // closeKeyframes.push_back( std::make_pair( refFrame->m_lastKeyframe, ( curFrame->m_absPose.translation() - refFrame->m_lastKeyframe->m_absPose.translation() ).norm() ) );
 
     // auto compare = [] (const std::pair< const std::shared_ptr< Frame >&, double >& lhs, const std::pair< const std::shared_ptr< Frame >&,
     // double >& rhs) -> bool {
@@ -251,15 +253,16 @@ void Map::reprojectMap( std::shared_ptr< Frame >& frame, std::vector< FrameSize 
     {
         const auto& kfDistance = closeKeyframes[ i ];
         overlapKeyFrames.push_back( std::make_pair( kfDistance.first, 0 ) );
+        Map_Log (DEBUG) << "Frame id " << kfDistance.first->m_id << " projected to find the features";
         // project 3d points from closeKeyFrame into new frame. If we found some projected points, we update the frame ID of 3d point.
         for ( const auto& feature : kfDistance.first->m_features )
         {
             if ( feature->m_point == nullptr )
                 continue;
-            if ( feature->m_point->m_lastProjectedKFId == frame->m_id )
+            if ( feature->m_point->m_lastProjectedKFId == curFrame->m_id )
                 continue;
-            feature->m_point->m_lastProjectedKFId = frame->m_id;
-            if ( reprojectPoint( frame, feature ) )
+            feature->m_point->m_lastProjectedKFId = curFrame->m_id;
+            if ( reprojectPoint( curFrame, feature ) )
             {
                 overlapKeyFrames.back().second++;
             }
@@ -274,7 +277,7 @@ void Map::reprojectMap( std::shared_ptr< Frame >& frame, std::vector< FrameSize 
         // and unknown quality over candidates (position not optimized)
         const uint32_t idx                           = m_grid.m_cellOrders[ i ];
         std::shared_ptr< CandidateList >& candidates = m_grid.m_cells[ idx ];
-        if ( candidates->size() > 0 && reprojectCell( candidates, frame ) )
+        if ( candidates->size() > 0 && reprojectCell( candidates, curFrame ) )
         {
             m_matches++;
         }
@@ -417,15 +420,15 @@ void Map::addCandidateToAllActiveKeyframes()
                 candidate.m_feature->setPoint( candidate.m_point );
                 candidate.m_point->addFeature( candidate.m_feature );
 
-                if (candidate.m_visitedFrame->isKeyframe() == false)
-                {
-                    const Eigen::Vector2d pixelPosition = candidate.m_visitedFrame->world2image( candidate.m_point->m_position );
-                    std::shared_ptr< Feature > feature =
-                    std::make_shared< Feature >( candidate.m_visitedFrame, pixelPosition, 0.0, 0.0, 0, Feature::FeatureType::EDGE );
-                    candidate.m_visitedFrame->addFeature( feature );
-                    feature->setPoint( candidate.m_point );
-                    candidate.m_point->addFeature( feature );
-                }
+                // if (candidate.m_visitedFrame->isKeyframe() == false)
+                // {
+                //     const Eigen::Vector2d pixelPosition = candidate.m_visitedFrame->world2image( candidate.m_point->m_position );
+                //     std::shared_ptr< Feature > feature =
+                //     std::make_shared< Feature >( candidate.m_visitedFrame, pixelPosition, 0.0, 0.0, 0, Feature::FeatureType::EDGE );
+                //     candidate.m_visitedFrame->addFeature( feature );
+                //     feature->setPoint( candidate.m_point );
+                //     candidate.m_point->addFeature( feature );
+                // }
 
                 candidate.m_point->m_type             = Point::PointType::UNKNOWN;
                 candidate.m_point->m_failedProjection = 0;

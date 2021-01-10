@@ -1,5 +1,6 @@
 #include "algorithm.hpp"
 #include "feature.hpp"
+#include "feature_alignment.hpp"
 #include "utils.hpp"
 
 #include <algorithm>
@@ -408,21 +409,43 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
                                          const double maxDepth,
                                          double& estimatedDepth )
 {
+    std::shared_ptr< FeatureAlignment > alignment = std::make_shared< FeatureAlignment >( patchSize, 0, 3 );
     // const uint32_t patchSize     = 7;
     const uint32_t halfPatchSize = patchSize / 2;
     const uint32_t patchArea     = patchSize * patchSize;
 
     const Sophus::SE3d relativePose = algorithm::computeRelativePose( refFrame, curFrame );
     const uint32_t thresholdZSSD    = patchArea * 128;
-    const Eigen::Vector2d locationCenter =
+    Algorithm_Log( DEBUG ) << "depth: " << initialDepth << ", min: " << minDepth << ", max: " << maxDepth
+                           << ", Thr ZZSD: " << thresholdZSSD;
+    Eigen::Vector2d locationCenter =
       curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_pixelPosition, initialDepth ) );
-    const Eigen::Vector2d locationMin =
-      curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_pixelPosition, minDepth ) );
-    const Eigen::Vector2d locationMax =
-      curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_pixelPosition, maxDepth ) );
+    Eigen::Vector2d locationMin = curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_pixelPosition, minDepth ) );
+    Eigen::Vector2d locationMax = curFrame->camera2image( relativePose * refFrame->image2camera( refFeature->m_pixelPosition, maxDepth ) );
+
+    {
+        locationCenter.x() = locationCenter.x() >= 0 ? locationCenter.x() : 0.0;
+        locationCenter.x() = locationCenter.x() < curFrame->m_camera->width() ? locationCenter.x() : curFrame->m_camera->width() - 1;
+        locationCenter.y() = locationCenter.y() >= 0 ? locationCenter.y() : 0.0;
+        locationCenter.y() = locationCenter.y() < curFrame->m_camera->height() ? locationCenter.y() : curFrame->m_camera->height() - 1;
+
+        locationMin.x() = locationMin.x() >= 0 ? locationMin.x() : 0.0;
+        locationMin.x() = locationMin.x() < curFrame->m_camera->width() ? locationMin.x() : curFrame->m_camera->width() - 1;
+        locationMin.y() = locationMin.y() >= 0 ? locationMin.y() : 0.0;
+        locationMin.y() = locationMin.y() < curFrame->m_camera->height() ? locationMin.y() : curFrame->m_camera->height() - 1;
+
+        locationMax.x() = locationMax.x() >= 0 ? locationMax.x() : 0.0;
+        locationMax.x() = locationMax.x() < curFrame->m_camera->width() ? locationMax.x() : curFrame->m_camera->width() - 1;
+        locationMax.y() = locationMax.y() >= 0 ? locationMax.y() : 0.0;
+        locationMax.y() = locationMax.y() < curFrame->m_camera->height() ? locationMax.y() : curFrame->m_camera->height() - 1;
+    }
+
+    Algorithm_Log( DEBUG ) << "Center: " << locationCenter.transpose() << ", min: " << locationMin.transpose()
+                           << ", max: " << locationMax.transpose();
 
     // FIXME: check with the original code. They don't project to the camera. Just project2d (x/z, y/z)
     const Eigen::Vector2d epipolarDirection = locationMax - locationMin;
+    Algorithm_Log( DEBUG ) << "epipolarDirection: " << epipolarDirection.transpose();
 
     Eigen::Matrix2d affineWarp;
     algorithm::getAffineWarp( refFrame, curFrame, refFeature, relativePose, patchSize, initialDepth, affineWarp );
@@ -456,7 +479,7 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
     // epi_length_ = (px_A-px_B).norm() / (1<<search_level_);
 
     const Eigen::Vector2d borders = affineWarp * Eigen::Vector2d( halfPatchSize, halfPatchSize );
-    const double boundary         = std::max( borders.x(), borders.y() ) + 1;
+    const double boundary         = std::ceil( std::max( borders.x(), borders.y() ) ) + 1;
 
     Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 > curPatchIntensities( patchArea );
     curPatchIntensities.setZero();
@@ -477,6 +500,7 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
     for ( uint32_t i( 0 ); i < pixelStep; i++ )
     {
         const Eigen::Vector2d location = locationMin + i * step2D;
+        Algorithm_Log( DEBUG ) << "loc for point: " << location.transpose();
         algorithm::applyAffineWarp( curFrame, location, halfPatchSize, affineWarp, boundary, curPatchIntensities );
         double zssd = computeScore( refPatchIntensities, curPatchIntensities );
         // Algorithm_Log( DEBUG ) << "Loc in cur frame: " << location.transpose() << ", zzd score: " << zssd;
@@ -492,10 +516,22 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
     if ( minimumScore < thresholdZSSD )
     {
         // TODO: 2D alignment
-        const Eigen::Vector3d bearingCurCamera = curFrame->m_camera->inverseProject2d( bestLocation );
-        Algorithm_Log( DEBUG ) << "pre location: " << bestLocation.transpose() << ", cur location: " << locationCenter.transpose();
+        Algorithm_Log( DEBUG ) << "first best location: " << bestLocation.transpose();
+        // double error = alignment->align( refFeature, curFrame, bestLocation );
+        // Algorithm_Log( DEBUG ) << "error: " << error << ", best location: " << bestLocation.transpose();
 
-        if ( depthFromTriangulation( relativePose, refFeature->m_bearingVec, bearingCurCamera, estimatedDepth ) )
+        {
+            algorithm::applyAffineWarp( curFrame, bestLocation, halfPatchSize, affineWarp, boundary, curPatchIntensities );
+            double zssd = computeScore( refPatchIntensities, curPatchIntensities );
+            Algorithm_Log( DEBUG ) << "new zssd score: " << zssd;
+        }
+
+        const Eigen::Vector3d bearingCurCamera = curFrame->m_camera->inverseProject2d( bestLocation );
+        Algorithm_Log( DEBUG ) << "ref location: " << refFeature->m_pixelPosition.transpose()
+                               << ", cur location: " << bestLocation.transpose() << ", pre location: " << locationCenter.transpose();
+
+        bool resTriangulation = depthFromTriangulation( relativePose, refFeature->m_bearingVec, bearingCurCamera, estimatedDepth );
+        if ( resTriangulation == true )
         {
             Algorithm_Log( DEBUG ) << "pre depth: " << initialDepth << ", depth updated: " << estimatedDepth;
             return true;
@@ -632,27 +668,6 @@ void algorithm::triangulatePointDLT( const std::shared_ptr< Frame >& refFrame,
       curFeature.y() * P2( 2, 3 ) - P2( 1, 3 );
     // point = A.colPivHouseholderQr().solve(p);
     point = ( A.transpose() * A ).ldlt().solve( A.transpose() * p );
-
-    /*
-    Eigen::Vector2d project1 = refFrame.world2image( point );
-    Eigen::Vector2d project2 = curFrame.world2image( point );
-    // std::cout << "Pt -> ref: " << refFeature.transpose() << ", cur: " << curFeature.transpose() << std::endl;
-    // std::cout << "2D -> Error in ref: " << ( project1 - refFeature ).norm()
-    //   << ", Error in cur: " << ( project2 - curFeature ).norm() << std::endl;
-
-    Eigen::Vector3d unproject1 = refFrame.image2camera( refFeature, point.norm() );
-    Eigen::Vector3d unproject2 = curFrame.image2camera( curFeature, point.norm() );
-    // std::cout << "3D -> Error in ref: " << (point - unproject1).norm()
-    //   << ", Error in cur: " << (point - unproject2).norm() << std::endl;
-
-    Sophus::SE3d T_pre_cur      = refFrame.m_absPose.inverse() * curFrame.m_absPose;
-    Eigen::Vector3d transferred = T_pre_cur * unproject1;
-    // std::cout << "3D -> Error in relative: " << (transferred - unproject2).norm() << std::endl;
-    // std::cout << "2D -> Error in relative: " << ( curFeature - curFrame.camera2image( transferred ) ).norm()
-    std::cout << "Pt ref: " << refFeature.transpose()
-              << ", error: " << ( curFeature - curFrame.camera2image( transferred ) ).norm()
-              << ", depth: " << point.norm() << std::endl;
-    */
 }
 
 bool algorithm::depthFromTriangulation( const Sophus::SE3d& relativePose,
@@ -669,6 +684,7 @@ bool algorithm::depthFromTriangulation( const Sophus::SE3d& relativePose,
     const Eigen::Matrix2d AtA = A.transpose() * A;
     if ( AtA.determinant() < 0.000001 )
     {
+        Algorithm_Log( DEBUG ) << "det: " << AtA.determinant();
         return false;
     }
     const Eigen::Vector2d depths = -AtA.inverse() * A.transpose() * relativePose.translation();
@@ -679,9 +695,6 @@ bool algorithm::depthFromTriangulation( const Sophus::SE3d& relativePose,
 
 Sophus::SE3d algorithm::computeRelativePose( const std::shared_ptr< Frame >& refFrame, const std::shared_ptr< Frame >& curFrame )
 {
-    // T_K-1_K = T_K-1_W * T_W_K
-    // return refFrame->m_absPose.inverse() * curFrame->m_absPose;
-
     // T{K}_{K-1} = T{K}_{W}T * T{W}_{K-1} = T{K}_{W} * T{K-1}_{W}^{-1}
     return curFrame->m_absPose * refFrame->m_absPose.inverse();
 }

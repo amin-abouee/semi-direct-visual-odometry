@@ -94,7 +94,7 @@ System::Result System::processFirstFrame()
         }
         else if ( m_config->m_savingType == "File" )
         {
-            cv::imwrite( "../output/images/0.png", refBGR );
+            cv::imwrite( "../output/images/0 -> 0.png", refBGR );
         }
     }
 
@@ -154,7 +154,7 @@ System::Result System::processSecondFrame()
     // compute the 3D points
     algorithm::triangulate3DWorldPoints( m_refFrame, m_curFrame, pointsWorld );
     algorithm::transferPointsWorldToCam( m_curFrame, pointsWorld, pointsCurCamera );
-    algorithm::depthCamera( m_curFrame, pointsWorld, depthCurFrame );
+    algorithm::normalizedDepthCamera( m_curFrame, pointsWorld, depthCurFrame );
     double medianDepth = algorithm::computeMedian( depthCurFrame );
     {
         const double minDepth = depthCurFrame.minCoeff();
@@ -214,7 +214,7 @@ System::Result System::processSecondFrame()
     m_activeKeyframe = m_curFrame;
     numObserves      = m_curFrame->numberObservation();
     Eigen::VectorXd newCurDepths( numObserves );
-    algorithm::depthCamera( m_curFrame, newCurDepths );
+    algorithm::normalizedDepthCamera( m_curFrame, newCurDepths );
     medianDepth           = algorithm::computeMedian( newCurDepths );
     const double minDepth = newCurDepths.minCoeff();
     const double maxDepth = newCurDepths.maxCoeff();
@@ -284,6 +284,8 @@ System::Result System::processNewFrame()
         m_alignment->align( m_refFrame, m_curFrame );
     }
 
+    m_map->addCandidateToAllActiveKeyframes();
+
     cv::Mat stickImg;
     if ( m_config->m_enableVisualization == true )
     {
@@ -296,14 +298,14 @@ System::Result System::processNewFrame()
         visualization::stickTwoImageVertically( lastBGR, refBGR, stickImg, 20 );
 
         // just projected with computed pose
-        cv::Mat curBGR = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
-        visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 6, "yellow", visualization::drawingCircle );
+        // cv::Mat curBGR = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
+        // visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 6, "yellow", visualization::drawingCircle );
 
-        visualization::stickTwoImageVertically( stickImg, curBGR, stickImg, 20 );
+        // visualization::stickTwoImageVertically( stickImg, curBGR, stickImg, 20 );
     }
 
     std::vector< frameSize > overlapKeyFrames;
-    m_map->reprojectMap( m_curFrame, overlapKeyFrames );
+    m_map->reprojectMap( m_refFrame, m_curFrame, overlapKeyFrames );
     System_Log( INFO ) << "Number of Features in new frame: " << m_curFrame->numberObservation();
 
     if ( m_config->m_enableVisualization == true )
@@ -311,29 +313,11 @@ System::Result System::processNewFrame()
         // points projected and added
         cv::Mat curBGR = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
         visualization::featurePoints( curBGR, m_curFrame, 6, "orange", false, visualization::drawingCircle );
+        // visualization::imageGrid( curBGR, m_config->m_cellPixelSize, "lime" );
+
 
         // cv::Mat stickImg;
         visualization::stickTwoImageVertically( stickImg, curBGR, stickImg, 20 );
-    }
-
-    // System_Log (DEBUG) << "m_curFrame->m_lastKeyframe id: " << m_curFrame->m_lastKeyframe->m_id;
-    // m_map->addCandidateToFrame( m_curFrame->m_lastKeyframe );
-
-    // we don't add features, if visited frame is key frame, because it can change or distribution
-    m_map->addCandidateToAllActiveKeyframes();
-
-    if ( m_config->m_enableVisualization == true )
-    {
-        cv::Mat lastBGR = visualization::getColorImage( m_refFrame->m_lastKeyframe->m_imagePyramid.getBaseGradientImage() );
-        visualization::featurePoints( lastBGR, m_refFrame->m_lastKeyframe, 6, "green", true, visualization::drawingRectangle );
-
-        visualization::stickTwoImageVertically( stickImg, lastBGR, stickImg, 20 );
-
-        cv::Mat refBGR = visualization::getColorImage( m_refFrame->m_imagePyramid.getBaseGradientImage() );
-        visualization::featurePoints( refBGR, m_refFrame, 6, "pink", true, visualization::drawingRectangle );
-
-        // cv::Mat stickImg;
-        visualization::stickTwoImageVertically( stickImg, refBGR, stickImg, 20 );
 
         if ( m_config->m_savingType == "LiveShow" )
         {
@@ -347,6 +331,38 @@ System::Result System::processNewFrame()
             ss << "../output/images/" << m_refFrame->m_id << " -> " << m_curFrame->m_id << ".png";
             cv::imwrite( ss.str(), stickImg );
         }
+    }
+
+    // System_Log (DEBUG) << "m_curFrame->m_lastKeyframe id: " << m_curFrame->m_lastKeyframe->m_id;
+    // m_map->addCandidateToFrame( m_curFrame->m_lastKeyframe );
+
+    // we don't add features, if visited frame is key frame, because it can change or distribution
+
+    if ( m_config->m_enableVisualization == true )
+    {
+        // cv::Mat lastBGR = visualization::getColorImage( m_refFrame->m_lastKeyframe->m_imagePyramid.getBaseGradientImage() );
+        // visualization::featurePoints( lastBGR, m_refFrame->m_lastKeyframe, 6, "green", true, visualization::drawingRectangle );
+
+        // visualization::stickTwoImageVertically( stickImg, lastBGR, stickImg, 20 );
+
+        // cv::Mat refBGR = visualization::getColorImage( m_refFrame->m_imagePyramid.getBaseGradientImage() );
+        // visualization::featurePoints( refBGR, m_refFrame, 6, "pink", true, visualization::drawingRectangle );
+
+        // // cv::Mat stickImg;
+        // visualization::stickTwoImageVertically( stickImg, refBGR, stickImg, 20 );
+
+        // if ( m_config->m_savingType == "LiveShow" )
+        // {
+        //     std::stringstream ss;
+        //     ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
+        //     cv::imshow( ss.str(), stickImg );
+        // }
+        // else if ( m_config->m_savingType == "File" )
+        // {
+        //     std::stringstream ss;
+        //     ss << "../output/images/" << m_refFrame->m_id << " -> " << m_curFrame->m_id << ".png";
+        //     cv::imwrite( ss.str(), stickImg );
+        // }
     }
 
     // m_bundler->optimizePose( m_curFrame );
@@ -369,7 +385,7 @@ System::Result System::processNewFrame()
 
     const uint32_t numObserves = m_curFrame->numberObservation();
     Eigen::VectorXd depthsInCurFrame( numObserves );
-    algorithm::depthCamera( m_curFrame, depthsInCurFrame );
+    algorithm::normalizedDepthCamera( m_curFrame, depthsInCurFrame );
     const double depthMean = algorithm::computeMedian( depthsInCurFrame );
     const double depthMin  = depthsInCurFrame.minCoeff();
 
@@ -386,10 +402,6 @@ System::Result System::processNewFrame()
 
     {
         TIMED_SCOPE( timerBA, "timer local BA" );
-        // uint32_t incorrectEdge1 = 0;
-        // uint32_t incorrectEdge2 = 0;
-        // double initError        = 0.0;
-        // double finalError       = 0.0;
         m_bundler->localBA( m_map, 2.0 );
     }
 
@@ -470,7 +482,8 @@ bool System::needKeyframe( const Eigen::VectorXd& depthsInCurFrame, const double
     System_Log( DEBUG ) << "feature Propertion: " << featuresPropertion;
 
     // if ( diffTranslation < 3.5 && diffId < 10 && numberVisiblePoints > 50 && featuresPropertion > 0.6 )
-    if ( diffTranslation < 3.5 && diffId < 10 && numberVisiblePoints > 50 )
+    // if ( diffTranslation < 3.5 && diffId < 10 && numberVisiblePoints > 50 )
+    if ( diffId < 3 )
     {
         return true;
     }
@@ -602,9 +615,9 @@ bool System::loadCameraIntrinsics( const std::string& filename, cv::Mat& cameraM
 
 void System::writeInFile( std::ofstream& fileWriter )
 {
-    const Eigen::Matrix4d extrinsic = m_allFrames.back()->m_absPose.matrix();
+    const auto& extrinsic = m_allFrames.back()->m_absPose.inverse().matrix3x4();
     // fileWriter << extrinsic << std::endl;
-    fileWriter << extrinsic.format( utils::eigenFormatIO() ) << std::endl;
+    fileWriter << std::setprecision(6) << extrinsic.format( utils::eigenFormatIO() ) << std::endl;
     // fileWriter << extrinsic( 0, 0 ) << " " << extrinsic( 0, 1 ) << " " << extrinsic( 0, 2 ) << " " << extrinsic( 0, 3 ) << " "
     //            << extrinsic( 1, 0 ) << " " << extrinsic( 1, 1 ) << " " << extrinsic( 1, 2 ) << " " << extrinsic( 1, 3 ) << " "
     //            << extrinsic( 2, 0 ) << " " << extrinsic( 2, 1 ) << " " << extrinsic( 2, 2 ) << " " << extrinsic( 2, 3 ) << " "
