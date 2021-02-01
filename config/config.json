@@ -3,7 +3,7 @@
     {
         "camera_calibration_file": "resource/kitti.yaml",
         "log_file" : "./config/log.conf",
-        "image_data_path": "/Users/amin/Workspace/cplusplus/semi-direct-visual-odometry/input/image_0/"
+        "image_data_path": "/Users/amin/Workspace/cplusplus/semi-direct-visual-odometry/input/sample_sel"
     },
     "camera":
     {
@@ -22,7 +22,7 @@
         "min_detected_points" : 100,
         "desired_detected_points" : 200,
         "map_scale_factor" : 1.0,
-        "disparity_threshold" : 10
+        "disparity_threshold" : 5
     },
     "algorithm":
     {

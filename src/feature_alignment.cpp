@@ -50,7 +50,7 @@ double FeatureAlignment::align( const std::shared_ptr< Feature >& refFeature,
     };
 
     std::tie( optimizationStatus, error ) =
-      m_optimizer.optimizeGN< Sophus::SE2d >( relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor );
+      m_optimizer.optimizeLM< Sophus::SE2d >( relativePose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor );
     pixelPos = relativePose * refFeature->m_pixelPosition;
     return error;
 }
@@ -135,7 +135,7 @@ uint32_t FeatureAlignment::computeResiduals( const std::shared_ptr< Feature >& r
             // warpedPoint = pose * Eigen::Vector2d( x, y );
             const double rowIdx               = warpedPoint.y() + y;
             const double colIdx               = warpedPoint.x() + x;
-            const float curPixelValue         = algorithm::bilinearInterpolationDouble( curImageEigen, colIdx, rowIdx );
+            const double curPixelValue         = algorithm::bilinearInterpolationDouble( curImageEigen, colIdx, rowIdx );
 
             // ****
             // IF we compute the error of inverse compositional as r = T(x) - I(W), then we should solve (delta p) = -(JtWT).inverse() *

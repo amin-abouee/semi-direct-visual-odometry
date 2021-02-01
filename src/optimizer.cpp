@@ -610,3 +610,8 @@ template Optimizer::OptimizerResult Optimizer::optimizeLM( Sophus::SE3d& pose,
                                 const std::function< uint32_t( Sophus::SE3d& ) >& lambdaResidualFunctor,
                                 const std::function< uint32_t( Sophus::SE3d& ) >& lambdaJacobianFunctor,
                                 const std::function< void( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
+
+template Optimizer::OptimizerResult Optimizer::optimizeLM( Sophus::SE2d& params,
+                                const std::function< uint32_t( Sophus::SE2d& params ) >& lambdaResidualFunctor,
+                                const std::function< uint32_t( Sophus::SE2d& params ) >& lambdaJacobianFunctor,
+                                const std::function< void( Sophus::SE2d& params, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );

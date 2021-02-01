@@ -89,16 +89,20 @@ int main( int argc, char* argv[] )
         // std::cout << "Mean: " << medianDepth << " min: " << minDepth << std::endl;
         curFrame.setKeyframe();
     */
-    const std::string imageDataPath = config->m_imageDataPath;
+    // const std::string imageDataPath = config->m_imageDataPath;
+
+    std::vector< std::string > imageListPath;
+    imageListPath.reserve( 3000 );
+    utils::listImageFilesInFolder( config->m_imageDataPath, imageListPath );
+
+    // utils::cleanFolder("./output/");
 
     std::ofstream fileWriter( "../output/out.txt" );
     bool res;
-    for ( int i( 0 ); i < 4500; i++ )
+    for ( uint32_t i( 0 ); i < imageListPath.size(); i++ )
     {
-        std::stringstream ss;
-        ss << imageDataPath << std::setw( 6 ) << std::setfill( '0' ) << i << ".png";
-        Main_Log( INFO ) << "filename: " << utils::findAbsoluteFilePath( ss.str());
-        cv::Mat newImg = cv::imread( utils::findAbsoluteFilePath( ss.str() ), cv::IMREAD_GRAYSCALE );
+        Main_Log( INFO ) << "filename: " << utils::findAbsoluteFilePath( imageListPath[i]);
+        cv::Mat newImg = cv::imread( utils::findAbsoluteFilePath( imageListPath[i] ), cv::IMREAD_GRAYSCALE );
         // auto t1        = std::chrono::high_resolution_clock::now();
         {
             TIMED_SCOPE( timernewImage, "New Image" );
@@ -125,7 +129,5 @@ int main( int argc, char* argv[] )
         }
     }
     std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
-    // system.reportSummaryFrames();
-    // system.reportSummaryFeatures();
     return 0;
 }

@@ -50,25 +50,56 @@ void Point::removeFrame( std::shared_ptr< Frame >& frame )
 
 const std::shared_ptr< Feature >& Point::findFeature( const std::shared_ptr< Frame >& frame ) const
 {
-    for (const auto& feature : frame->m_features)
+    int32_t idx = -1;
+    std::shared_ptr <Feature> tmp {nullptr};
+    for ( uint32_t i( 0 ); i < frame->numberObservation(); i++ )
     {
-        if (feature->m_point != nullptr && feature->m_point.get() == this)
+        const auto& feature = frame->m_features[ i ];
+        if ( feature->m_point != nullptr && feature->m_point.get() == this )
         {
-            return feature;
+            idx = i;
+            break;
         }
+    }
+    if (idx != -1)
+        return frame->m_features[ idx ];
+    else
+    {
+        return tmp;
     }
 }
 
 std::shared_ptr< Feature >& Point::findFeature( const std::shared_ptr< Frame >& frame )
 {
-    for (auto& feature : frame->m_features)
+    int32_t idx = -1;
+    std::shared_ptr <Feature> tmp {nullptr};
+    for ( uint32_t i( 0 ); i < frame->numberObservation(); i++ )
     {
-        if (feature->m_point != nullptr && feature->m_point.get() == this)
+        const auto& feature = frame->m_features[ i ];
+        if ( feature->m_point != nullptr && feature->m_point.get() == this )
         {
-            return feature;
+            idx = i;
+            break;
         }
     }
+    if (idx != -1)
+        return frame->m_features[ idx ];
+    else
+    {
+        return tmp;
+    }
 }
+
+bool Point::findFrame (const std::shared_ptr< Frame >& frame) const
+{
+    for ( const auto& feature : m_features )
+    {
+        if (feature->m_frame == frame)
+            return true;
+    }
+    return false;
+}
+
 
 void Point::computeNormal()
 {

@@ -28,3 +28,24 @@ std::string utils::findAbsoluteFilePath( const std::string& relativeFilePath )
     finalPath /= relativeFilePath;
     return finalPath.string();
 }
+
+void utils::listImageFilesInFolder( const std::string& imageFolderPath, std::vector< std::string >& imageListPath )
+{
+    for ( const auto& file : std::filesystem::directory_iterator( imageFolderPath ) )
+    {
+        if ( file.path().extension() == ".png" || file.path().extension() == "jpg" )
+        {
+            imageListPath.emplace_back(file.path().string());
+        }
+    }
+
+    std::sort(imageListPath.begin(), imageListPath.end());
+}
+
+void utils::cleanFolder( const std::string& imageFolderPath )
+{
+    std::filesystem::path path(findAbsoluteFilePath(imageFolderPath));
+    std::cout << "path: " << path.string() << std::endl;
+    auto numberDeleted = std::filesystem::remove_all(path);
+    std::cout << "numberDeleted: " << numberDeleted << std::endl;
+}

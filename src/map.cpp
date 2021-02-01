@@ -10,10 +10,12 @@
 #include "easylogging++.h"
 #define Map_Log( LEVEL ) CLOG( LEVEL, "Map" )
 
+#include <opencv2/video/tracking.hpp>
+
 Map::Map( const std::shared_ptr< PinholeCamera >& camera, const uint32_t cellSize ) : m_matches( 0 ), m_trials( 0 )
 {
     initializeGrid( camera, cellSize );
-    // m_alignment = std::make_shared< FeatureAlignment >( 7, 0, 3 );
+    m_alignment = std::make_shared< FeatureAlignment >( 11, 0, 3 );
 }
 
 void Map::reset()
@@ -69,13 +71,16 @@ void Map::removePoint( std::shared_ptr< Point >& point )
 
 void Map::removeFeature( std::shared_ptr< Feature >& feature )
 {
-    if ( feature->m_point->numberObservation() <= 2 )
+    if (feature->m_point != nullptr)
     {
-        removePoint( feature->m_point );
-        return;
+        if ( feature->m_point->numberObservation() <= 2 )
+        {
+            removePoint( feature->m_point );
+            return;
+        }
+        feature->m_point->removeFrame( feature->m_frame );
     }
     // FIXME:  implement removeFeature in point class
-    feature->m_point->removeFrame( feature->m_frame );
     feature->m_frame->removeFeature( feature );
     // feature->m_point = nullptr;
     feature = nullptr;
@@ -228,15 +233,185 @@ void Map::resetGrid()
     }
 }
 
-void Map::reprojectMap( const std::shared_ptr< Frame >& refFrame, std::shared_ptr< Frame >& curFrame, std::vector< FrameSize >& overlapKeyFrames )
+void Map::reprojectMap( const std::shared_ptr< Frame >& refFrame,
+                        std::shared_ptr< Frame >& curFrame,
+                        std::vector< FrameSize >& overlapKeyFrames )
 {
     resetGrid();
 
+    std::vector< bool > visGrid( m_grid.m_gridCols * m_grid.m_gridRows, false );
+
+    std::vector< cv::Point2f > refPoints;
+    refPoints.reserve( 200 );
+    std::vector< cv::Point2f > curPoints;
+    curPoints.reserve( 200 );
+    std::vector< std::shared_ptr< Point > > selectedPoints;
+
+    // const Sophus::SE3d relativePose1 = algorithm::computeRelativePose( refFrame, curFrame );
+    for ( auto& feature : refFrame->m_features )
+    {
+        if ( feature->m_point != nullptr )
+        {
+            auto& point               = feature->m_point;
+            const auto& pixelPosition = feature->m_pixelPosition;
+            // const int32_t k           = static_cast< int32_t >( pixelPosition.y() ) / m_grid.m_cellSize * m_grid.m_gridCols +
+            //                   static_cast< int32_t >( pixelPosition.x() ) / m_grid.m_cellSize;
+            // if ( visGrid[ k ] == false )
+            // {
+            Eigen::Vector2d candidatePixelPosition = curFrame->world2image( point->m_position );
+            // double error                           = m_alignment->align( feature, curFrame, candidatePixelPosition );
+            // if ( curFrame->m_camera->isInFrame( candidatePixelPosition, 4 ) && error < 30 )
+            // {
+            //     std::shared_ptr< Feature > newFeature = std::make_shared< Feature >( curFrame, candidatePixelPosition, 0 );
+            //     curFrame->addFeature( newFeature );
+            //     // Here we add a reference in the feature to the 3D point, the other way
+            //     // round is only done if this frame is selected as keyframe.
+            //     newFeature->setPoint( point );
+            //     point->addFeature( newFeature );
+            //     Map_Log( DEBUG ) << "feature accepted with error: " << error;
+            //     visGrid[ k ] = true;
+            // }
+
+            refPoints.emplace_back( cv::Point2f( static_cast< float >( feature->m_pixelPosition.x() ),
+                                                    static_cast< float >( feature->m_pixelPosition.y() ) ) );
+            curPoints.emplace_back(
+                cv::Point2f( static_cast< float >( candidatePixelPosition.x() ), static_cast< float >( candidatePixelPosition.y() ) ) );
+            selectedPoints.push_back( point );
+            // }
+        }
+    }
+
+    {
+        const cv::Mat& refImg         = refFrame->m_imagePyramid.getBaseImage();
+        const cv::Mat& curImg         = curFrame->m_imagePyramid.getBaseImage();
+        const uint64_t refObservation = refPoints.size();
+
+        std::vector< uchar > status;
+        status.reserve( refObservation );
+        std::vector< float > errors;
+        errors.reserve( refObservation );
+        const int maxIteration    = 30;
+        const double epsilonError = 1e-4;
+
+        cv::TermCriteria termcrit( cv::TermCriteria::COUNT + cv::TermCriteria::EPS, maxIteration, epsilonError );
+        cv::calcOpticalFlowPyrLK( refImg, curImg, refPoints, curPoints, status, errors, cv::Size( 11, 11 ), 3, termcrit,
+                                  cv::OPTFLOW_USE_INITIAL_FLOW );
+
+        uint32_t cntAdded = 0;
+        for ( std::size_t i( 0 ); i < curPoints.size(); i++ )
+        {
+            if ( status[ i ] == true )
+            {
+                const Eigen::Vector2d pixelPosition( curPoints[ i ].x, curPoints[ i ].y );
+                const int32_t k = static_cast< int32_t >( pixelPosition.y() ) / m_grid.m_cellSize * m_grid.m_gridCols +
+                                    static_cast< int32_t >( pixelPosition.x() ) / m_grid.m_cellSize;
+                if ( curFrame->m_camera->isInFrame( pixelPosition, 4 ) && visGrid[ k ] == false )
+                {
+                    std::shared_ptr< Feature > newFeature =
+                      std::make_shared< Feature >( curFrame, Eigen::Vector2d( pixelPosition.x(), pixelPosition.y() ), 0 );
+                    curFrame->addFeature( newFeature );
+                    // Here we add a reference in the feature to the 3D point, the other way
+                    // round is only done if this frame is selected as keyframe.
+                    newFeature->setPoint( selectedPoints[ i ] );
+                    selectedPoints[ i ]->addFeature( newFeature );
+                    visGrid[ k ] = true;
+                    cntAdded++;
+                }
+            }
+        }
+        Map_Log( DEBUG ) << "number of added with last frame " << cntAdded;
+    }
+
+    refPoints.clear();
+    refPoints.reserve( 200 );
+    curPoints.clear();
+    curPoints.reserve( 200 );
+    selectedPoints.clear();
+
+    for ( auto& feature : refFrame->m_lastKeyframe->m_features )
+    {
+        if ( feature->m_point != nullptr )
+        {
+            auto& point               = feature->m_point;
+            if (point->findFrame (curFrame) == false)
+            {
+                const auto& pixelPosition = feature->m_pixelPosition;
+                // const int32_t k           = static_cast< int32_t >( pixelPosition.y() ) / m_grid.m_cellSize * m_grid.m_gridCols +
+                //                   static_cast< int32_t >( pixelPosition.x() ) / m_grid.m_cellSize;
+                // if ( visGrid[ k ] == false )
+                // {
+                Eigen::Vector2d candidatePixelPosition = curFrame->world2image( point->m_position );
+                // double error                           = m_alignment->align( feature, curFrame, candidatePixelPosition );
+                // if ( curFrame->m_camera->isInFrame( candidatePixelPosition, 4 ) && error < 50 )
+                // {
+                //     std::shared_ptr< Feature > newFeature = std::make_shared< Feature >( curFrame, candidatePixelPosition, 0 );
+                //     curFrame->addFeature( newFeature );
+                //     // Here we add a reference in the feature to the 3D point, the other way
+                //     // round is only done if this frame is selected as keyframe.
+                //     newFeature->setPoint( point );
+                //     point->addFeature( newFeature );
+                //     Map_Log( DEBUG ) << "feature accepted with error: " << error;
+                //     visGrid[ k ] = true;
+                // }
+                refPoints.emplace_back( cv::Point2f( static_cast< float >( feature->m_pixelPosition.x() ),
+                                                        static_cast< float >( feature->m_pixelPosition.y() ) ) );
+                curPoints.emplace_back(
+                    cv::Point2f( static_cast< float >( candidatePixelPosition.x() ), static_cast< float >( candidatePixelPosition.y() ) ) );
+                selectedPoints.push_back( point );
+            }
+        }
+    }
+
+    {
+        const cv::Mat& refImg         = refFrame->m_lastKeyframe->m_imagePyramid.getBaseImage();
+        const cv::Mat& curImg         = curFrame->m_imagePyramid.getBaseImage();
+        const uint64_t refObservation = refPoints.size();
+
+        std::vector< uchar > status;
+        status.reserve( refObservation );
+        std::vector< float > errors;
+        errors.reserve( refObservation );
+        const int maxIteration    = 30;
+        const double epsilonError = 1e-4;
+
+        cv::TermCriteria termcrit( cv::TermCriteria::COUNT + cv::TermCriteria::EPS, maxIteration, epsilonError );
+        cv::calcOpticalFlowPyrLK( refImg, curImg, refPoints, curPoints, status, errors, cv::Size( 11, 11 ), 3, termcrit,
+                                  cv::OPTFLOW_USE_INITIAL_FLOW );
+
+        uint32_t cntAdded = 0;
+        for ( std::size_t i( 0 ); i < curPoints.size(); i++ )
+        {
+            if ( status[ i ] == true )
+            {
+                const Eigen::Vector2d pixelPosition( curPoints[ i ].x, curPoints[ i ].y );
+                const int32_t k = static_cast< int32_t >( pixelPosition.y() ) / m_grid.m_cellSize * m_grid.m_gridCols +
+                                    static_cast< int32_t >( pixelPosition.x() ) / m_grid.m_cellSize;
+                if ( curFrame->m_camera->isInFrame( pixelPosition, 4 ) && visGrid[ k ] == false )
+                {
+                    std::shared_ptr< Feature > newFeature =
+                      std::make_shared< Feature >( curFrame, Eigen::Vector2d( pixelPosition.x(), pixelPosition.y() ), 0 );
+                    curFrame->addFeature( newFeature );
+                    // Here we add a reference in the feature to the 3D point, the other way
+                    // round is only done if this frame is selected as keyframe.
+                    newFeature->setPoint( selectedPoints[ i ] );
+                    selectedPoints[ i ]->addFeature( newFeature );
+                    visGrid[ k ] = true;
+                    cntAdded++;
+                }
+            }
+        }
+        Map_Log( DEBUG ) << "number of added with last last frame " << cntAdded;
+    }
+
+    /*
+
     // Identify those Keyframes which share a common field of view.
     std::vector< KeyframeDistance > closeKeyframes;
-    getCloseKeyframes( curFrame, closeKeyframes );
-    // closeKeyframes.push_back( std::make_pair( refFrame, ( curFrame->m_absPose.translation() - refFrame->m_absPose.translation() ).norm() ) );
-    // closeKeyframes.push_back( std::make_pair( refFrame->m_lastKeyframe, ( curFrame->m_absPose.translation() - refFrame->m_lastKeyframe->m_absPose.translation() ).norm() ) );
+    // getCloseKeyframes( curFrame, closeKeyframes );
+    closeKeyframes.push_back(
+      std::make_pair( refFrame, ( curFrame->m_absPose.translation() - refFrame->m_absPose.translation() ).norm() ) );
+    closeKeyframes.push_back( std::make_pair(
+      refFrame->m_lastKeyframe, ( curFrame->m_absPose.translation() - refFrame->m_lastKeyframe->m_absPose.translation() ).norm() ) );
 
     // auto compare = [] (const std::pair< const std::shared_ptr< Frame >&, double >& lhs, const std::pair< const std::shared_ptr< Frame >&,
     // double >& rhs) -> bool {
@@ -253,7 +428,7 @@ void Map::reprojectMap( const std::shared_ptr< Frame >& refFrame, std::shared_pt
     {
         const auto& kfDistance = closeKeyframes[ i ];
         overlapKeyFrames.push_back( std::make_pair( kfDistance.first, 0 ) );
-        Map_Log (DEBUG) << "Frame id " << kfDistance.first->m_id << " projected to find the features";
+        Map_Log( DEBUG ) << "Frame id " << kfDistance.first->m_id << " projected to find the features";
         // project 3d points from closeKeyFrame into new frame. If we found some projected points, we update the frame ID of 3d point.
         for ( const auto& feature : kfDistance.first->m_features )
         {
@@ -286,6 +461,7 @@ void Map::reprojectMap( const std::shared_ptr< Frame >& refFrame, std::shared_pt
             break;
         }
     }
+    */
 }
 
 // TODO: check with const point
@@ -332,13 +508,15 @@ bool Map::reprojectCell( std::shared_ptr< CandidateList >& candidates, std::shar
         //     continue;
         // }
 
-        // Map_Log (DEBUG) << "pixel pos: " << candidate.m_pixelPosition.transpose();
-        // double error    = m_alignment->align( candidate.m_refFeature, frame, candidate.m_pixelPosition );
+        Eigen::Vector2d candidatePixelPosition = frame->world2image( point->m_position );
+        // Map_Log( DEBUG ) << "pixel pos: " << candidatePixelPosition.transpose()
+        //                  << ", init error: " << algorithm::computePatchError( candidate.m_feature, frame, candidatePixelPosition, 7 );
+        // double error = m_alignment->align( candidate.m_feature, frame, candidatePixelPosition );
         // bool foundMatch = error < 50.0 ? true : false;
-        // Map_Log (DEBUG) << "error: " << error << ", update pixel pos: " << candidate.m_pixelPosition.transpose() << ", foundMatch: " <<
-        // foundMatch;
-        const Eigen::Vector2d candidatePixelPosition = frame->world2image( point->m_position );
-        // TODO: check the projected area with reference and compute the error
+        // Map_Log( DEBUG ) << "error: " << error << ", update pixel pos: " << candidatePixelPosition.transpose()
+        //                  << ", final error: " << algorithm::computePatchError( candidate.m_feature, frame, candidatePixelPosition, 7 );
+
+        // // TODO: check the projected area with reference and compute the error
 
         // if ( foundMatch == false )
         // {
@@ -367,6 +545,7 @@ bool Map::reprojectCell( std::shared_ptr< CandidateList >& candidates, std::shar
         // round is only done if this frame is selected as keyframe.
         feature->setPoint( point );
         point->addFeature( feature );
+        Map_Log( DEBUG ) << "feature accepted";
 
         // Maximum one point per cell.
         return true;

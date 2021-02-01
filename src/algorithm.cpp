@@ -162,6 +162,71 @@ bool algorithm::computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
     return false;
 }
 
+void algorithm::sampsonCorrection( std::shared_ptr< Frame >& refFrame, std::shared_ptr< Frame >& curFrame, const Eigen::Matrix3d& F )
+{
+    TIMED_FUNC( timerSampsonCorrection );
+
+    // Used variables
+    double sampson_factor    = 0.0;
+    double sampson_error     = 0.0;
+    double upper_factor_part = 0.0;
+    double lower_factor_part = 0.0;
+
+    double t0 = 0.0;
+    double t1 = 0.0;
+    double t2 = 0.0;
+    double t3 = 0.0;
+
+    Eigen::Vector2d x0;
+    Eigen::Vector2d x1;
+
+    Eigen::Vector2d x0_corr;
+    Eigen::Vector2d x1_corr;
+
+    const std::size_t featureSize = refFrame->numberObservation();
+
+    for ( std::size_t id( 0 ); id < featureSize; id++ )
+    {
+        /* Get points from image Im0 and Im1 */
+        x0 = refFrame->m_features[ id ]->m_pixelPosition;
+
+        x1 = curFrame->m_features[ id ]->m_pixelPosition;
+
+        /* See Multi-view geometry, p.315, Section 12.4 */
+        /* Compute x1^T * F * x0 */
+        upper_factor_part = ( x0.x() * ( ( x1.x() * F( 0, 0 ) ) + ( x1.y() * F( 1, 0 ) ) + F( 2, 0 ) ) ) +
+                            ( x0.y() * ( ( x1.x() * F( 0, 1 ) ) + ( x1.y() * F( 1, 1 ) ) + F( 2, 1 ) ) ) + ( x1.x() * F( 0, 2 ) ) +
+                            ( x1.y() * F( 1, 2 ) ) + F( 2, 2 );
+
+        /* Parts of lower term */
+        t0 = ( ( F( 0, 0 ) * x0.x() ) + ( F( 0, 1 ) * x0.y() ) + F( 0, 2 ) );
+
+        t1 = ( ( F( 1, 0 ) * x0.x() ) + ( F( 1, 1 ) * x0.y() ) + F( 1, 2 ) );
+
+        t2 = ( ( F( 0, 0 ) * x1.x() ) + ( F( 1, 0 ) * x1.y() ) + F( 2, 0 ) );
+
+        t3 = ( ( F( 0, 1 ) * x1.x() ) + ( F( 1, 1 ) * x1.y() ) + F( 2, 1 ) );
+
+        lower_factor_part = ( ( t0 * t0 ) + ( t1 * t1 ) + ( t2 * t2 ) + ( t3 * t3 ) );
+
+        /* Compute Sampson factor */
+        sampson_factor = upper_factor_part / lower_factor_part;
+
+        /* Compute Sampson error (see Multi-view geometry, p.287, Eq. 11.9) */
+        sampson_error = (sampson_factor)*upper_factor_part;
+
+        /* Corrected point coordinates */
+        x0_corr.x() = x0.x() - ( sampson_factor * t2 );
+        x0_corr.y() = x0.y() - ( sampson_factor * t3 );
+        x1_corr.x() = x1.x() - ( sampson_factor * t0 );
+        x1_corr.y() = x1.y() - ( sampson_factor * t1 );
+
+        /* Assign the corrected values to the reference and current frame */
+        refFrame->m_features[ id ]->m_pixelPosition = x0_corr;
+        curFrame->m_features[ id ]->m_pixelPosition = x1_corr;
+    }
+}
+
 // 9.6.2 Extraction of cameras from the essential matrix, multi view geometry
 // https://github.com/opencv/opencv/blob/a74fe2ec01d9218d06cb7675af633fc3f409a6a2/modules/calib3d/src/five-point.cpp
 void algorithm::decomposeEssentialMatrix( const Eigen::Matrix3d& E, Eigen::Matrix3d& R1, Eigen::Matrix3d& R2, Eigen::Vector3d& t )
@@ -196,12 +261,6 @@ bool algorithm::recoverPose( const Eigen::Matrix3d& E,
     Eigen::Matrix3d R2;
     Eigen::Vector3d tm;
     decomposeEssentialMatrix( E, R1, R2, tm );
-    // Algorithm_Log( DEBUG ) << "R1: " << R1.format( utils::eigenFormat() );
-    // Algorithm_Log( DEBUG ) << "R2: " << R2.format( utils::eigenFormat() );
-    // Algorithm_Log( DEBUG ) << "tm: " << tm.format( utils::eigenFormat() );
-
-    // Eigen::Vector2d topLeftCorner(1.0, 1.0);
-    // Eigen::Vector2d downRightCorner(refFrame.m_camera->width(), refFrame.m_camera->height());
 
     std::vector< Sophus::SE3d, Eigen::aligned_allocator< Sophus::SE3d > > poses;
     poses.reserve( 4 );
@@ -212,35 +271,81 @@ bool algorithm::recoverPose( const Eigen::Matrix3d& E,
     poses.emplace_back( Sophus::SE3d( temp.toRotationMatrix(), tm ) );
     poses.emplace_back( Sophus::SE3d( temp.toRotationMatrix(), -tm ) );
 
-    Eigen::Vector3d point1;
-    Eigen::Vector3d point2;
-    for ( std::size_t i( 0 ); i < 4; i++ )
+    int32_t winnerIndex      = -1;
+    uint32_t numberProjected = 0;
+
+    for ( int32_t i( 0 ); i < 4; i++ )
     {
+        Eigen::Vector3d point1;
+        Eigen::Vector3d point2;
+
         // T{K}_{W} = T{K}_{K-1} * T{K-1}_{W}
         curFrame->m_absPose = poses[ i ] * refFrame->m_absPose;
 
-        triangulatePointDLT( refFrame, curFrame, refFrame->m_features[ 0 ]->m_pixelPosition, curFrame->m_features[ 0 ]->m_pixelPosition,
-                             point1 );
-        triangulatePointDLT( refFrame, curFrame, refFrame->m_features[ 1 ]->m_pixelPosition, curFrame->m_features[ 1 ]->m_pixelPosition,
-                             point2 );
-        Eigen::Vector3d refProject1 = refFrame->world2camera( point1 );
-        Eigen::Vector3d curProject1 = curFrame->world2camera( point1 );
-        Eigen::Vector3d refProject2 = refFrame->world2camera( point2 );
-        Eigen::Vector3d curProject2 = curFrame->world2camera( point2 );
+        uint32_t numObserves = (uint32_t)curFrame->numberObservation();
+        Eigen::MatrixXd pointsWorld( 3, numObserves );
+        Eigen::MatrixXd pointsCurCamera( 3, numObserves );
+        Eigen::MatrixXd pointsRefCamera( 3, numObserves );
 
-        // Algorithm_Log (DEBUG) << "refProject1: " << refProject1.transpose();
-        // Algorithm_Log (DEBUG) << "refProject2: " << refProject2.transpose();
-        // Algorithm_Log (DEBUG) << "curProject1: " << curProject1.transpose();
-        // Algorithm_Log (DEBUG) << "curProject2: " << curProject2.transpose();
-
-        if ( refProject1.z() > 0 && refProject2.z() > 0 && curProject1.z() > 0 && curProject2.z() > 0 )
+        // compute the 3D points
+        algorithm::triangulate3DWorldPoints( refFrame, curFrame, pointsWorld );
+        algorithm::transferPointsWorldToCam( refFrame, pointsWorld, pointsCurCamera );
+        algorithm::transferPointsWorldToCam( curFrame, pointsWorld, pointsRefCamera );
+        uint32_t cntProjected = 0;
+        for ( uint32_t j( 0 ); j < numObserves; j++ )
         {
-            R = poses[ i ].rotationMatrix();
-            t = poses[ i ].translation();
-            return true;
+            if ( pointsCurCamera.col( j ).z() > 0 && pointsRefCamera.col( j ).z() > 0 )
+            {
+                cntProjected++;
+            }
+        }
+
+        Algorithm_Log (DEBUG) << poses[i].params().transpose() << ", num: " << cntProjected;
+        if ( cntProjected > numberProjected )
+        {
+            numberProjected = cntProjected;
+            winnerIndex     = i;
         }
     }
+
+    if ( winnerIndex > -1 )
+    {
+        R                        = poses[ winnerIndex ].rotationMatrix();
+        t                        = poses[ winnerIndex ].translation();
+        curFrame->m_absPose = poses[ winnerIndex ];
+        return true;
+    }
     return false;
+
+    // Eigen::Vector3d point1;
+    // Eigen::Vector3d point2;
+    // for ( std::size_t i( 0 ); i < 4; i++ )
+    // {
+    //     // T{K}_{W} = T{K}_{K-1} * T{K-1}_{W}
+    //     curFrame->m_absPose = poses[ i ] * refFrame->m_absPose;
+
+    //     triangulatePointDLT( refFrame, curFrame, refFrame->m_features[ 0 ]->m_pixelPosition, curFrame->m_features[ 0 ]->m_pixelPosition,
+    //                          point1 );
+    //     triangulatePointDLT( refFrame, curFrame, refFrame->m_features[ 1 ]->m_pixelPosition, curFrame->m_features[ 1 ]->m_pixelPosition,
+    //                          point2 );
+    //     Eigen::Vector3d refProject1 = refFrame->world2camera( point1 );
+    //     Eigen::Vector3d curProject1 = curFrame->world2camera( point1 );
+    //     Eigen::Vector3d refProject2 = refFrame->world2camera( point2 );
+    //     Eigen::Vector3d curProject2 = curFrame->world2camera( point2 );
+
+    //     // Algorithm_Log (DEBUG) << "refProject1: " << refProject1.transpose();
+    //     // Algorithm_Log (DEBUG) << "refProject2: " << refProject2.transpose();
+    //     // Algorithm_Log (DEBUG) << "curProject1: " << curProject1.transpose();
+    //     // Algorithm_Log (DEBUG) << "curProject2: " << curProject2.transpose();
+
+    //     if ( refProject1.z() > 0 && refProject2.z() > 0 && curProject1.z() > 0 && curProject2.z() > 0 )
+    //     {
+    //         R = poses[ i ].rotationMatrix();
+    //         t = poses[ i ].translation();
+    //         return true;
+    //     }
+    // }
+    // return false;
 }
 
 // void algorithm::templateMatching( const std::shared_ptr< Frame >& refFrame,
@@ -336,8 +441,10 @@ void algorithm::applyAffineWarp( const std::shared_ptr< Frame >& frame,
     const cv::Mat& img = frame->m_imagePyramid.getBaseImage();
     const algorithm::MapXRowConst imgEigen( img.ptr< uint8_t >(), img.rows, img.cols );
 
-    uint32_t idx = 0;
-    if ( frame->m_camera->isInFrame( location, boundary ) )
+    uint32_t idx                = 0;
+    const Eigen::Vector2d bound = affineWarp * Eigen::Vector2d( halfPatchSize, halfPatchSize );
+    const double maxBoundary    = std::ceil( std::max( std::fabs( bound.x() ), std::fabs( bound.y() ) ) ) + 2;
+    if ( frame->m_camera->isInFrame( location, maxBoundary ) )
     {
         for ( int32_t i( -halfPatchSize ); i <= halfPatchSize; i++ )
         {
@@ -454,7 +561,7 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
 
     Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 > refPatchIntensities( patchArea );
     refPatchIntensities.setZero();
-    algorithm::applyAffineWarp( refFrame, refFeature->m_pixelPosition, halfPatchSize, Eigen::Matrix2d::Identity(), halfPatchSize + 1,
+    algorithm::applyAffineWarp( refFrame, refFeature->m_pixelPosition, halfPatchSize, Eigen::Matrix2d::Identity(), halfPatchSize + 2,
                                 refPatchIntensities );
 
     if ( normEpipolar < 2.0 )
@@ -709,6 +816,66 @@ double algorithm::computeStructureError( const std::shared_ptr< Point >& point )
         errors += ( feature->m_pixelPosition - projectPoint ).norm();
     }
     return errors;
+}
+
+double algorithm::computeStructureError( const std::shared_ptr< Frame >& frame )
+{
+    double errors = 0;
+    for ( const auto& feature : frame->m_features )
+    {
+        if (feature->m_point != nullptr)
+        {
+            const Eigen::Vector2d projectPoint = frame->world2image( feature->m_point->m_position );
+            errors += ( feature->m_pixelPosition - projectPoint ).norm();
+        }
+    }
+    return errors;
+}
+
+double algorithm::computePatchError( const std::shared_ptr< Feature >& refFeature,
+                                     const std::shared_ptr< Frame >& curFrame,
+                                     const Eigen::Vector2d& curPosition,
+                                     const int32_t patchSize )
+{
+    const int32_t halfPatchSize = patchSize / 2;
+    const int32_t border        = halfPatchSize + 2;
+
+    const std::shared_ptr< Frame >& refFrame = refFeature->m_frame;
+    const cv::Mat& refImage                  = refFrame->m_imagePyramid.getGradientAtLevel( 0 );
+    const algorithm::MapXRowConst refImageEigen( refImage.ptr< uint8_t >(), refImage.rows, refImage.cols );
+
+    const cv::Mat& curImage = curFrame->m_imagePyramid.getGradientAtLevel( 0 );
+    const algorithm::MapXRowConst curImageEigen( curImage.ptr< uint8_t >(), curImage.rows, curImage.cols );
+
+    const Eigen::Vector2d refPosition = refFeature->m_pixelPosition;
+
+    if ( curFrame->m_camera->isInFrame( curPosition, border ) == false )
+    {
+        return -1.0;
+    }
+
+    double totalError = 0.0;
+    uint32_t cnt = 0;
+    const int32_t beginIdx = -halfPatchSize;
+    const int32_t endIdx   = halfPatchSize;
+    for ( int32_t y{ beginIdx }; y <= endIdx; y++ )
+    {
+        for ( int32_t x{ beginIdx }; x <= endIdx; x++, cnt++ )
+        {
+            const double refRowIdx       = refPosition.y() + y;
+            const double refColIdx       = refPosition.x() + x;
+            const double refPixelValue = algorithm::bilinearInterpolationDouble( refImageEigen, refColIdx, refRowIdx );
+
+            const double curRowIdx       = curPosition.y() + y;
+            const double curColIdx       = curPosition.x() + x;
+            const double curPixelValue = algorithm::bilinearInterpolationDouble( curImageEigen, curColIdx, curRowIdx );
+
+
+            totalError += std::abs( curPixelValue - refPixelValue);
+        }
+    }
+
+    return totalError/cnt;
 }
 
 uint32_t algorithm::computeNumberProjectedPoints( const std::shared_ptr< Frame >& curFrame )

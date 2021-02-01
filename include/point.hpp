@@ -51,6 +51,7 @@ public:
     void removeFrame( std::shared_ptr< Frame >& frame );
     const std::shared_ptr< Feature >& findFeature( const std::shared_ptr< Frame >& frame ) const;
     std::shared_ptr< Feature >& findFeature( const std::shared_ptr< Frame >& frame );
+    bool findFrame (const std::shared_ptr< Frame >& frame) const;
     void computeNormal();
     std::size_t numberObservation() const;
     bool getCloseViewObservation( const Eigen::Vector3d& poseInWorld, std::shared_ptr< Feature >& feature ) const;

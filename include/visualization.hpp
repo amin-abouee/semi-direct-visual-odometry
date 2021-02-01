@@ -41,11 +41,11 @@ const std::unordered_map< std::string, cv::Scalar > colors{
 
 namespace plt = matplotlibcpp;
 
-auto inline drawingCircle = []( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) -> void {
+auto inline drawingCircle = []( cv::Mat& img, const Eigen::Vector2d& point, const uint32_t size, const cv::Scalar& color ) -> void {
     cv::circle( img, cv::Point2d( point.x(), point.y() ), size, color );
 };
 
-auto inline drawingRectangle = []( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) -> void {
+auto inline drawingRectangle = []( cv::Mat& img, const Eigen::Vector2d& point, const uint32_t size, const cv::Scalar& color ) -> void {
     cv::rectangle( img, cv::Point2d( point.x() - size, point.y() - size ), cv::Point2d( point.x() + size, point.y() + size ), color );
 };
 
@@ -69,10 +69,19 @@ void stickTwoImageHorizontally( const cv::Mat& refImg, const cv::Mat& curImg, cv
 void featurePoints(
   cv::Mat& img,
   const std::shared_ptr< Frame >& frame,
-  const u_int32_t radiusSize,
+  const uint32_t radiusSize,
   const std::string& color,
   const bool justFeatureWithoutVisiblePoint,
-  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >&
+  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const uint32_t size, const cv::Scalar& color ) >&
+    drawingFunctor );
+
+void featurePointsAndProjection(
+  cv::Mat& img,
+  const std::shared_ptr< Frame >& frame,
+  const uint32_t radiusSize,
+  const std::string& colorFeaturePoint,
+  const std::string& colorProjection,
+  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const uint32_t size, const cv::Scalar& color ) >&
     drawingFunctor );
 
 /// visualize feature points in any input image (for instance on HSV image)
@@ -84,49 +93,62 @@ void imageGrid( cv::Mat& img, const int32_t gridSize, const std::string& color )
 ///@param frame
 ///@param radiusSize
 ///@param color
-void colormapDepth( cv::Mat& img, const std::shared_ptr< Frame >& frame, const u_int32_t radiusSize, const std::string& color );
+void colormapDepth( cv::Mat& img, const std::shared_ptr< Frame >& frame, const uint32_t radiusSize);
 
 void projectPointsWithRelativePose(
   cv::Mat& img,
   const std::shared_ptr< Frame >& refFrame,
   const std::shared_ptr< Frame >& curFrame,
-  const u_int32_t radiusSize,
+  const uint32_t radiusSize,
   const std::string& color,
-  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >&
+  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const uint32_t size, const cv::Scalar& color ) >&
     drawingFunctor );
 
 void projectLinesWithRelativePose(
   cv::Mat& img,
   const std::shared_ptr< Frame >& refFrame,
   const std::shared_ptr< Frame >& curFrame,
-  const uint32_t rangeInPixels,
-  const std::string& color,
+  const uint32_t radiusSizeEpipole,
+  const std::string& colorEpipole,
+  const std::string& colorEpipolarLine,
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
     drawingFunctor );
 
 void projectLinesWithF(
   cv::Mat& img,
   const std::shared_ptr< Frame >& refFrame,
+  const std::shared_ptr< Frame >& curFrame,
   const Eigen::Matrix3d& F,
-  const uint32_t rangeInPixels,
+  const Eigen::Vector2d& C,
   const std::string& color,
   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
     drawingFunctor );
 
-void epipole( cv::Mat& img,
-              const std::shared_ptr< Frame >& frame,
-              const u_int32_t radiusSize,
-              const std::string& color,
-              const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >&
-                drawingFunctor );
+// void epipole( cv::Mat& img,
+//               const std::shared_ptr< Frame >& frame,
+//               const uint32_t radiusSize,
+//               const std::string& color,
+//               const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const uint32_t size, const cv::Scalar& color ) >&
+//                 drawingFunctor );
+
+// void epipolarLines(
+//   cv::Mat& img,
+//   const std::shared_ptr< Frame >& refFrame,
+//   const std::shared_ptr< Frame >& curFrame,
+//   const Eigen::Matrix3d& F,
+//   const uint32_t radiusSize,
+//   const std::string& colorFeatures,
+//   const std::string& lineEpipolars,
+//   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const uint32_t size, const cv::Scalar& color ) >&
+//     drawingFeatureFunctor );
 
 void drawCandidate(
   cv::Mat& img,
   const std::shared_ptr< Frame >& frame,
   const std::shared_ptr< Map >& map,
-  const u_int32_t radiusSize,
+  const uint32_t radiusSize,
   const std::string& color,
-  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const u_int32_t size, const cv::Scalar& color ) >&
+  const std::function< void( cv::Mat& img, const Eigen::Vector2d& point, const uint32_t size, const cv::Scalar& color ) >&
     drawingFunctor );
 
 cv::Mat referencePatches( const cv::Mat& patches,
@@ -149,7 +171,7 @@ void drawHistogram( std::map< std::string, std::any >& pack );
 //   cv::Mat& img,
 //   const std::shared_ptr< Frame >& frame,
 //   const std::vector< MixedGaussianFilter >& depthFilters,
-//   const u_int32_t radiusSize,
+//   const uint32_t radiusSize,
 //   const std::string& color,
 //   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
 //     drawingFunctor );
@@ -159,7 +181,7 @@ void drawHistogram( std::map< std::string, std::any >& pack );
 //   const std::shared_ptr< Frame >& frame,
 //   const std::vector< MixedGaussianFilter >& depthFilters,
 //   const std::vector< double >& updatedDepths,
-//   const u_int32_t radiusSize,
+//   const uint32_t radiusSize,
 //   const std::string& color,
 //   const std::function< void( cv::Mat& img, const Eigen::Vector2d& point1, const Eigen::Vector2d& point2, const cv::Scalar& color ) >&
 //     drawingFunctor );

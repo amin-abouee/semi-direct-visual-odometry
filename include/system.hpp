@@ -70,6 +70,7 @@ private:
     std::shared_ptr< Map > m_map;
     std::shared_ptr< ImageAlignment > m_alignment;
     std::shared_ptr< BundleAdjustment > m_bundler;
+    Sophus::SE3d predictionRelativePose;
     Status m_systemStatus;
 };
 

@@ -27,6 +27,14 @@ bool computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
                              const uint32_t thresholdCorrespondingPoints,
                              Eigen::Matrix3d& E );
 
+/// @brief Sampson correction. Minimize this function x'*F*x=0 in order to improve the 3D Triangulation
+///
+/// @param refFrame
+/// @param curFrame
+/// @param F Fundamental Matrix
+/// @return void
+void sampsonCorrection( std::shared_ptr< Frame >& refFrame, std::shared_ptr< Frame >& curFrame, const Eigen::Matrix3d& F );
+
 // https://paperpile.com/app/p/5bafd339-43e6-0f8e-b976-951e527f7a45
 // Multi view geometry, Result 9.19, page 259
 void decomposeEssentialMatrix( const Eigen::Matrix3d& E, Eigen::Matrix3d& R1, Eigen::Matrix3d& R2, Eigen::Vector3d& t );
@@ -110,6 +118,13 @@ bool depthFromTriangulation( const Sophus::SE3d& relativePose,
 Sophus::SE3d computeRelativePose( const std::shared_ptr< Frame >& refFrame, const std::shared_ptr< Frame >& curFrame );
 
 double computeStructureError( const std::shared_ptr< Point >& point );
+
+double computeStructureError( const std::shared_ptr< Frame >& frame );
+
+double computePatchError( const std::shared_ptr< Feature >& refFeature,
+                          const std::shared_ptr< Frame >& curFrame,
+                          const Eigen::Vector2d& curPosition,
+                          const int32_t patchSize );
 
 uint32_t computeNumberProjectedPoints( const std::shared_ptr< Frame >& curFrame );
 
