@@ -116,9 +116,9 @@ uint32_t BundleAdjustment::computeResidualsPose( const std::shared_ptr< Frame >&
         // JtWr BUt if we take r = I(W) - T(x) a residual error, then (delta p) = (JtWT).inverse() * JtWr
         // ***
 
-        m_optimizer.m_residuals( cntTotalProjectedPixels++ ) = error.x();
-        m_optimizer.m_residuals( cntTotalProjectedPixels++ )   = error.y();
-        m_optimizer.m_residuals( cntTotalProjectedPixels )   = error.z();
+        m_optimizer.m_residuals( cntTotalProjectedPixels++ ) = std::abs(error.x());
+        m_optimizer.m_residuals( cntTotalProjectedPixels++ )   = std::abs(error.y());
+        m_optimizer.m_residuals( cntTotalProjectedPixels )   =  std::abs(error.z());
         // m_optimizer.m_residuals( cntFeature * m_patchArea + cntPixel ) = static_cast< double >( *pixelPtr - curPixelValue);
         m_optimizer.m_visiblePoints( cntTotalProjectedPixels ) = true;
 
@@ -614,6 +614,100 @@ void BundleAdjustment::localBA( std::shared_ptr< Map >& map, const double reproj
     // }
 
     // Adjustment_Log( DEBUG ) << "number of removed points: " << removedPoints;
+}
+
+void BundleAdjustment::oneFrameWithScene( std::shared_ptr< Frame >& frame, const double reprojectionError )
+{
+    // init g2o
+    g2o::SparseOptimizer optimizer;
+    setupG2o( optimizer );
+
+    // std::vector< std::shared_ptr< Point > > points;
+    // std::vector< std::shared_ptr< Frame > > neighborsKeyframe;
+    uint32_t verticesIdx = 0;
+    uint32_t cntFrames   = 0;
+    uint32_t cntPoints   = 0;
+
+    // New keyframe vertex 1: This keyframe is set to fixed!
+    g2oFrameSE3* vertexFrame = createG2oFrameSE3( frame, verticesIdx++, false );
+    frame->m_optG2oFrame     = vertexFrame;
+    optimizer.addVertex( vertexFrame );
+    cntFrames++;
+
+    for ( auto& feature : frame->m_features )
+    {
+        if ( feature->m_point != nullptr && feature->m_point->numberObservation() > 1 )
+        {
+            auto& point = feature->m_point;
+
+            // Create point vertex
+            g2oPoint* vertexPoint = createG2oPoint( point->m_position, verticesIdx++, false );
+            point->m_optG2oPoint  = vertexPoint;
+            optimizer.addVertex( vertexPoint );
+            cntPoints++;
+
+            // Add edges
+            for ( auto& ptFeature : point->m_features )
+            {
+                if ( ptFeature->m_point == nullptr )
+                {
+                    Adjustment_Log( WARNING ) << "feature has no point";
+                }
+
+                if ( ptFeature->m_frame->m_optG2oFrame == nullptr )
+                {
+                    g2oFrameSE3* vertexFrame        = createG2oFrameSE3( ptFeature->m_frame, verticesIdx++, true );
+                    ptFeature->m_frame->m_optG2oFrame = vertexFrame;
+                    optimizer.addVertex( vertexFrame );
+                    cntFrames++;
+                }
+
+                // create edge
+                g2oEdgeSE3* edge = createG2oEdgeSE3( feature->m_frame->m_optG2oFrame, vertexPoint, ptFeature->m_pixelPosition, true,
+                                                     reprojectionError, 1.0 );
+                optimizer.addEdge( edge );
+                verticesIdx++;
+            }
+        }
+    }
+
+    Adjustment_Log( DEBUG ) << "Number of frames: " << cntFrames << ", Number of points: " << cntPoints
+                            << ", Number of vertices: " << verticesIdx;
+
+    Adjustment_Log( DEBUG ) << "Graph for optimization has " << optimizer.vertices().size() << " vertices and " << optimizer.edges().size()
+                            << " edges";
+
+    // Optimization
+    double initError, finalError;
+    runSparseBAOptimizer( optimizer, 10, initError, finalError );
+
+    // Update keyframe positions. we don't need to check the first frame
+    frame->m_absPose.rotationMatrix() = frame->m_optG2oFrame->estimate().rotation().toRotationMatrix();
+    frame->m_absPose.translation()    = frame->m_optG2oFrame->estimate().translation();
+    frame->m_optG2oFrame                   = nullptr;
+
+    // Update mappoint positions
+    for ( auto& feature : frame->m_features )
+    {
+        if ( feature->m_point == nullptr )
+            continue;
+        feature->m_point->m_position    = feature->m_point->m_optG2oPoint->estimate();
+        feature->m_point->m_optG2oPoint = nullptr;
+    }
+
+    for ( auto& feature : frame->m_features )
+    {
+        if ( feature->m_point != nullptr )
+        {
+            for ( auto& feature : feature->m_point->m_features )
+            {
+                if ( feature->m_frame->m_optG2oFrame != nullptr )
+                {
+                    feature->m_frame->m_optG2oFrame = nullptr;
+                }
+            }
+        }
+    }
 }
 
 void BundleAdjustment::optimizeScene (std::shared_ptr< Frame >& frame, const double reprojectionError)

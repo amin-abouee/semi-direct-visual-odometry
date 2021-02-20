@@ -57,7 +57,11 @@ public:
     void threeViewBA( std::shared_ptr< Frame >& frame,
                     const double reprojectionError );
 
-    // void globalBa( std::shared_ptr< Map >& map );
+    /// @brief Geometric bundle adjustment for two frames
+    ///
+    /// @param[in] fstFrame Pointer to the first frame
+    /// @param[in] reprojectionError The maximum reprojection error as a threshold
+    void oneFrameWithScene( std::shared_ptr< Frame >& frame, const double reprojectionError );
 
 private:
     std::shared_ptr< PinholeCamera > m_camera;

@@ -29,11 +29,23 @@ double ImageAlignment::align( std::shared_ptr< Frame >& refFrame, std::shared_pt
 
     const auto& lastKF             = refFrame->m_lastKeyframe;
     const std::size_t numFeatures  = refFrame->numberObservation() + lastKF->numberObservation();
+
+    Alignment_Log (DEBUG) << "id ref: " << refFrame->m_id << ", size observation: " << refFrame->numberObservation();
+    Alignment_Log (DEBUG) << "id laskKF: " << lastKF->m_id << ", size observation: " << lastKF->numberObservation();
     const uint32_t numObservations = numFeatures * m_patchArea;
     m_refPatches.conservativeResize( numFeatures, m_patchArea );
     // m_refPatches                   = cv::Mat( numFeatures, m_patchArea, CV_32F );
     m_optimizer.initParameters( numObservations );
     m_refVisibility.resize( numFeatures, false );
+
+    Alignment_Log (DEBUG) << "numFeatures: " << numFeatures << ", numObservation: " << numObservations;
+    // Alignment_Log (DEBUG) << "patch size: " << m_refPatches.format( utils::eigenFormat() );
+    // Alignment_Log (DEBUG) << "optimizer m_jacobian: " << m_optimizer.m_jacobian.format( utils::eigenFormat() );
+    // Alignment_Log (DEBUG) << "optimizer m_residual: " << m_optimizer.m_residuals.format( utils::eigenFormat() );
+    // Alignment_Log (DEBUG) << "optimizer m_weights: " << m_optimizer.m_weights.format( utils::eigenFormat() );
+    // Alignment_Log (DEBUG) << "optimizer m_hessian: " << m_optimizer.m_hessian.format( utils::eigenFormat() );
+    // Alignment_Log (DEBUG) << "optimizer m_gradient: " << m_optimizer.m_gradient.format( utils::eigenFormat() );
+    // Alignment_Log (DEBUG) << "optimizer m_dx: " << m_optimizer.m_dx.format( utils::eigenFormat() );
 
     auto lambdaUpdateFunctor = [ this ]( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) -> void { update( pose, dx ); };
     double error             = 0.0;
@@ -43,23 +55,19 @@ double ImageAlignment::align( std::shared_ptr< Frame >& refFrame, std::shared_pt
     // when we wanna compare a uint32 with an int32, the c++ can not compare -1 with 0
     for ( int32_t level( m_maxLevel ); level >= m_minLevel; level-- )
     {
-        // t1 = std::chrono::high_resolution_clock::now();
+        Alignment_Log (DEBUG) << "level: " << level;
+
         computeJacobian( refFrame, level );
-        // timerJacobian += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1
-        // ).count();
 
         auto lambdaResidualFunctor = [ this, &refFrame, &curFrame, &level ]( Sophus::SE3d& pose ) -> uint32_t {
             return computeResiduals( refFrame, curFrame, level, pose );
         };
-        // t1 = std::chrono::high_resolution_clock::now();
         std::tie( optimizationStatus, error ) =
           m_optimizer.optimizeLM< Sophus::SE3d >( curFrame->m_absPose, lambdaResidualFunctor, nullptr, lambdaUpdateFunctor );
-        // timeroptimize += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1
-        // ).count();
+
+        Alignment_Log (DEBUG) << "level: " << level << ", error: " << error << ", status: " << int32_t(optimizationStatus);
     }
 
-    // curFrame->m_absPose = refFrame->m_absPose * relativePose;
-    // curFrame->m_absPose = absPose;
     Alignment_Log( DEBUG ) << "Computed Pose: " << curFrame->m_absPose.params().transpose();
 
     // int32_t featureCounter = 0;
@@ -96,6 +104,7 @@ void ImageAlignment::computeJacobian( const std::shared_ptr< Frame >& frame, con
     const double fy               = frame->m_camera->fy() / levelDominator;
     uint32_t cntFeature           = 0;
 
+    Alignment_Log (DEBUG) << "level: " << level << ", scale: " << scale << ", C: " << refC.transpose() << ", fx: " << fx << ", fy: " << fy;
     // project all feature of reference frame
     for ( const auto& feature : frame->m_features )
     {
@@ -112,6 +121,7 @@ void ImageAlignment::computeJacobian( const std::shared_ptr< Frame >& frame, con
             continue;
         }
     }
+    Alignment_Log (DEBUG) << "after previous frame cntFeature: " << cntFeature;
 
     const std::shared_ptr< Frame >& lastKeyframe = frame->m_lastKeyframe;
     const cv::Mat& lastKFImage                   = lastKeyframe->m_imagePyramid.getImageAtLevel( level );
@@ -133,6 +143,9 @@ void ImageAlignment::computeJacobian( const std::shared_ptr< Frame >& frame, con
             continue;
         }
     }
+
+    Alignment_Log (DEBUG) << "cntFeature: " << cntFeature;
+    Alignment_Log (DEBUG) << "optimizer m_jacobian: " << m_optimizer.m_jacobian.format( utils::eigenFormat() );
     // visualization::templatePatches( m_refPatches, cntFeature, m_patchSize, 10, 10, 12 );
 }
 
@@ -150,19 +163,30 @@ bool ImageAlignment::computeJacobianSingleFeature( const std::shared_ptr< Featur
     const double v     = feature->m_pixelPosition.y() * scale;
     const int32_t uInt = static_cast< int32_t >( std::floor( u ) );
     const int32_t vInt = static_cast< int32_t >( std::floor( v ) );
+    Alignment_Log (DEBUG) << "feature position: " << feature->m_pixelPosition.transpose();
+    Alignment_Log (DEBUG) << "border: " << border;
+    Alignment_Log (DEBUG) << "u: " << uInt << ", v: " << vInt;
     if ( ( uInt - border ) < 0 || ( vInt - border ) < 0 || ( uInt + border ) >= imageEigen.cols() ||
          ( vInt + border ) >= imageEigen.rows() )
     {
         return false;
     }
 
+
     m_refVisibility[ cntFeature ]   = true;
     const double depthNorm          = ( feature->m_point->m_position - cameraInWorld ).norm();
     const Eigen::Vector3d point3d_C = feature->m_bearingVec * depthNorm;
     const Eigen::Vector3d point3d_W = frame->camera2world( point3d_C );
 
+    Alignment_Log (DEBUG) << "depth: " << depthNorm;
+    Alignment_Log (DEBUG) << "bearing: " << feature->m_bearingVec.transpose();
+    Alignment_Log (DEBUG) << "point3d_C: " << point3d_C.transpose();
+    Alignment_Log (DEBUG) << "point3d_W: " << point3d_W.transpose();
+
     Eigen::Matrix< double, 2, 6 > imageJac;
     computeImageJac( imageJac, point3d_W, scaledFx, scaledFy );
+    Alignment_Log (DEBUG) << "imageJac: " << imageJac.format( utils::eigenFormat() );
+
 
     uint32_t cntPixel = 0;
     // FIXME: Patch size should be set as odd
@@ -180,6 +204,11 @@ bool ImageAlignment::computeJacobianSingleFeature( const std::shared_ptr< Featur
             const double dy                      = 0.5 * ( algorithm::bilinearInterpolationDouble( imageEigen, colIdx, rowIdx + 1 ) -
                                       algorithm::bilinearInterpolationDouble( imageEigen, colIdx, rowIdx - 1 ) );
             m_optimizer.m_jacobian.row( cntFeature * m_patchArea + cntPixel ) = dx * imageJac.row( 0 ) + dy * imageJac.row( 1 );
+
+            Alignment_Log (DEBUG) << "idx " << cntFeature * m_patchArea + cntPixel;
+            Alignment_Log (DEBUG) << "rowId: " << rowIdx << ", colIdx: " << colIdx;
+            Alignment_Log (DEBUG) << "dx: " << dx << ", dy: " << dy;
+            Alignment_Log (DEBUG) << "jac: " << m_optimizer.m_jacobian.row( cntFeature * m_patchArea + cntPixel ).format( utils::eigenFormat() );
         }
     }
     cntFeature++;
@@ -258,6 +287,11 @@ uint32_t ImageAlignment::computeResiduals( const std::shared_ptr< Frame >& refFr
     const Eigen::Vector3d refC       = refFrame->cameraInWorld();
     uint32_t cntFeature              = 0;
     uint32_t cntTotalProjectedPixels = 0;
+
+    // Alignment_Log (DEBUG) << "border: " << border;
+    // Alignment_Log (DEBUG) << "refC: " << refC.transpose();
+    // Alignment_Log (DEBUG) << "scale: " << scale;
+    
     for ( const auto& feature : refFrame->m_features )
     {
         if ( m_refVisibility[ cntFeature ] == false )
@@ -291,6 +325,9 @@ uint32_t ImageAlignment::computeResiduals( const std::shared_ptr< Frame >& refFr
             continue;
         }
     }
+    Alignment_Log (DEBUG) << "cntFeature: " << cntFeature;
+    Alignment_Log (DEBUG) << "cntTotalProjectedPixels: " << cntTotalProjectedPixels;
+
     return cntTotalProjectedPixels;
 }
 
@@ -314,6 +351,12 @@ bool ImageAlignment::computeResidualSingleFeature( const std::shared_ptr< Featur
     const double v                   = curFeature.y() * scale;
     const int32_t uInt               = static_cast< int32_t >( std::floor( u ) );
     const int32_t vInt               = static_cast< int32_t >( std::floor( v ) );
+
+    Alignment_Log (DEBUG) << "feature position: " << feature->m_pixelPosition.transpose();
+    Alignment_Log (DEBUG) << "depthNorm: " << depthNorm;
+    Alignment_Log (DEBUG) << "curFeature " << curFeature.transpose();
+    Alignment_Log (DEBUG) << "u: " << uInt << ", v: " << vInt;
+
     if ( feature->m_point == nullptr || ( uInt - border ) < 0 || ( vInt - border ) < 0 || ( uInt + border ) >= imageEigen.cols() ||
          ( vInt + border ) >= imageEigen.rows() )
     {
@@ -339,6 +382,11 @@ bool ImageAlignment::computeResidualSingleFeature( const std::shared_ptr< Featur
 
             m_optimizer.m_residuals( cntFeature * m_patchArea + cntPixel )     = curPixelValue - m_refPatches( cntFeature, cntPixel );
             m_optimizer.m_visiblePoints( cntFeature * m_patchArea + cntPixel ) = true;
+
+            Alignment_Log (DEBUG) << "idx " << cntFeature * m_patchArea + cntPixel;
+            Alignment_Log (DEBUG) << "rowId: " << rowIdx << ", colIdx: " << colIdx;
+            Alignment_Log (DEBUG) << "curPixelValue: " << curPixelValue;
+            Alignment_Log (DEBUG) << "res " << m_optimizer.m_residuals( cntFeature * m_patchArea + cntPixel );
         }
     }
     cntFeature++;

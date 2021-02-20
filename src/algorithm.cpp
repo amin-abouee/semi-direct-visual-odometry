@@ -36,6 +36,8 @@ bool algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame,
     const cv::Mat& refImg         = refFrame->m_imagePyramid.getBaseImage();
     const cv::Mat& curImg         = curFrame->m_imagePyramid.getBaseImage();
     const uint64_t refObservation = refFrame->numberObservation();
+    Algorithm_Log( DEBUG ) << "Ref Observation before OF: " << refObservation;
+
     std::vector< cv::Point2f > refPoints;
     refPoints.reserve( refObservation );
     std::vector< cv::Point2f > curPoints;
@@ -99,8 +101,8 @@ bool algorithm::computeOpticalFlowSparse( std::shared_ptr< Frame >& refFrame,
     refFrame->m_features.erase( std::remove_if( refFrame->m_features.begin(), refFrame->m_features.end(), isNotValid ),
                                 refFrame->m_features.end() );
 
-    Algorithm_Log( DEBUG ) << "Observation refFrame: " << refFrame->numberObservation();
-    Algorithm_Log( DEBUG ) << "Observation curFrame: " << curFrame->numberObservation();
+    Algorithm_Log( DEBUG ) << "After OF Observation refFrame: " << refFrame->numberObservation();
+    Algorithm_Log( DEBUG ) << "After OF Observation curFrame: " << curFrame->numberObservation();
     return true;
 }
 
@@ -131,6 +133,9 @@ bool algorithm::computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
     E << essential[ 0 ], essential[ 1 ], essential[ 2 ], essential[ 3 ], essential[ 4 ], essential[ 5 ], essential[ 6 ], essential[ 7 ],
       essential[ 8 ];
 
+    Algorithm_Log( DEBUG ) << "E: " << E.format( utils::eigenFormat() );
+    
+
     // https://stackoverflow.com/a/23123481/1804533
     uint32_t cnt = 0;
     /// if status[i] == true, it have to return false because we dont want to remove it from our container
@@ -154,6 +159,9 @@ bool algorithm::computeEssentialMatrix( std::shared_ptr< Frame >& refFrame,
     };
     auto curResult = std::remove_if( curFrame->m_features.begin(), curFrame->m_features.end(), isNotValidCurFrame );
     curFrame->m_features.erase( curResult, curFrame->m_features.end() );
+
+    Algorithm_Log( DEBUG ) << "After ES Observation refFrame: " << refFrame->numberObservation();
+    Algorithm_Log( DEBUG ) << "After ES Observation curFrame: " << curFrame->numberObservation();
 
     if ( refFrame->numberObservation() > thresholdCorrespondingPoints && curFrame->numberObservation() > thresholdCorrespondingPoints )
     {
@@ -213,7 +221,7 @@ void algorithm::sampsonCorrection( std::shared_ptr< Frame >& refFrame, std::shar
         sampson_factor = upper_factor_part / lower_factor_part;
 
         /* Compute Sampson error (see Multi-view geometry, p.287, Eq. 11.9) */
-        sampson_error = (sampson_factor)*upper_factor_part;
+        sampson_error += (sampson_factor)*upper_factor_part;
 
         /* Corrected point coordinates */
         x0_corr.x() = x0.x() - ( sampson_factor * t2 );
@@ -225,6 +233,7 @@ void algorithm::sampsonCorrection( std::shared_ptr< Frame >& refFrame, std::shar
         refFrame->m_features[ id ]->m_pixelPosition = x0_corr;
         curFrame->m_features[ id ]->m_pixelPosition = x1_corr;
     }
+    Algorithm_Log( DEBUG ) << "Total sampson error: " << sampson_error;
 }
 
 // 9.6.2 Extraction of cameras from the essential matrix, multi view geometry
@@ -261,6 +270,11 @@ bool algorithm::recoverPose( const Eigen::Matrix3d& E,
     Eigen::Matrix3d R2;
     Eigen::Vector3d tm;
     decomposeEssentialMatrix( E, R1, R2, tm );
+
+    Algorithm_Log( DEBUG ) << "R1: " << R1.format( utils::eigenFormat() );
+    Algorithm_Log( DEBUG ) << "R2: " << R2.format( utils::eigenFormat() );
+    Algorithm_Log( DEBUG ) << "tm: " << tm.format( utils::eigenFormat() );
+
 
     std::vector< Sophus::SE3d, Eigen::aligned_allocator< Sophus::SE3d > > poses;
     poses.reserve( 4 );

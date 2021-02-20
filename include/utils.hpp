@@ -1,6 +1,10 @@
 #ifndef __UTILS_HPP__
 #define __UTILS_HPP__
 
+#include "frame.hpp"
+#include "feature.hpp"
+#include "point.hpp"
+
 #include <experimental/filesystem>
 #include <iostream>
 #include <string>
@@ -19,6 +23,22 @@ std::string findAbsoluteFilePath( const std::string& relativeFilePath );
 void listImageFilesInFolder( const std::string& imageFolderPath, std::vector< std::string >& imageListPath );
 
 void cleanFolder( const std::string& imageFolderPath );
+
+void writeAllInfoFile (const std::shared_ptr< Frame >& refFrame,
+                    const std::shared_ptr< Frame >& curFrame,
+                    std::ofstream& fileWriter);
+
+void writeFeaturesInfoFile (const std::shared_ptr< Frame >& refFrame,
+                    const std::shared_ptr< Frame >& curFrame,
+                    std::ofstream& fileWriter);
+
+void readAllFromFile (std::shared_ptr< Frame >& refFrame,
+                    std::shared_ptr< Frame >& curFrame,
+                    std::ifstream& fileReader);
+
+void readFeaturesFromFile (std::shared_ptr< Frame >& refFrame,
+                    std::shared_ptr< Frame >& curFrame,
+                    std::ifstream& fileReader);
 
 namespace constants
 {

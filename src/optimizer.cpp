@@ -175,6 +175,7 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
 
     bool computeJacobian = lambdaJacobianFunctor == nullptr ? false : true;
 
+    Optimizer_Log(DEBUG) << "numObservations: " << numObservations;
     Optimizer_Log(DEBUG) << "params: " << params.params().transpose() << std::endl;
 
 
@@ -197,8 +198,14 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
     /// run for the first time to get the chi error
     resetAllParameters( computeJacobian );
     cntTotalProjectedPixels = lambdaResidualFunctor( params );
+    Optimizer_Log (DEBUG) << "m_residual: " << m_residuals.format( utils::eigenFormat() );
+
     tukeyWeighting( cntTotalProjectedPixels );
+    Optimizer_Log (DEBUG) << "m_weights: " << m_weights.format( utils::eigenFormat() );
+
     chiSquaredError = computeChiSquaredError();
+    Optimizer_Log (DEBUG) << "chiSquaredError: " << chiSquaredError;
+
     // m_timerResiduals += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
 
     T preParams = params;
@@ -272,7 +279,8 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
         m_hessian.noalias() = m_jacobian.transpose() * m_weights.asDiagonal() * m_jacobian;
         m_gradient.noalias() = m_jacobian.transpose() * m_weights.asDiagonal() * m_residuals;
         // std::cout << "hessian linear: " << m_hessian << std::endl;
-        // m_timerHessian += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
+        Optimizer_Log (DEBUG) << "optimizer m_hessian: " << m_hessian.format( utils::eigenFormat() );
+        Optimizer_Log (DEBUG) << "optimizer m_gradient: " << m_gradient.format( utils::eigenFormat() );
 
         // t1 = std::chrono::high_resolution_clock::now();
         const auto jwj = ( m_hessian ).diagonal();

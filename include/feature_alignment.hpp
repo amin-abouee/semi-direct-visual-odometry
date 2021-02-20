@@ -28,7 +28,6 @@ private:
     uint32_t m_patchSize;
     uint32_t m_halfPatchSize;
     uint32_t m_patchArea;
-    uint32_t m_currentLevel;
     int32_t m_level;
 
     Optimizer m_optimizer;
@@ -38,9 +37,9 @@ private:
     void computeJacobian( const std::shared_ptr< Feature >& refFeature);
     uint32_t computeResiduals( const std::shared_ptr< Feature >& refFeature,
                                const std::shared_ptr< Frame >& curFrame,
-                               Sophus::SE2d& pose );
-    void computeImageJac( Eigen::Matrix< double, 2, 3 >& imageJac, const Eigen::Vector2d& pixelPos );
-    void update( Sophus::SE2d& pose, const Eigen::Vector3d& dx );
+                               Eigen::Vector3d& pose );
+    // void computeImageJac( Eigen::Matrix< double, 2, 3 >& imageJac, const Eigen::Vector2d& pixelPos );
+    void update( Eigen::Vector3d& pose, const Eigen::Vector3d& dx );
     void resetParameters();
 };
 

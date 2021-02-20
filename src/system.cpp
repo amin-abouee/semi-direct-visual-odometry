@@ -80,7 +80,6 @@ System::Result System::processFirstFrame()
     TIMED_FUNC( timerFirstFrame );
     m_featureSelector->gradientMagnitudeWithSSC( m_curFrame, m_config->m_thresholdGradientMagnitude,
                                                  m_config->m_desiredDetectedPointsForInitialization, true );
-    // m_featureSelector->gradientMagnitudeByValue(m_curFrame, m_config->m_thresholdGradientMagnitude, true);
     if ( m_curFrame->numberObservation() < m_config->m_minDetectedPointsSuccessInitialization )
     {
         System_Log( WARNING ) << "Not sufficient detected feature points!";
@@ -90,18 +89,24 @@ System::Result System::processFirstFrame()
     // visualize
     if ( m_config->m_enableVisualization == true )
     {
-        // cv::Mat gradient = m_featureSelector->m_imgGradientMagnitude.clone();
-        // cv::Mat refBGR   = visualization::getColorImage( gradient );
-        // visualization::featurePoints( refBGR, m_curFrame, 5, "pink", true, visualization::drawingRectangle );
-        // visualization::imageGrid( refBGR, m_config->m_cellPixelSize, "amber" );
-        // if ( m_config->m_savingType == "LiveShow" )
-        // {
-        //     cv::imshow( "First Image", refBGR );
-        // }
-        // else if ( m_config->m_savingType == "File" )
-        // {
-        //     cv::imwrite( "../output/images/0.png", refBGR );
-        // }
+        cv::Mat gradient = m_featureSelector->m_imgGradientMagnitude.clone();
+        cv::Mat refBGR   = visualization::getColorImage( gradient );
+        visualization::featurePoints( refBGR, m_curFrame, 5, "pink", true, visualization::drawingRectangle );
+        visualization::imageGrid( refBGR, m_config->m_cellPixelSize, "amber" );
+        if ( m_config->m_savingType == "LiveShow" )
+        {
+            cv::imshow( "First Image", refBGR );
+        }
+        else if ( m_config->m_savingType == "File" )
+        {
+            cv::imwrite( "../output/images/0_grid.png", refBGR );
+        }
+    }
+
+    // TODO:
+    for ( const auto& feature : m_curFrame->m_features )
+    {
+        System_Log( DEBUG ) << "id: " << feature->m_id << ", pose: " << feature->m_pixelPosition.transpose();
     }
 
     m_curFrame->setKeyframe();
@@ -141,6 +146,9 @@ System::Result System::processSecondFrame()
     }
 
     const Eigen::Matrix3d F = m_refFrame->m_camera->invK().transpose() * E * m_curFrame->m_camera->invK();
+
+    System_Log( DEBUG ) << "E: " << E.format( utils::eigenFormat() );
+    System_Log( DEBUG ) << "F: " << F.format( utils::eigenFormat() );
     algorithm::sampsonCorrection( m_refFrame, m_curFrame, F );
 
     // decompose essential matrix to R and t and set the absolute pose of reference frame
@@ -153,6 +161,11 @@ System::Result System::processSecondFrame()
 
     System_Log( DEBUG ) << "Initial R: " << R.format( utils::eigenFormat() );
     System_Log( DEBUG ) << "Initial t: " << t.format( utils::eigenFormat() );
+    System_Log( DEBUG ) << "Displacement: " << t.norm();
+
+    // std::ofstream filew_1("../output/files/after_E.txt");
+    // utils::writeFeaturesInfoFile(m_refFrame, m_curFrame, filew_1);
+    // filew_1.close();
 
     // reserve the memory for depth information
     std::size_t numObserves = m_curFrame->numberObservation();
@@ -171,6 +184,12 @@ System::Result System::processSecondFrame()
         System_Log( INFO ) << "Before SCALE, Median Depth: " << medianDepth << ", minDepth: " << minDepth << ", maxDepth: " << maxDepth;
     }
 
+    // TODO:
+    for ( uint32_t i( 0 ); i < m_curFrame->numberObservation(); i++ )
+    {
+        System_Log( INFO ) << "id: " << i << ", pose: " << pointsWorld.col( i ).transpose();
+    }
+
     // scale the depth
     const double scale = m_config->m_initMapScaleFactor / medianDepth;
 
@@ -185,13 +204,17 @@ System::Result System::processSecondFrame()
     pointsCurCamera *= scale;
     algorithm::transferPointsCamToWorld( m_curFrame, pointsCurCamera, pointsWorld );
 
-    uint32_t cnt = 0;
+    System_Log( INFO ) << "current pose: " << m_curFrame->m_absPose.params().transpose();
+
+    System_Log( INFO ) << "final position";
+    uint32_t cnt               = 0;
+    const double halfPatchSize = std::ceil( static_cast< double >( m_config->m_cellPixelSize ) / 2.0 );
     for ( std::size_t i( 0 ); i < numObserves; i++ )
     {
         const Eigen::Vector2d refFeature = m_refFrame->m_features[ i ]->m_pixelPosition;
         const Eigen::Vector2d curFeature = m_curFrame->m_features[ i ]->m_pixelPosition;
-        if ( m_refFrame->m_camera->isInFrame( refFeature, 5.0 ) == true && m_curFrame->m_camera->isInFrame( curFeature, 5.0 ) == true &&
-             pointsCurCamera.col( i ).z() > 0 )
+        if ( m_refFrame->m_camera->isInFrame( refFeature, halfPatchSize ) == true &&
+             m_curFrame->m_camera->isInFrame( curFeature, halfPatchSize ) == true && pointsCurCamera.col( i ).z() > 0 )
         {
             std::shared_ptr< Point > point = std::make_shared< Point >( pointsWorld.col( i ) );
             m_refFrame->m_features[ i ]->setPoint( point );
@@ -199,6 +222,9 @@ System::Result System::processSecondFrame()
             point->addFeature( m_refFrame->m_features[ i ] );
             point->addFeature( m_curFrame->m_features[ i ] );
             cnt++;
+
+            System_Log( INFO ) << "id: " << i << ", ref pos: " << refFeature.transpose() << ", cur pose: " << curFeature.transpose()
+                               << ", point: " << point->m_position.transpose();
         }
     }
 
@@ -214,10 +240,18 @@ System::Result System::processSecondFrame()
     System_Log( INFO ) << "Init Points: " << pointsWorld.cols() << ", ref obs: " << m_refFrame->numberObservation()
                        << ", cur obs: " << m_curFrame->numberObservation() << ", number of removed: " << pointsWorld.cols() - cnt;
 
+    // std::ofstream filew_2("../output/files/init_all.txt");
+    // utils::writeAllInfoFile(m_refFrame, m_curFrame, filew_2);
+    // filew_2.close();
+
     {
         TIMED_SCOPE( timerBA, "timer twoViewBA" );
         m_bundler->twoViewBA( m_refFrame, m_curFrame, m_map, 2.0 );
     }
+
+    // std::ofstream filew_3("../output/files/after_ba.txt");
+    // utils::writeAllInfoFile(m_refFrame, m_curFrame, filew_3);
+    // filew_3.close();
 
     m_curFrame->setKeyframe();
     m_activeKeyframe = m_curFrame;
@@ -229,6 +263,15 @@ System::Result System::processSecondFrame()
     const double maxDepth = newCurDepths.maxCoeff();
     System_Log( INFO ) << "After scale, Median depth: " << medianDepth << ", minDepth: " << minDepth << ", maxDepth: " << maxDepth;
 
+    for ( uint32_t i( 0 ); i < numObserves; i++ )
+    {
+        const Eigen::Vector2d refFeature = m_refFrame->m_features[ i ]->m_pixelPosition;
+        const Eigen::Vector2d curFeature = m_curFrame->m_features[ i ]->m_pixelPosition;
+        const auto& point                = m_refFrame->m_features[ i ]->m_point;
+        System_Log( INFO ) << "id: " << i << ", ref pos: " << refFeature.transpose() << ", cur pose: " << curFeature.transpose()
+                           << ", point: " << point->m_position.transpose();
+    }
+
     System_Log( INFO ) << "Size observation: " << m_curFrame->numberObservation();
     m_featureSelector->setExistingFeatures( m_curFrame->m_features );
     m_featureSelector->gradientMagnitudeWithSSC( m_curFrame, m_config->m_thresholdGradientMagnitude,
@@ -237,9 +280,9 @@ System::Result System::processSecondFrame()
 
     System_Log( INFO ) << "Size observation after detect: " << m_curFrame->numberObservation();
 
-    m_depthEstimator->addKeyframe( m_curFrame, medianDepth, 0.5 * minDepth );
+    // m_depthEstimator->addKeyframe( m_curFrame, medianDepth, 0.5 * minDepth );
 
-    m_map->addKeyframe( m_curFrame );
+    // m_map->addKeyframe( m_curFrame );
 
     if ( m_config->m_enableVisualization == true )
     {
@@ -247,8 +290,8 @@ System::Result System::processSecondFrame()
         visualization::featurePoints( refBGR, m_refFrame, 6, "pink", true, visualization::drawingRectangle );
 
         cv::Mat curBGR = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
-        visualization::featurePoints( curBGR, m_curFrame, 6, "orange", false, visualization::drawingCircle );
-        // visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 6, "orange", visualization::drawingCircle );
+        // visualization::featurePoints( curBGR, m_curFrame, 6, "orange", false, visualization::drawingCircle );
+        visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 6, "cyan", visualization::drawingCircle );
 
         cv::Mat stickImg;
         visualization::stickTwoImageVertically( refBGR, curBGR, stickImg );
@@ -334,41 +377,115 @@ System::Result System::processNewFrame()
     TIMED_FUNC( timerNewFrame );
     // https://docs.microsoft.com/en-us/cpp/cpp/how-to-create-and-use-shared-ptr-instances?view=vs-2019
 
-    m_curFrame->m_absPose = predictionRelativePose * m_refFrame->m_absPose;
+    if (m_curFrame->m_id == 2)
     {
-        TIMED_SCOPE( timerImageAlignment, "image_alignment" );
-        m_alignment->align( m_refFrame, m_curFrame );
+        std::ofstream filew_4("../output/files/before_align.txt");
+        utils::writeAllInfoFile(m_refFrame->m_lastKeyframe, m_refFrame, filew_4);
+        filew_4.close();
+        System_Log( INFO ) << "\n" << "before alignment";
+        for ( uint32_t i( 0 ); i < m_refFrame->m_lastKeyframe->numberObservation(); i++ )
+        {
+            const Eigen::Vector2d lastFeature = m_refFrame->m_lastKeyframe->m_features[ i ]->m_pixelPosition;
+            const Eigen::Vector2d refFeature  = m_refFrame->m_features[ i ]->m_pixelPosition;
+            const auto& point                 = m_refFrame->m_lastKeyframe->m_features[ i ]->m_point;
+            System_Log( INFO ) << "id: " << i << ", last pos: " << lastFeature.transpose() << ", ref pose: " << refFeature.transpose()
+                            << ", point: " << point->m_position.transpose();
+        }
     }
 
-    m_map->addCandidateToAllActiveKeyframes();
+
+    System_Log( INFO ) << "prediction relative pose: " << predictionRelativePose.params().transpose();
+    System_Log( DEBUG ) << "prediction R: " << predictionRelativePose.rotationMatrix().format( utils::eigenFormat() );
+    System_Log( DEBUG ) << "prediction t: " << predictionRelativePose.translation().format( utils::eigenFormat() );
+    m_curFrame->m_absPose = predictionRelativePose * m_refFrame->m_absPose;
+    System_Log( INFO ) << "ref key-frame pose: " << m_refFrame->m_lastKeyframe->m_absPose.params().transpose();
+    System_Log( DEBUG ) << "ref key-frame R: " << m_refFrame->m_lastKeyframe->m_absPose.rotationMatrix().format( utils::eigenFormat() );
+    System_Log( DEBUG ) << "ref key-frame t: " << m_refFrame->m_lastKeyframe->m_absPose.translation().format( utils::eigenFormat() );
+
+    System_Log( INFO ) << "ref frame pose: " << m_refFrame->m_absPose.params().transpose();
+    System_Log( DEBUG ) << "ref frame R: " << m_refFrame->m_absPose.rotationMatrix().format( utils::eigenFormat() );
+    System_Log( DEBUG ) << "ref frame t: " << m_refFrame->m_absPose.translation().format( utils::eigenFormat() );
+
+    System_Log( INFO ) << "cur frame pose: " << m_curFrame->m_absPose.params().transpose();
+    System_Log( DEBUG ) << "cur frame R: " << m_curFrame->m_absPose.rotationMatrix().format( utils::eigenFormat() );
+    System_Log( DEBUG ) << "cur frame t: " << m_curFrame->m_absPose.translation().format( utils::eigenFormat() );
+
+    {
+        TIMED_SCOPE( timerImageAlignment, "image_alignment" );
+        double error = m_alignment->align( m_refFrame, m_curFrame );
+        System_Log( DEBUG ) << "Error: " << error;
+    }
+
+    // m_map->addCandidateToAllActiveKeyframes();
+
+    for ( const auto& feature : m_refFrame->m_features )
+    {
+        if ( feature->m_point != nullptr )
+        {
+            auto& point                           = feature->m_point;
+            const Eigen::Vector2d projected       = m_curFrame->world2image( point->m_position );
+            std::shared_ptr< Feature > newFeature = std::make_shared< Feature >( m_curFrame, projected, 0.0, 0.0, 0 );
+            m_curFrame->addFeature( newFeature );
+            newFeature->setPoint( point );
+            point->addFeature( newFeature );
+        }
+    }
 
     cv::Mat stickImg;
     if ( m_config->m_enableVisualization == true )
     {
-        cv::Mat lastBGR = visualization::getColorImage( m_refFrame->m_lastKeyframe->m_imagePyramid.getBaseGradientImage() );
-        visualization::featurePoints( lastBGR, m_refFrame->m_lastKeyframe, 6, "green", true,
-                                      visualization::drawingRectangle );
+        // cv::Mat lastBGR = visualization::getColorImage( m_refFrame->m_lastKeyframe->m_imagePyramid.getBaseGradientImage() );
+        // visualization::featurePoints( lastBGR, m_refFrame->m_lastKeyframe, 6, "green", true,
+        //                               visualization::drawingRectangle );
 
-        cv::Mat refBGR = visualization::getColorImage( m_refFrame->m_imagePyramid.getBaseGradientImage() );
-        visualization::featurePoints( refBGR, m_refFrame, 6, "pink", true, visualization::drawingRectangle );
+        // cv::Mat refBGR = visualization::getColorImage( m_refFrame->m_imagePyramid.getBaseGradientImage() );
+        // visualization::featurePoints( refBGR, m_refFrame, 6, "pink", true, visualization::drawingRectangle );
 
-        visualization::stickTwoImageVertically( lastBGR, refBGR, stickImg, 20 );
+        // visualization::stickTwoImageVertically( lastBGR, refBGR, stickImg, 20 );
 
         // just projected with computed pose
         // cv::Mat curBGR = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
         // visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 6, "yellow", visualization::drawingCircle );
 
         // visualization::stickTwoImageVertically( stickImg, curBGR, stickImg, 20 );
+
+        cv::Mat lastBGR = visualization::getColorImage( m_refFrame->m_imagePyramid.getBaseGradientImage() );
+        visualization::featurePoints( lastBGR, m_refFrame, 6, "pink", true, visualization::drawingRectangle );
+
+        cv::Mat curBGR = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
+        visualization::projectPointsWithRelativePose( curBGR, m_refFrame, m_curFrame, 6, "green", visualization::drawingCircle );
+
+        visualization::stickTwoImageVertically( lastBGR, curBGR, stickImg, 20 );
+
+        cv::Mat curBGR2 = visualization::getColorImage( m_curFrame->m_imagePyramid.getBaseGradientImage() );
+        visualization::featurePoints( curBGR2, m_curFrame, 6, "orange", true, visualization::drawingRectangle );
+
+        visualization::stickTwoImageVertically( stickImg, curBGR2, stickImg, 20 );
+
+        if ( m_config->m_savingType == "LiveShow" )
+        {
+            std::stringstream ss;
+            ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
+            cv::imshow( ss.str(), stickImg );
+        }
+        else if ( m_config->m_savingType == "File" )
+        {
+            std::stringstream ss;
+            ss << "../output/images/before_" << m_refFrame->m_id << "_" << m_curFrame->m_id << ".png";
+            cv::imwrite( ss.str(), stickImg );
+        }
+
+        return Result::Success;
     }
 
     std::vector< frameSize > overlapKeyFrames;
     m_map->reprojectMap( m_refFrame, m_curFrame, overlapKeyFrames );
     System_Log( INFO ) << "Number of Features in new frame: " << m_curFrame->numberObservation();
-    double befError = algorithm::computeStructureError(m_curFrame);
+    double befError = algorithm::computeStructureError( m_curFrame );
     // m_bundler->optimizePose(m_curFrame);
-    m_bundler->optimizeScene(m_curFrame, 2.0);
+    m_bundler->optimizeScene( m_curFrame, 2.0 );
     // m_bundler->threeViewBA(m_curFrame, 2.0);
-    double aftError = algorithm::computeStructureError(m_curFrame);
+    double aftError = algorithm::computeStructureError( m_curFrame );
     System_Log( INFO ) << "Structure error: " << befError << " -> " << aftError;
 
     /*{
@@ -433,7 +550,6 @@ System::Result System::processNewFrame()
         visualization::featurePointsAndProjection( curBGR2, m_curFrame, 6, "orange", "yellow", visualization::drawingCircle );
 
         visualization::stickTwoImageVertically( stickImg, curBGR2, stickImg, 20 );
-
 
         if ( m_config->m_savingType == "LiveShow" )
         {
