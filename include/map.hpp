@@ -66,11 +66,13 @@ public:
 
     void addNewCandidate( const std::shared_ptr< Feature >& feature,
                           const std::shared_ptr< Point >& point,
-                          const std::shared_ptr< Frame >& visitedFrame );
+                          const bool matched );
 
     void addCandidateToFrame( std::shared_ptr< Frame >& frame );
 
     void addCandidateToAllActiveKeyframes();
+
+    void removeMatchedCandidate();
 
     void removeFrameCandidate( std::shared_ptr< Frame >& frame );
 
@@ -83,11 +85,11 @@ public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         std::shared_ptr< Feature > m_feature;  //!< Feature in reference frame
         std::shared_ptr< Point > m_point;      //!< projected 2D pixel location.
-        std::shared_ptr< Frame > m_visitedFrame;
+        bool m_matched;
         Candidate( const std::shared_ptr< Feature >& feature,
                    const std::shared_ptr< Point >& point,
-                   const std::shared_ptr< Frame >& visitedFrame )
-            : m_feature( feature ), m_point( point ), m_visitedFrame( visitedFrame )
+                   const bool matched )
+            : m_feature( feature ), m_point( point ), m_matched( matched )
         {
         }
     };
@@ -107,6 +109,7 @@ private:
     {
         CandidateGrid m_cells;
         std::vector< int32_t > m_cellOrders;
+        std::vector< bool > m_cellVisited;
         uint32_t m_cellSize;
         uint32_t m_gridCols;
         uint32_t m_gridRows;

@@ -36,11 +36,11 @@ DepthEstimator::~DepthEstimator()
     Depth_Log( DEBUG ) << "D'tor DepthEstimation ";
     m_terminateThread = true;
     m_condition.notify_one();
-    while ( m_thread != nullptr && m_thread->joinable() )
+    if ( m_thread->joinable() )
     {
         m_haltUpdatingDepthFilter = true;
         // m_thread_->interrupt();
-        m_activeThread = false;
+        // m_activeThread = false;
         m_thread->join();
         // thread_ = NULL;
         m_thread = nullptr;
@@ -118,15 +118,15 @@ void DepthEstimator::updateFiltersLoop()
     {
         std::shared_ptr< Frame > frame;
         std::unique_lock< std::mutex > threadLocker( m_mutexFrame );
-        while ( m_queueFrames.empty() && m_newKeyframeAdded == false && m_terminateThread == false )
+        while ( m_queueFrames.empty() && m_newKeyframeAdded == false )
         {
             m_condition.wait( threadLocker );
-        }
 
-        if ( m_terminateThread == true )
-            return;
-        // while ( m_queueFrames.empty() && m_newKeyframeAdded == false )
-        // m_condition.wait( threadLocker , [this] {return m_queueFrames.empty() && m_newKeyframeAdded == false;} );
+            if (m_activeThread == false)
+            {
+                return;
+            }
+        }
 
         if ( m_newKeyframeAdded == true )
         {
@@ -193,8 +193,8 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
 {
     // update only a limited number of seeds, because we don't have time to do it
     // for all the seeds in every frame!
-    uint32_t successUpdated = 0.0;
-    uint32_t failedUpdated  = 0.0;
+    uint32_t successUpdated = 0;
+    uint32_t failedUpdated  = 0;
     // Depth_Log( DEBUG ) << "updateFilters";
     Depth_Log( DEBUG ) << "m_haltUpdatingDepthFilter: " << m_haltUpdatingDepthFilter;
 
@@ -285,7 +285,7 @@ void DepthEstimator::updateFilters( std::shared_ptr< Frame >& frame )
               depthFilter.m_feature->m_frame->image2world( depthFilter.m_feature->m_pixelPosition, 1.0 / depthFilter.m_mu );
             auto point = std::make_shared< Point >( pointInWorld, depthFilter.m_feature );
 
-            m_map->addNewCandidate( depthFilter.m_feature, point, frame );
+            m_map->addNewCandidate( depthFilter.m_feature, point, false );
             Depth_Log( DEBUG ) << "A new candidate added at position: " << point->m_position.transpose();
             depthFilter.m_validity = false;
         }

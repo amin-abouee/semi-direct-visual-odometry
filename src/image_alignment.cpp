@@ -39,13 +39,6 @@ double ImageAlignment::align( std::shared_ptr< Frame >& refFrame, std::shared_pt
     m_refVisibility.resize( numFeatures, false );
 
     Alignment_Log (DEBUG) << "numFeatures: " << numFeatures << ", numObservation: " << numObservations;
-    // Alignment_Log (DEBUG) << "patch size: " << m_refPatches.format( utils::eigenFormat() );
-    // Alignment_Log (DEBUG) << "optimizer m_jacobian: " << m_optimizer.m_jacobian.format( utils::eigenFormat() );
-    // Alignment_Log (DEBUG) << "optimizer m_residual: " << m_optimizer.m_residuals.format( utils::eigenFormat() );
-    // Alignment_Log (DEBUG) << "optimizer m_weights: " << m_optimizer.m_weights.format( utils::eigenFormat() );
-    // Alignment_Log (DEBUG) << "optimizer m_hessian: " << m_optimizer.m_hessian.format( utils::eigenFormat() );
-    // Alignment_Log (DEBUG) << "optimizer m_gradient: " << m_optimizer.m_gradient.format( utils::eigenFormat() );
-    // Alignment_Log (DEBUG) << "optimizer m_dx: " << m_optimizer.m_dx.format( utils::eigenFormat() );
 
     auto lambdaUpdateFunctor = [ this ]( Sophus::SE3d& pose, const Eigen::VectorXd& dx ) -> void { update( pose, dx ); };
     double error             = 0.0;
@@ -69,23 +62,6 @@ double ImageAlignment::align( std::shared_ptr< Frame >& refFrame, std::shared_pt
     }
 
     Alignment_Log( DEBUG ) << "Computed Pose: " << curFrame->m_absPose.params().transpose();
-
-    // int32_t featureCounter = 0;
-    // for ( uint32_t i( 0 ); i < numFeatures; i += 2 )
-    // {
-    //     if ( m_refVisibility[ i ] == true && m_refVisibility[ i + 1 ] == true )
-    //     {
-    //         const int32_t idx    = i / 2;
-    //         const auto& refFeature = refFrame->m_features[ idx ];
-    //         const auto& point = refFeature->m_point;
-    //         const Eigen::Vector2d pixelPosition = curFrame->world2image(point->m_position);
-    //         std::shared_ptr< Feature > feature = std::make_shared< Feature >( curFrame, pixelPosition, 0 );
-    //         curFrame->addFeature( feature );
-    //         // Here we add a reference in the feature to the 3D point, the other way
-    //         // round is only done if this frame is selected as keyframe.
-    //         feature->m_point = point;
-    //     }
-    // }
 
     return error;
 }

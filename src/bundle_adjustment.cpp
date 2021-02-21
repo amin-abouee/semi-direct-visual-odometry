@@ -587,6 +587,14 @@ void BundleAdjustment::localBA( std::shared_ptr< Map >& map, const double reproj
         point->m_optG2oPoint = nullptr;
     }
 
+    for ( auto& edgeCointer : edges )
+    {
+        if (edgeCointer.feature->m_point == nullptr)
+        {
+            Adjustment_Log( WARNING ) << "feature id: " << edgeCointer.feature->m_id;
+        }
+    }
+
     // Remove Measurements with too large reprojection error
     double chiSquaredError   = reprojectionError * reprojectionError;
     uint32_t removedFeatures = 0;

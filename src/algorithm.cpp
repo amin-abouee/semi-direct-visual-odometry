@@ -330,86 +330,7 @@ bool algorithm::recoverPose( const Eigen::Matrix3d& E,
         return true;
     }
     return false;
-
-    // Eigen::Vector3d point1;
-    // Eigen::Vector3d point2;
-    // for ( std::size_t i( 0 ); i < 4; i++ )
-    // {
-    //     // T{K}_{W} = T{K}_{K-1} * T{K-1}_{W}
-    //     curFrame->m_absPose = poses[ i ] * refFrame->m_absPose;
-
-    //     triangulatePointDLT( refFrame, curFrame, refFrame->m_features[ 0 ]->m_pixelPosition, curFrame->m_features[ 0 ]->m_pixelPosition,
-    //                          point1 );
-    //     triangulatePointDLT( refFrame, curFrame, refFrame->m_features[ 1 ]->m_pixelPosition, curFrame->m_features[ 1 ]->m_pixelPosition,
-    //                          point2 );
-    //     Eigen::Vector3d refProject1 = refFrame->world2camera( point1 );
-    //     Eigen::Vector3d curProject1 = curFrame->world2camera( point1 );
-    //     Eigen::Vector3d refProject2 = refFrame->world2camera( point2 );
-    //     Eigen::Vector3d curProject2 = curFrame->world2camera( point2 );
-
-    //     // Algorithm_Log (DEBUG) << "refProject1: " << refProject1.transpose();
-    //     // Algorithm_Log (DEBUG) << "refProject2: " << refProject2.transpose();
-    //     // Algorithm_Log (DEBUG) << "curProject1: " << curProject1.transpose();
-    //     // Algorithm_Log (DEBUG) << "curProject2: " << curProject2.transpose();
-
-    //     if ( refProject1.z() > 0 && refProject2.z() > 0 && curProject1.z() > 0 && curProject2.z() > 0 )
-    //     {
-    //         R = poses[ i ].rotationMatrix();
-    //         t = poses[ i ].translation();
-    //         return true;
-    //     }
-    // }
-    // return false;
 }
-
-// void algorithm::templateMatching( const std::shared_ptr< Frame >& refFrame,
-//                                   std::shared_ptr< Frame >& curFrame,
-//                                   const uint16_t patchSzRef,
-//                                   const uint16_t patchSzCur )
-// {
-//     // const std::uint32_t numFeature = refFrame.numberObservation();
-//     const cv::Mat& refImg = refFrame->m_imagePyramid.getBaseImage();
-//     const cv::Mat& curImg = curFrame->m_imagePyramid.getBaseImage();
-//     // std::cout << "ref type: " << refImg.type() << ", size: " << refImg.size() << std::endl;
-//     // std::cout << "cur type: " << curImg.type() << ", size: " << curImg.size() << std::endl;
-//     const uint16_t halfPatchRef = patchSzRef / 2;
-//     const uint16_t halfPatchCur = patchSzCur / 2;
-//     Eigen::Vector2i px( 0.0, 0.0 );
-//     const int32_t offset = patchSzCur - patchSzRef;
-//     cv::Mat result( cv::Size( offset, offset ), CV_32F );
-
-//     double minVal, maxVal;
-//     cv::Point2i minLoc, maxLoc;
-//     // cv::Mat template (cv::Size(patchSize, patchSize), CV_32F);
-//     // cv::Mat  (cv::Size(patchSize, patchSize), CV_32F);
-//     for ( const auto& features : refFrame->m_features )
-//     {
-//         px << static_cast< int32_t >( features->m_pixelPosition.x() ), static_cast< int32_t >( features->m_pixelPosition.y() );
-//         // std::cout << "px: " << px.transpose() << std::endl;
-//         // std::cout << "refFrame.m_camera->isInFrame: " << refFrame.m_camera->isInFrame( features->m_pixelPosition,
-//         // halfPatchRef ) << std::endl; std::cout << "curFrame.m_camera->isInFrame: " << curFrame.m_camera->isInFrame(
-//         // features->m_pixelPosition, halfPatchRef ) << std::endl;
-//         if ( refFrame->m_camera->isInFrame( features->m_pixelPosition, halfPatchRef ) &&
-//              curFrame->m_camera->isInFrame( features->m_pixelPosition, halfPatchCur ) )
-//         {
-//             // std::cout << "px is inside the image " << std::endl;
-//             const cv::Rect ROITemplate( px.x() - halfPatchRef, px.y() - halfPatchRef, patchSzRef, patchSzRef );
-//             const cv::Rect ROIImage( px.x() - halfPatchCur, px.y() - halfPatchCur, patchSzCur, patchSzCur );
-//             const cv::Mat templatePatch = refImg( ROITemplate );
-//             const cv::Mat imagePatch    = curImg( ROIImage );
-//             cv::matchTemplate( imagePatch, templatePatch, result, cv::TM_SQDIFF_NORMED );
-//             normalize( result, result, 0, 1, cv::NORM_MINMAX, -1, cv::Mat() );
-//             minMaxLoc( result, &minVal, &maxVal, &minLoc, &maxLoc, cv::Mat() );
-//             // matchLoc = minLoc;
-//             // std::cout << "corresponding loc: " << matchLoc << std::endl;
-//             Eigen::Vector2d newLoc;
-//             newLoc.x()                            = static_cast< double >( px.x() + offset + minLoc.x );
-//             newLoc.y()                            = static_cast< double >( px.y() + offset + minLoc.y );
-//             std::shared_ptr< Feature > newFeature = std::make_shared< Feature >( curFrame, newLoc, 0.0, 0.0, 0 );
-//             curFrame->addFeature( newFeature );
-//         }
-//     }
-// }
 
 void algorithm::getAffineWarp( const std::shared_ptr< Frame >& refFrame,
                                const std::shared_ptr< Frame >& curFrame,
@@ -487,39 +408,6 @@ double algorithm::computeScore( const Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 
     }
     return sum;
 }
-
-// bool algorithm::matchDirect( const std::shared_ptr< Point >& point, const std::shared_ptr< Frame >& curFrame, Eigen::Vector2d&
-// featurePose )
-// {
-//     const uint32_t patchSize     = 7;
-//     const uint32_t halfPatchSize = patchSize / 2;
-//     const uint32_t patchArea     = patchSize * patchSize;
-//     std::shared_ptr< Feature > refFeature;
-
-//     if ( point->getCloseViewObservation( curFrame->cameraInWorld(), refFeature ) == false )
-//         return false;
-
-//     // TODO: for sure, the point is visible in the referencePoint
-//     // if ( refFeature->m_frame->m_camera->isInFrame( refFeature->m_pixelPosition, halfPatchSize ) == false )
-//         // return false;
-
-//     const Sophus::SE3d relativePose = algorithm::computeRelativePose( refFeature->m_frame, curFrame );
-//     const double depth              = ( refFeature->m_frame->cameraInWorld() - point->m_position ).norm();
-//     Eigen::Matrix2d affineWarp;
-//     algorithm::getAffineWarp( refFeature->m_frame, curFrame, refFeature, relativePose, 7, depth, affineWarp );
-
-//     Eigen::Matrix< uint8_t, Eigen::Dynamic, 1 > refPatchIntensities( patchArea );
-//     algorithm::applyAffineWarp( refFeature->m_frame, refFeature->m_pixelPosition, halfPatchSize, Eigen::Matrix2d::Identity(),
-//     halfPatchSize + 1,
-//                                 refPatchIntensities );
-
-//     // TODO: optimize the pose
-//     // if (i = 0)
-//     // {
-//     return true;
-//     // }
-//     return false;
-// }
 
 bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFrame,
                                          const std::shared_ptr< Frame >& curFrame,
@@ -637,15 +525,15 @@ bool algorithm::matchEpipolarConstraint( const std::shared_ptr< Frame >& refFram
     if ( minimumScore < thresholdZSSD )
     {
         // TODO: 2D alignment
-        Algorithm_Log( DEBUG ) << "first best location: " << bestLocation.transpose();
+        // Algorithm_Log( DEBUG ) << "first best location: " << bestLocation.transpose();
         // double error = alignment->align( refFeature, curFrame, bestLocation );
         // Algorithm_Log( DEBUG ) << "error: " << error << ", best location: " << bestLocation.transpose();
 
-        {
-            algorithm::applyAffineWarp( curFrame, bestLocation, halfPatchSize, affineWarp, boundary, curPatchIntensities );
-            double zssd = computeScore( refPatchIntensities, curPatchIntensities );
-            Algorithm_Log( DEBUG ) << "new zssd score: " << zssd;
-        }
+        // {
+        //     algorithm::applyAffineWarp( curFrame, bestLocation, halfPatchSize, affineWarp, boundary, curPatchIntensities );
+        //     double zssd = computeScore( refPatchIntensities, curPatchIntensities );
+        //     Algorithm_Log( DEBUG ) << "new zssd score: " << zssd;
+        // }
 
         const Eigen::Vector3d bearingCurCamera = curFrame->m_camera->inverseProject2d( bestLocation );
         Algorithm_Log( DEBUG ) << "ref location: " << refFeature->m_pixelPosition.transpose()

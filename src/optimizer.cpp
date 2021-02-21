@@ -176,7 +176,7 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
     bool computeJacobian = lambdaJacobianFunctor == nullptr ? false : true;
 
     Optimizer_Log(DEBUG) << "numObservations: " << numObservations;
-    Optimizer_Log(DEBUG) << "params: " << params.params().transpose() << std::endl;
+    // Optimizer_Log(DEBUG) << "params: " << params.params().transpose() << std::endl;
 
 
     unsigned int curIteration = 0;
@@ -324,12 +324,12 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
         }
 
         stepSize     = m_dx.transpose() * m_dx;
-        normDiffPose = ( m_dx ).norm() / ( preParams.log() ).norm();
+        // normDiffPose = ( m_dx ).norm() / ( preParams.log() ).norm();
         if ( stepSize < m_stepSize || lambda >= 1e14 || lambda <= 1e-14 || normDiffPose < m_normInfDiff )
         {
             optimizeStatus = stepSize < m_stepSize ? Status::Small_Step_Size : optimizeStatus;
             optimizeStatus = std::abs( lambda ) >= 1e14 ? Status::Lambda_Value : optimizeStatus;
-            optimizeStatus = normDiffPose < m_normInfDiff ? Status::Norm_Inf_Diff : optimizeStatus;
+            // optimizeStatus = normDiffPose < m_normInfDiff ? Status::Norm_Inf_Diff : optimizeStatus;
             break;
         }
         // m_timerCheck += std::chrono::duration_cast< std::chrono::microseconds >( std::chrono::high_resolution_clock::now() - t1 ).count();
@@ -623,3 +623,8 @@ template Optimizer::OptimizerResult Optimizer::optimizeLM( Sophus::SE2d& params,
                                 const std::function< uint32_t( Sophus::SE2d& params ) >& lambdaResidualFunctor,
                                 const std::function< uint32_t( Sophus::SE2d& params ) >& lambdaJacobianFunctor,
                                 const std::function< void( Sophus::SE2d& params, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );
+
+template Optimizer::OptimizerResult Optimizer::optimizeLM( Eigen::Vector3d& params,
+                                const std::function< uint32_t( Eigen::Vector3d& params ) >& lambdaResidualFunctor,
+                                const std::function< uint32_t( Eigen::Vector3d& params ) >& lambdaJacobianFunctor,
+                                const std::function< void( Eigen::Vector3d& params, const Eigen::VectorXd& dx ) >& lambdaUpdateFunctor );

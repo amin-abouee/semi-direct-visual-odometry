@@ -15,7 +15,7 @@
 Map::Map( const std::shared_ptr< PinholeCamera >& camera, const uint32_t cellSize ) : m_matches( 0 ), m_trials( 0 )
 {
     initializeGrid( camera, cellSize );
-    m_alignment = std::make_shared< FeatureAlignment >( 11, 0, 3 );
+    m_alignment = std::make_shared< FeatureAlignment >( 7, 0, 3 );
 }
 
 void Map::reset()
@@ -25,36 +25,53 @@ void Map::reset()
 
 void Map::removeFrame( std::shared_ptr< Frame >& frame )
 {
-    auto find = [ &frame ]( std::shared_ptr< Frame >& f ) -> bool {
-        // TODO: check with get() and raw pointer
-        if ( f.get() == frame.get() )
-            return true;
-        return false;
-    };
-    auto element = std::remove_if( m_keyFrames.begin(), m_keyFrames.end(), find );
-    m_keyFrames.erase( element, m_keyFrames.end() );
+    // auto find = [ &frame ]( std::shared_ptr< Frame >& f ) -> bool {
+    //     // TODO: check with get() and raw pointer
+    //     if ( f.get() == frame.get() )
+    //         return true;
+    //     return false;
+    // };
+    // auto element = std::remove_if( m_keyFrames.begin(), m_keyFrames.end(), find );
+    // m_keyFrames.erase( element, m_keyFrames.end() );
 
-    // int32_t delIdx = 0;
-    // for ( auto& fr : m_keyFrames )
-    // {
-    //     if ( fr == frame )
-    //     {
-    //         for ( auto& feature : fr->m_features )
-    //         {
-    //             if ( feature->m_point != nullptr )
-    //             {
-    //                 removeFeature( feature );
-    //             }
-    //         }
-    //         break;
-    //     }
-    //     delIdx++;
-    // }
-
-    // m_keyFrames.erase( m_keyFrames.begin() + delIdx );
+    int32_t delIdx = 0;
+    for ( auto& fr : m_keyFrames )
+    {
+        if ( fr.get() == frame.get() )
+        {
+            for ( auto& feature : fr->m_features )
+            {
+                if ( feature->m_point != nullptr )
+                {
+                    // removeFeature( feature );
+                    feature->m_point->removeFrame( feature->m_frame );
+                    feature->m_point = nullptr;
+                }
+            }
+            break;
+        }
+        delIdx++;
+    }
+    frame->m_features.clear();
+    frame->m_lastKeyframe = nullptr;
+    m_keyFrames.erase( m_keyFrames.begin() + delIdx );
 
     // TODO: also remove from point candidate
+    removeFrameCandidate( frame );
 }
+
+// void Map::unlinkFeaturePoint (std::shared_ptr< Feature >& feature)
+// {
+    // if ( feature->m_point->numberObservation() <= 2 )
+    // {
+    //     removePoint( feature->m_point );
+    //     return;
+    // }
+    // else
+    // {
+    //     feature->m_point->removeFrame( feature->m_frame );
+    // }
+// }
 
 void Map::removePoint( std::shared_ptr< Point >& point )
 {
@@ -71,15 +88,21 @@ void Map::removePoint( std::shared_ptr< Point >& point )
 
 void Map::removeFeature( std::shared_ptr< Feature >& feature )
 {
-    if (feature->m_point != nullptr)
+    if (feature->m_point == nullptr)
     {
-        if ( feature->m_point->numberObservation() <= 2 )
-        {
-            removePoint( feature->m_point );
-            return;
-        }
+        return;
+    }
+    // {
+    if ( feature->m_point->numberObservation() <= 2 )
+    {
+        removePoint( feature->m_point );
+        return;
+    }
+    else
+    {
         feature->m_point->removeFrame( feature->m_frame );
     }
+    // }
     // FIXME:  implement removeFeature in point class
     feature->m_frame->removeFeature( feature );
     // feature->m_point = nullptr;
@@ -208,6 +231,7 @@ void Map::initializeGrid( const std::shared_ptr< PinholeCamera >& camera, const 
     for ( uint32_t c( 0 ); c < numCells; c++ )
     {
         m_grid.m_cells.emplace_back( std::make_shared< CandidateList >() );
+        m_grid.m_cellVisited.push_back(false);
     }
 
     m_grid.m_cellOrders.resize( numCells );
@@ -239,6 +263,7 @@ void Map::reprojectMap( const std::shared_ptr< Frame >& refFrame,
 {
     resetGrid();
 
+    /*
     std::vector< bool > visGrid( m_grid.m_gridCols * m_grid.m_gridRows, false );
 
     std::vector< cv::Point2f > refPoints;
@@ -402,8 +427,8 @@ void Map::reprojectMap( const std::shared_ptr< Frame >& refFrame,
         }
         Map_Log( DEBUG ) << "number of added with last last frame " << cntAdded;
     }
+    */
 
-    /*
 
     // Identify those Keyframes which share a common field of view.
     std::vector< KeyframeDistance > closeKeyframes;
@@ -421,10 +446,9 @@ void Map::reprojectMap( const std::shared_ptr< Frame >& refFrame,
     // TODO: Sort KFs with overlap according to their closeness
     // std::sort(closeKeyframes.begin(), closeKeyframes.end(), compare);
     overlapKeyFrames.reserve( 4 );
-    int32_t n = 0;
 
     // for ( const auto& kfDistance : closeKeyframes )
-    for ( uint32_t i( 0 ); i < closeKeyframes.size() && n < 4; i++, n++ )
+    for ( uint32_t i( 0 ); i < closeKeyframes.size(); i++)
     {
         const auto& kfDistance = closeKeyframes[ i ];
         overlapKeyFrames.push_back( std::make_pair( kfDistance.first, 0 ) );
@@ -455,13 +479,13 @@ void Map::reprojectMap( const std::shared_ptr< Frame >& refFrame,
         if ( candidates->size() > 0 && reprojectCell( candidates, curFrame ) )
         {
             m_matches++;
+            m_grid.m_cellVisited[idx] = true;
         }
-        if ( m_matches > 120 )
+        if ( m_matches > 150 )
         {
             break;
         }
     }
-    */
 }
 
 // TODO: check with const point
@@ -472,7 +496,7 @@ bool Map::reprojectPoint( const std::shared_ptr< Frame >& frame, const std::shar
     {
         const int32_t k = static_cast< int32_t >( pixel.y() ) / m_grid.m_cellSize * m_grid.m_gridCols +
                           static_cast< int32_t >( pixel.x() ) / m_grid.m_cellSize;
-        m_grid.m_cells[ k ]->emplace_back( Candidate( feature, feature->m_point, frame ) );
+        m_grid.m_cells[ k ]->emplace_back( Candidate( feature, feature->m_point, false ) );
         return true;
     }
     return false;
@@ -511,14 +535,14 @@ bool Map::reprojectCell( std::shared_ptr< CandidateList >& candidates, std::shar
         Eigen::Vector2d candidatePixelPosition = frame->world2image( point->m_position );
         // Map_Log( DEBUG ) << "pixel pos: " << candidatePixelPosition.transpose()
         //                  << ", init error: " << algorithm::computePatchError( candidate.m_feature, frame, candidatePixelPosition, 7 );
-        // double error = m_alignment->align( candidate.m_feature, frame, candidatePixelPosition );
-        // bool foundMatch = error < 50.0 ? true : false;
+        double error = m_alignment->align( candidate.m_feature, frame, candidatePixelPosition );
+        // bool foundMatch = error < 60.0 ? true : false;
         // Map_Log( DEBUG ) << "error: " << error << ", update pixel pos: " << candidatePixelPosition.transpose()
         //                  << ", final error: " << algorithm::computePatchError( candidate.m_feature, frame, candidatePixelPosition, 7 );
 
-        // // TODO: check the projected area with reference and compute the error
+        // TODO: check the projected area with reference and compute the error
 
-        // if ( foundMatch == false )
+        // i    f ( foundMatch == false )
         // {
         //     point->m_failedProjection++;
         //     if ( point->m_type == Point::PointType::UNKNOWN && point->m_failedProjection > 15 )
@@ -545,7 +569,8 @@ bool Map::reprojectCell( std::shared_ptr< CandidateList >& candidates, std::shar
         // round is only done if this frame is selected as keyframe.
         feature->setPoint( point );
         point->addFeature( feature );
-        Map_Log( DEBUG ) << "feature accepted";
+        candidate.m_matched = true;
+        // Map_Log( DEBUG ) << "feature accepted";
 
         // Maximum one point per cell.
         return true;
@@ -560,11 +585,11 @@ bool Map::reprojectCell( std::shared_ptr< CandidateList >& candidates, std::shar
 
 void Map::addNewCandidate( const std::shared_ptr< Feature >& feature,
                            const std::shared_ptr< Point >& point,
-                           const std::shared_ptr< Frame >& visitedFrame )
+                           const bool matched )
 {
     point->m_type = Point::PointType::CANDIDATE;
     std::unique_lock< std::mutex > lock( m_mutexCandidates );
-    m_candidates.push_back( Candidate( feature, point, visitedFrame ) );
+    m_candidates.push_back( Candidate( feature, point, matched ) );
 }
 
 void Map::addCandidateToFrame( std::shared_ptr< Frame >& frame )
@@ -573,17 +598,39 @@ void Map::addCandidateToFrame( std::shared_ptr< Frame >& frame )
     uint32_t cntAddedFeature = 0;
     for ( auto& candidate : m_candidates )
     {
-        if ( candidate.m_feature->m_frame == frame )
+        Eigen::Vector2d candidatePixelPosition = frame->world2image(candidate.m_point->m_position);
+        if ( frame->m_camera->isInFrame( candidatePixelPosition, 3 ) )  // 8px is the patch size in the matcher
         {
-            candidate.m_feature->setPoint( candidate.m_point );
-            candidate.m_point->addFeature( candidate.m_feature );
-            candidate.m_point->m_type             = Point::PointType::UNKNOWN;
-            candidate.m_point->m_failedProjection = 0;
-            cntAddedFeature++;
+            const int32_t k = static_cast< int32_t >( candidatePixelPosition.y() ) / m_grid.m_cellSize * m_grid.m_gridCols +
+                            static_cast< int32_t >( candidatePixelPosition.x() ) / m_grid.m_cellSize;
+            if (m_grid.m_cellVisited[k] == false)
+            {
+                double error = m_alignment->align( candidate.m_feature, frame, candidatePixelPosition );
+                bool foundMatch = error < 50.0 ? true : false;
+                if (foundMatch == true)
+                {
+                    std::shared_ptr< Feature > feature = std::make_shared< Feature >( frame, candidatePixelPosition, 0 );
+                    frame->addFeature( feature );
+                    candidate.m_point->addFeature(candidate.m_feature);
+                    candidate.m_point->addFeature(feature);
+                    candidate.m_feature->setPoint(candidate.m_point);
+                    feature->setPoint(candidate.m_point);
+                    candidate.m_matched = true;
+                    m_grid.m_cellVisited[k] = true;
+                    cntAddedFeature++;
+                }
+            }
         }
     }
     Map_Log( DEBUG ) << cntAddedFeature << " features added to frame id " << frame->m_id;
-    removeFrameCandidate( frame );
+    removeMatchedCandidate();
+}
+
+void Map::removeMatchedCandidate()
+{
+    m_candidates.erase( std::remove_if( m_candidates.begin(), m_candidates.end(),
+                                        []( const auto& candidate ) { return candidate.m_matched == true; } ),
+                        m_candidates.end() );
 }
 
 void Map::addCandidateToAllActiveKeyframes()
@@ -621,6 +668,7 @@ void Map::addCandidateToAllActiveKeyframes()
 
 void Map::removeFrameCandidate( std::shared_ptr< Frame >& frame )
 {
+    std::unique_lock< std::mutex > lock( m_mutexCandidates );
     m_candidates.erase( std::remove_if( m_candidates.begin(), m_candidates.end(),
                                         [ &frame ]( const auto& candidate ) { return candidate.m_feature->m_frame.get() == frame.get(); } ),
                         m_candidates.end() );
