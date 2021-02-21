@@ -90,18 +90,20 @@ System::Result System::processFirstFrame()
     // visualize
     if ( m_config->m_enableVisualization == true )
     {
-        // cv::Mat gradient = m_featureSelector->m_imgGradientMagnitude.clone();
-        // cv::Mat refBGR   = visualization::getColorImage( gradient );
-        // visualization::featurePoints( refBGR, m_curFrame, 5, "pink", true, visualization::drawingRectangle );
-        // visualization::imageGrid( refBGR, m_config->m_cellPixelSize, "amber" );
-        // if ( m_config->m_savingType == "LiveShow" )
-        // {
-        //     cv::imshow( "First Image", refBGR );
-        // }
-        // else if ( m_config->m_savingType == "File" )
-        // {
-        //     cv::imwrite( "../output/images/0.png", refBGR );
-        // }
+        cv::Mat gradient = m_featureSelector->m_imgGradientMagnitude.clone();
+        cv::Mat refBGR   = visualization::getColorImage( gradient );
+        visualization::featurePoints( refBGR, m_curFrame, 5, "pink", true, visualization::drawingRectangle );
+        visualization::imageGrid( refBGR, m_config->m_cellPixelSize, "amber" );
+        if ( m_config->m_savingType == "LiveShow" )
+        {
+            cv::imshow( "First Image", refBGR );
+        }
+        else if ( m_config->m_savingType == "File" )
+        {
+            std::stringstream ss;
+            ss << "../output/images/" << m_curFrame->m_id << "_" << m_curFrame->m_id << ".jpg";
+            cv::imwrite( ss.str(), refBGR );
+        }
     }
 
     m_curFrame->setKeyframe();
@@ -266,13 +268,13 @@ System::Result System::processSecondFrame()
         if ( m_config->m_savingType == "LiveShow" )
         {
             std::stringstream ss;
-            ss << m_refFrame->m_id << " -> " << m_curFrame->m_id;
+            ss << m_refFrame->m_id << "_" << m_curFrame->m_id;
             cv::imshow( ss.str(), stickImg );
         }
         else if ( m_config->m_savingType == "File" )
         {
             std::stringstream ss;
-            ss << "../output/images/" << m_refFrame->m_id << " -> " << m_curFrame->m_id << ".png";
+            ss << "../output/images/" << m_refFrame->m_id << "_" << m_curFrame->m_id << ".jpg";
             cv::imwrite( ss.str(), stickImg );
         }
 
@@ -365,61 +367,16 @@ System::Result System::processNewFrame()
     m_map->reprojectMap( m_refFrame, m_curFrame, overlapKeyFrames );
     System_Log( INFO ) << "Number of Features in new frame: " << m_curFrame->numberObservation();
     double befError = algorithm::computeStructureError(m_curFrame);
+
+    {
+        
+    }
     // m_bundler->optimizePose(m_curFrame);
-    m_bundler->optimizeScene(m_curFrame, 2.0);
+    // m_bundler->oneFrameWithScene (m_curFrame, 2.0);
+    // m_bundler->optimizeScene(m_curFrame, 2.0);
     // m_bundler->threeViewBA(m_curFrame, 2.0);
     double aftError = algorithm::computeStructureError(m_curFrame);
     System_Log( INFO ) << "Structure error: " << befError << " -> " << aftError;
-
-    /*{
-        std::vector< cv::Point3d > objectPoints;
-        std::vector< cv::Point2d > imagePoints;
-
-        const Eigen::Vector2d focalLength = m_curFrame->m_camera->focalLength();
-        const Eigen::Vector2d principlePoint = m_curFrame->m_camera->principalPoint();
-        cv::Matx33d K (focalLength.x(), 0.0, principlePoint.x(), 0.0, focalLength.y(), principlePoint.y(), 0.0, 0.0, 1.0);
-        cv::Mat dist_coeffs = cv::Mat::zeros(4,1,cv::DataType<double>::type);
-
-        for ( const auto& feature : m_curFrame->m_features )
-        {
-            if ( feature->m_point != nullptr )
-            {
-                const auto& point = feature->m_point;
-                imagePoints.push_back( cv::Point2d( feature->m_pixelPosition.x(), feature->m_pixelPosition.y() ) );
-                objectPoints.push_back( cv::Point3d( point->m_position.x(), point->m_position.y(), point->m_position.z() ) );
-            }
-        }
-        cv::Mat rotation_vector; // Rotation in axis-angle form
-        cv::Mat translation_vector;
-        cv::solvePnP(objectPoints, imagePoints, K, dist_coeffs, rotation_vector, translation_vector);
-
-        cv::Mat outR;
-        cv::Rodrigues(rotation_vector, outR);
-        System_Log( INFO ) << "rotation " << outR;
-        System_Log( INFO ) << "translation " << translation_vector;
-
-        cv::Mat R_tmp;
-        outR.convertTo( R_tmp, CV_64F );
-        double *dR				= (double *)R_tmp.data;
-        Eigen::Matrix3d R_eigen = Eigen::Matrix3d::Map( dR, 3, 3 );
-        R_eigen.transposeInPlace();
-
-        System_Log( INFO ) << "error rot " << (R_eigen - m_curFrame->m_absPose.rotationMatrix()).norm();
-
-        Eigen::AngleAxisd tmpRot(R_eigen);
-        m_curFrame->m_absPose.setRotationMatrix(tmpRot.toRotationMatrix());
-        System_Log( INFO ) << "rotation new:" << m_curFrame->m_absPose.rotationMatrix();
-
-        cv::Mat t_tmp;
-        translation_vector.convertTo( t_tmp, CV_64F );
-        double *dt				= (double *)t_tmp.data;
-        Eigen::Vector3d t_eigen = Eigen::Vector3d::Map( dt, 3, 1 );
-
-        System_Log( INFO ) << "error rot " << (t_eigen - m_curFrame->m_absPose.translation()).norm();
-        m_curFrame->m_absPose.translation() = Eigen::Vector3d::Map( dt, 3, 1 );
-
-        System_Log( INFO ) << "translation new: " << m_curFrame->m_absPose.translation();
-    }*/
 
     if ( m_config->m_enableVisualization == true )
     {
@@ -496,7 +453,7 @@ System::Result System::processNewFrame()
     if ( qualityCheck == false )
     {
         m_curFrame->m_absPose = m_refFrame->m_absPose;
-        return Result::Failed;
+        return Result::Success;
     }
 
     const uint32_t numObserves = m_curFrame->numberObservation();

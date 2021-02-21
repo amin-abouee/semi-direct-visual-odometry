@@ -57,6 +57,8 @@ public:
     void threeViewBA( std::shared_ptr< Frame >& frame,
                     const double reprojectionError );
 
+    void oneFrameWithScene( std::shared_ptr< Frame >& frame, const double reprojectionError );
+
     // void globalBa( std::shared_ptr< Map >& map );
 
 private:
@@ -67,7 +69,10 @@ private:
     Optimizer m_optimizer;
     std::vector< bool > m_refVisibility;
 
-    void computeImageJacPose( Eigen::Matrix< double, 3, 6 >& imageJac, const Eigen::Vector3d& point, const double fx, const double fy );
+    void computeImageJacPose( Eigen::Matrix< double, 2, 6 >& imageJac,
+                            const Eigen::Vector3d& point,
+                            const double fx,
+                            const double fy);
     uint32_t computeJacobianPose( const std::shared_ptr< Frame >& frame, const Sophus::SE3d& pose );
     uint32_t computeResidualsPose( const std::shared_ptr< Frame >& frame, const Sophus::SE3d& pose );
     void updatePose( Sophus::SE3d& pose, const Eigen::VectorXd& dx );

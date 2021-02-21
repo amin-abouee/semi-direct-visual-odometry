@@ -71,26 +71,14 @@ Optimizer::OptimizerResult Optimizer::optimizeGN(
     {
         // std::cout << "params: " << params.params().format(utils::eigenFormat()) << std::endl;
         resetAllParameters( computeJacobian );
+
+        if ( computeJacobian == true )
+            lambdaJacobianFunctor( params );
         cntTotalProjectedPixels = lambdaResidualFunctor( params );
         tukeyWeighting( cntTotalProjectedPixels );
         chiSquaredError = computeChiSquaredError();
-        // const uint32_t validpatches = std::count( curVisibility.begin(), curVisibility.end(), true );
-        // std::cout << "projected points: " << cntTotalProjectedPixels << std::endl;
-        if ( computeJacobian == true )
-            lambdaJacobianFunctor( params );
 
-        // for ( std::size_t i( 0 ); i < numObservations; i++ )
-        // {
-        //     if ( m_visiblePoints( i ) == true )
-        //     {
-        //         const auto Jac = m_jacobian.row( i );
-        //         // std::cout << "Jac " << i << ": " << Jac << std::endl;
-        //         m_hessian.noalias() += Jac.transpose() * Jac * m_weights( i );
-        //         m_gradient.noalias() += Jac.transpose() * m_residuals( i ) * m_weights( i );
-        //         chiSquaredError += m_residuals( i ) * m_residuals( i ) * m_weights( i );
-        //         // squaredError += m_residuals( i ) * m_residuals( i );
-        //     }
-        // }
+
         m_hessian.noalias() = m_jacobian.transpose() * m_weights.asDiagonal() * m_jacobian;
         m_gradient.noalias() = m_jacobian.transpose() * m_weights.asDiagonal() * m_residuals;
         m_dx.noalias() = m_hessian.ldlt().solve( m_gradient );
@@ -193,9 +181,12 @@ Optimizer::OptimizerResult Optimizer::optimizeLM(
     double lambda = 1e-2;
     double nu     = 2.0;
 
-    // auto t1 = std::chrono::high_resolution_clock::now();
     /// run for the first time to get the chi error
+
     resetAllParameters( computeJacobian );
+
+    if ( computeJacobian == true )
+        lambdaJacobianFunctor( params );
     cntTotalProjectedPixels = lambdaResidualFunctor( params );
     tukeyWeighting( cntTotalProjectedPixels );
     chiSquaredError = computeChiSquaredError();

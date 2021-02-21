@@ -25,35 +25,38 @@ void Map::reset()
 
 void Map::removeFrame( std::shared_ptr< Frame >& frame )
 {
-    auto find = [ &frame ]( std::shared_ptr< Frame >& f ) -> bool {
-        // TODO: check with get() and raw pointer
-        if ( f.get() == frame.get() )
-            return true;
-        return false;
-    };
-    auto element = std::remove_if( m_keyFrames.begin(), m_keyFrames.end(), find );
-    m_keyFrames.erase( element, m_keyFrames.end() );
+    // auto find = [ &frame ]( std::shared_ptr< Frame >& f ) -> bool {
+    //     // TODO: check with get() and raw pointer
+    //     if ( f.get() == frame.get() )
+    //         return true;
+    //     return false;
+    // };
+    // auto element = std::remove_if( m_keyFrames.begin(), m_keyFrames.end(), find );
+    // m_keyFrames.erase( element, m_keyFrames.end() );
 
-    // int32_t delIdx = 0;
-    // for ( auto& fr : m_keyFrames )
-    // {
-    //     if ( fr == frame )
-    //     {
-    //         for ( auto& feature : fr->m_features )
-    //         {
-    //             if ( feature->m_point != nullptr )
-    //             {
-    //                 removeFeature( feature );
-    //             }
-    //         }
-    //         break;
-    //     }
-    //     delIdx++;
-    // }
-
-    // m_keyFrames.erase( m_keyFrames.begin() + delIdx );
+    int32_t delIdx = 0;
+    for ( auto& fr : m_keyFrames )
+    {
+        if ( fr == frame )
+        {
+            for ( auto& feature : fr->m_features )
+            {
+                if ( feature->m_point != nullptr )
+                {
+                    feature->m_point->removeFrame( feature->m_frame );
+                    feature = nullptr;
+                }
+            }
+            break;
+        }
+        delIdx++;
+    }
+    frame->m_features.clear();
+    frame->m_lastKeyframe = nullptr;
+    m_keyFrames.erase( m_keyFrames.begin() + delIdx );
 
     // TODO: also remove from point candidate
+    removeFrameCandidate( frame );
 }
 
 void Map::removePoint( std::shared_ptr< Point >& point )
@@ -621,6 +624,7 @@ void Map::addCandidateToAllActiveKeyframes()
 
 void Map::removeFrameCandidate( std::shared_ptr< Frame >& frame )
 {
+    // std::unique_lock< std::mutex > lock( m_mutexCandidates );
     m_candidates.erase( std::remove_if( m_candidates.begin(), m_candidates.end(),
                                         [ &frame ]( const auto& candidate ) { return candidate.m_feature->m_frame.get() == frame.get(); } ),
                         m_candidates.end() );

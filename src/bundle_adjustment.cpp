@@ -37,12 +37,12 @@ double BundleAdjustment::optimizePose( std::shared_ptr< Frame >& frame )
     if ( frame->numberObservation() == 0 )
         return 0;
 
-    m_optimizer.setNumUnknowns( 6 );
+    // m_optimizer.setNumUnknowns( 6 );
     // auto t1 = std::chrono::high_resolution_clock::now();
     const std::size_t numFeatures = frame->numberObservation();
     // const uint32_t numObservations = numFeatures;
     // m_refPatches                   = cv::Mat( numFeatures, m_patchArea, CV_32F );
-    m_optimizer.initParameters( numFeatures * 3 );
+    m_optimizer.initParameters( numFeatures * 2 );
     m_refVisibility.resize( numFeatures, false );
 
     Sophus::SE3d absolutePose = frame->m_absPose;
@@ -62,7 +62,6 @@ double BundleAdjustment::optimizePose( std::shared_ptr< Frame >& frame )
     std::tie( optimizationStatus, error ) =
       m_optimizer.optimizeLM< Sophus::SE3d >( absolutePose, lambdaResidualFunctor, lambdaJacobianFunctor, lambdaUpdateFunctor );
 
-    // curFrame->m_absPose = refFrame->m_absPose * relativePose;
     frame->m_absPose = absolutePose;
     Adjustment_Log( DEBUG ) << "Computed Pose: " << frame->m_absPose.params().transpose();
 
@@ -86,10 +85,10 @@ uint32_t BundleAdjustment::computeJacobianPose( const std::shared_ptr< Frame >& 
         m_refVisibility[ cntFeature ] = true;
         const Eigen::Vector3d point   = pose * feature->m_point->m_position;
 
-        Eigen::Matrix< double, 3, 6 > imageJac;
-        computeImageJacPose( imageJac, point, fx, fy );
+        Eigen::Matrix< double, 2, 6 > imageJac;
+        computeImageJacPose( imageJac, point, fx, fy);
 
-        m_optimizer.m_jacobian.block( 3 * cntPoints, 0, 3, 6 ) = imageJac;
+        m_optimizer.m_jacobian.block( 2 * cntFeature, 0, 2, 6 ) = imageJac;
         cntPoints++;
         cntFeature++;
     }
@@ -110,28 +109,28 @@ uint32_t BundleAdjustment::computeResidualsPose( const std::shared_ptr< Frame >&
             continue;
         }
 
-        const Eigen::Vector3d error = feature->m_bearingVec - (pose * feature->m_point->m_position).normalized();
+        const Eigen::Vector2d error = frame->world2image(feature->m_point->m_position) - feature->m_pixelPosition;
         // ****
         // IF we compute the error of inverse compositional as r = T(x) - I(W), then we should solve (delta p) = -(JtWT).inverse() *
         // JtWr BUt if we take r = I(W) - T(x) a residual error, then (delta p) = (JtWT).inverse() * JtWr
         // ***
 
-        m_optimizer.m_residuals( cntTotalProjectedPixels++ ) = error.x();
-        m_optimizer.m_residuals( cntTotalProjectedPixels++ )   = error.y();
-        m_optimizer.m_residuals( cntTotalProjectedPixels )   = error.z();
+        m_optimizer.m_residuals( cntFeature * 2 ) = -1 * std::abs(error.x());
+        m_optimizer.m_residuals( cntFeature * 2 + 1 )   = -1 * std::abs(error.y());
         // m_optimizer.m_residuals( cntFeature * m_patchArea + cntPixel ) = static_cast< double >( *pixelPtr - curPixelValue);
-        m_optimizer.m_visiblePoints( cntTotalProjectedPixels ) = true;
+        m_optimizer.m_visiblePoints( cntFeature * 2 ) = true;
+        m_optimizer.m_visiblePoints( cntFeature * 2 + 1 ) = true;
 
-        cntTotalProjectedPixels++;
+        cntTotalProjectedPixels += 2;
         cntFeature++;
     }
     return cntTotalProjectedPixels;
 }
 
-void BundleAdjustment::computeImageJacPose( Eigen::Matrix< double, 3, 6 >& imageJac,
+void BundleAdjustment::computeImageJacPose( Eigen::Matrix< double, 2, 6 >& imageJac,
                                             const Eigen::Vector3d& point,
                                             const double fx,
-                                            const double fy )
+                                            const double fy)
 {
     // Image Gradient-based Joint Direct Visual Odometry for Stereo Camera, Eq. 12
     // Taking a Deeper Look at the Inverse Compositional Algorithm, Eq. 28
@@ -147,32 +146,27 @@ void BundleAdjustment::computeImageJacPose( Eigen::Matrix< double, 3, 6 >& image
     const double x  = point.x();
     const double y  = point.y();
     const double z  = point.z();
+    const double x2 = x * x;
+    const double y2 = y * y;
+    const double z2 = z * z;
 
-    imageJac (0, 0 ) = 1.0;
-    imageJac (0, 1 ) = 0.0;
-    imageJac (0, 2 ) = 0.0;
-    imageJac (0, 3 ) = 0.0;
-    imageJac (0, 4 ) = z;
-    imageJac (0, 5 ) = -y;
+    imageJac( 0, 0 ) = fx / z;
+    imageJac( 0, 1 ) = 0.0;
+    imageJac( 0, 2 ) = -( fx * x ) / z2;
+    imageJac( 0, 3 ) = -( fx * x * y ) / z2;
+    imageJac( 0, 4 ) = ( fx * x2 ) / z2 + fx;
+    imageJac( 0, 5 ) = -( fx * y ) / z;
 
-    imageJac (1, 0 ) = 0.0;
-    imageJac (1, 1 ) = 1.0;
-    imageJac (1, 2 ) = 0.0;
-    imageJac (1, 3 ) = -z;
-    imageJac (1, 4 ) = 0.0;
-    imageJac (1, 5 ) = x;
-
-    imageJac (2, 0 ) = 0.0;
-    imageJac (2, 1 ) = 0.0;
-    imageJac (2, 2 ) = 1.0;
-    imageJac (2, 3 ) = y;
-    imageJac (2, 4 ) = -x;
-    imageJac (2, 5 ) = 0.0;
+    imageJac( 1, 0 ) = 0.0;
+    imageJac( 1, 1 ) = fy / z;
+    imageJac( 1, 2 ) = -( fy * y ) / z2;
+    imageJac( 1, 3 ) = -( fy * y2 ) / z2 - fy;
+    imageJac( 1, 4 ) = ( fy * x * y ) / z2;
+    imageJac( 1, 5 ) = ( fy * x ) / z;
 }
 
 void BundleAdjustment::updatePose( Sophus::SE3d& pose, const Eigen::VectorXd& dx )
 {
-    // pose = pose * Sophus::SE3d::exp( -dx );
     pose = Sophus::SE3d::exp( dx ) * pose;
 }
 
@@ -683,8 +677,6 @@ void BundleAdjustment::optimizeScene (std::shared_ptr< Frame >& frame, const dou
             {
                 vertexFrame = it->second;
             }
-
-
             // create edge
             g2oEdgeSE3* edge = createG2oEdgeSE3( vertexFrame, vertexPoint, feature->m_pixelPosition, true,
                                                  reprojectionError * 1.0, 1.0 );
@@ -803,5 +795,92 @@ void BundleAdjustment::threeViewBA( std::shared_ptr< Frame >& frame,
     //     feature->m_point->m_position    = feature->m_point->m_optG2oPoint->estimate();
     //     feature->m_point->m_optG2oPoint = nullptr;
     // }
+}
 
+void BundleAdjustment::oneFrameWithScene( std::shared_ptr< Frame >& frame, const double reprojectionError )
+{
+    // init g2o
+    g2o::SparseOptimizer optimizer;
+    setupG2o( optimizer );
+
+    // std::vector< std::shared_ptr< Point > > points;
+    // std::vector< std::shared_ptr< Frame > > neighborsKeyframe;
+    uint32_t verticesIdx = 0;
+    uint32_t cntFrames   = 0;
+    uint32_t cntPoints   = 0;
+
+    // New keyframe vertex 1: This keyframe is set to fixed!
+    g2oFrameSE3* vertexFrame = createG2oFrameSE3( frame, verticesIdx++, false );
+    frame->m_optG2oFrame     = vertexFrame;
+    optimizer.addVertex( vertexFrame );
+    cntFrames++;
+
+    for ( auto& feature : frame->m_features )
+    {
+        if ( feature->m_point != nullptr && feature->m_point->numberObservation() > 1 )
+        {
+            auto& point = feature->m_point;
+
+            // Create point vertex
+            g2oPoint* vertexPoint = createG2oPoint( point->m_position, verticesIdx++, true );
+            point->m_optG2oPoint  = vertexPoint;
+            optimizer.addVertex( vertexPoint );
+            cntPoints++;
+
+            // Add edges
+            for ( auto& ptFeature : point->m_features )
+            {
+                if ( ptFeature->m_frame->m_optG2oFrame == nullptr )
+                {
+                    g2oFrameSE3* vertexFrame        = createG2oFrameSE3( ptFeature->m_frame, verticesIdx++, true );
+                    ptFeature->m_frame->m_optG2oFrame = vertexFrame;
+                    optimizer.addVertex( vertexFrame );
+                    cntFrames++;
+                }
+                // create edge
+                g2oEdgeSE3* edge = createG2oEdgeSE3( feature->m_frame->m_optG2oFrame, vertexPoint, ptFeature->m_pixelPosition, true,
+                                                     reprojectionError, 1.0 );
+                optimizer.addEdge( edge );
+                verticesIdx++;
+            }
+        }
+    }
+
+    Adjustment_Log( DEBUG ) << "Number of frames: " << cntFrames << ", Number of points: " << cntPoints
+                            << ", Number of vertices: " << verticesIdx;
+
+    Adjustment_Log( DEBUG ) << "Graph for optimization has " << optimizer.vertices().size() << " vertices and " << optimizer.edges().size()
+                            << " edges";
+
+    // Optimization
+    double initError, finalError;
+    runSparseBAOptimizer( optimizer, 10, initError, finalError );
+
+    // Update keyframe positions. we don't need to check the first frame
+    frame->m_absPose.rotationMatrix() = frame->m_optG2oFrame->estimate().rotation().toRotationMatrix();
+    frame->m_absPose.translation()    = frame->m_optG2oFrame->estimate().translation();
+    frame->m_optG2oFrame                   = nullptr;
+
+    // // Update mappoint positions
+    // for ( auto& feature : frame->m_features )
+    // {
+    //     if ( feature->m_point == nullptr )
+    //         continue;
+    //     feature->m_point->m_position    = feature->m_point->m_optG2oPoint->estimate();
+    //     feature->m_point->m_optG2oPoint = nullptr;
+    // }
+
+    for ( auto& feature : frame->m_features )
+    {
+        if ( feature->m_point != nullptr )
+        {
+            for ( auto& feature : feature->m_point->m_features )
+            {
+                if ( feature->m_frame->m_optG2oFrame != nullptr )
+                {
+                    feature->m_frame->m_optG2oFrame = nullptr;
+                }
+            }
+        }
+    }
 }

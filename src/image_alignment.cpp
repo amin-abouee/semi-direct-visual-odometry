@@ -86,7 +86,7 @@ void ImageAlignment::computeJacobian( const std::shared_ptr< Frame >& frame, con
 {
     resetParameters();
     const int32_t border    = m_halfPatchSize + 2;
-    const cv::Mat& refImage = frame->m_imagePyramid.getImageAtLevel( level );
+    const cv::Mat& refImage = frame->m_imagePyramid.getGradientAtLevel( level );
     const algorithm::MapXRowConst refImageEigen( refImage.ptr< uint8_t >(), refImage.rows, refImage.cols );
 
     const double levelDominator   = 1 << level;
@@ -114,7 +114,7 @@ void ImageAlignment::computeJacobian( const std::shared_ptr< Frame >& frame, con
     }
 
     const std::shared_ptr< Frame >& lastKeyframe = frame->m_lastKeyframe;
-    const cv::Mat& lastKFImage                   = lastKeyframe->m_imagePyramid.getImageAtLevel( level );
+    const cv::Mat& lastKFImage                   = lastKeyframe->m_imagePyramid.getGradientAtLevel( level );
     const algorithm::MapXRowConst lastKFImageEigen( lastKFImage.ptr< uint8_t >(), lastKFImage.rows, lastKFImage.cols );
     const Eigen::Vector3d lastKFC = lastKeyframe->cameraInWorld();
     // project all feature of last keyframe
@@ -249,7 +249,7 @@ uint32_t ImageAlignment::computeResiduals( const std::shared_ptr< Frame >& refFr
                                            const Sophus::SE3d& pose )
 {
     const std::shared_ptr< Frame >& lastKeyframe = refFrame->m_lastKeyframe;
-    const cv::Mat& curImage                      = curFrame->m_imagePyramid.getImageAtLevel( level );
+    const cv::Mat& curImage                      = curFrame->m_imagePyramid.getGradientAtLevel( level );
     const algorithm::MapXRowConst curImageEigen( curImage.ptr< uint8_t >(), curImage.rows, curImage.cols );
     const int32_t border = m_halfPatchSize + 2;
     // const uint32_t stride            = curImage.cols;
