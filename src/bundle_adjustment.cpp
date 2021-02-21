@@ -109,14 +109,18 @@ uint32_t BundleAdjustment::computeResidualsPose( const std::shared_ptr< Frame >&
             continue;
         }
 
-        const Eigen::Vector2d error = frame->world2image(feature->m_point->m_position) - feature->m_pixelPosition;
+        const Eigen::Vector2d refPoint = feature->m_bearingVec.head<2>() / feature->m_bearingVec.z();
+        const Eigen::Vector3d PointInCCS = frame->world2camera(feature->m_point->m_position);
+        const Eigen::Vector2d projectedPoint = PointInCCS.head<2>() / PointInCCS.z();
+
+        const Eigen::Vector2d error = projectedPoint - refPoint;
         // ****
         // IF we compute the error of inverse compositional as r = T(x) - I(W), then we should solve (delta p) = -(JtWT).inverse() *
         // JtWr BUt if we take r = I(W) - T(x) a residual error, then (delta p) = (JtWT).inverse() * JtWr
         // ***
 
-        m_optimizer.m_residuals( cntFeature * 2 ) = -1 * std::abs(error.x());
-        m_optimizer.m_residuals( cntFeature * 2 + 1 )   = -1 * std::abs(error.y());
+        m_optimizer.m_residuals( cntFeature * 2 ) = error.x();
+        m_optimizer.m_residuals( cntFeature * 2 + 1 )  = error.y();
         // m_optimizer.m_residuals( cntFeature * m_patchArea + cntPixel ) = static_cast< double >( *pixelPtr - curPixelValue);
         m_optimizer.m_visiblePoints( cntFeature * 2 ) = true;
         m_optimizer.m_visiblePoints( cntFeature * 2 + 1 ) = true;
@@ -150,19 +154,22 @@ void BundleAdjustment::computeImageJacPose( Eigen::Matrix< double, 2, 6 >& image
     const double y2 = y * y;
     const double z2 = z * z;
 
-    imageJac( 0, 0 ) = fx / z;
-    imageJac( 0, 1 ) = 0.0;
-    imageJac( 0, 2 ) = -( fx * x ) / z2;
-    imageJac( 0, 3 ) = -( fx * x * y ) / z2;
-    imageJac( 0, 4 ) = ( fx * x2 ) / z2 + fx;
-    imageJac( 0, 5 ) = -( fx * y ) / z;
+    const double z_inv = 1./z;
+    const double z_inv_2 = z_inv*z_inv;
 
-    imageJac( 1, 0 ) = 0.0;
-    imageJac( 1, 1 ) = fy / z;
-    imageJac( 1, 2 ) = -( fy * y ) / z2;
-    imageJac( 1, 3 ) = -( fy * y2 ) / z2 - fy;
-    imageJac( 1, 4 ) = ( fy * x * y ) / z2;
-    imageJac( 1, 5 ) = ( fy * x ) / z;
+    imageJac(0,0) = -z_inv;              // -1/z
+    imageJac(0,1) = 0.0;                 // 0
+    imageJac(0,2) = x*z_inv_2;           // x/z^2
+    imageJac(0,3) = y*imageJac(0,2);            // x*y/z^2
+    imageJac(0,4) = -(1.0 + x*imageJac(0,2));   // -(1.0 + x^2/z^2)
+    imageJac(0,5) = y*z_inv;             // y/z
+
+    imageJac(1,0) = 0.0;                 // 0
+    imageJac(1,1) = -z_inv;              // -1/z
+    imageJac(1,2) = y*z_inv_2;           // y/z^2
+    imageJac(1,3) = 1.0 + y*imageJac(1,2);      // 1.0 + y^2/z^2
+    imageJac(1,4) = -imageJac(0,3);             // -x*y/z^2
+    imageJac(1,5) = -x*z_inv;            // x/z
 }
 
 void BundleAdjustment::updatePose( Sophus::SE3d& pose, const Eigen::VectorXd& dx )
