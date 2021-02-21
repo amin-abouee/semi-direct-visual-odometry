@@ -368,12 +368,63 @@ System::Result System::processNewFrame()
     System_Log( INFO ) << "Number of Features in new frame: " << m_curFrame->numberObservation();
     double befError = algorithm::computeStructureError(m_curFrame);
 
+/*
     {
-        
+        std::vector< cv::Point3d > objectPoints;
+        std::vector< cv::Point2d > imagePoints;
+
+        const Eigen::Vector2d focalLength = m_curFrame->m_camera->focalLength();
+        const Eigen::Vector2d principlePoint = m_curFrame->m_camera->principalPoint();
+        cv::Matx33d K (focalLength.x(), 0.0, principlePoint.x(), 0.0, focalLength.y(), principlePoint.y(), 0.0, 0.0, 1.0);
+        cv::Mat dist_coeffs = cv::Mat::zeros(4,1,cv::DataType<double>::type);
+
+        for ( const auto& feature : m_curFrame->m_features )
+        {
+            if ( feature->m_point != nullptr )
+            {
+                const auto& point = feature->m_point;
+                imagePoints.push_back( cv::Point2d( feature->m_pixelPosition.x(), feature->m_pixelPosition.y() ) );
+                objectPoints.push_back( cv::Point3d( point->m_position.x(), point->m_position.y(), point->m_position.z() ) );
+            }
+        }
+
+        const Eigen::Matrix3d computedRot = m_curFrame->m_absPose.rotationMatrix();
+        const Eigen::Vector3d computedTranslation = m_curFrame->m_absPose.translation();
+        System_Log( WARNING ) << "init trans: " << m_curFrame->m_absPose.params().transpose();
+
+
+        cv::Mat cv_R = (cv::Mat_<double>(3,3) << computedRot(0, 0), computedRot(0, 1), computedRot(0, 2), computedRot(1, 0), computedRot(1, 1), computedRot(1, 2), computedRot(2, 0), computedRot(2, 1), computedRot(2, 2));
+        cv::Mat rotation_vector;
+        cv::Rodrigues(cv_R, rotation_vector);
+        cv::Mat translation_vector = (cv::Mat_<double>(3,1) << computedTranslation (0), computedTranslation(1), computedTranslation(2));
+
+        // System_Log( WARNING ) << "eigen rot: " << computedRot;
+        // System_Log( WARNING ) << "rotation: " << cv_R;
+
+        cv::solvePnP(objectPoints, imagePoints, K, dist_coeffs, rotation_vector, translation_vector, false);
+
+        m_curFrame->m_absPose.translation() = Eigen::Vector3d (translation_vector.at<double>(0,0), translation_vector.at<double>(1,0), translation_vector.at<double>(2,0));
+
+        cv::Mat outputRotation;
+        cv::Rodrigues(rotation_vector, outputRotation);
+
+        Eigen::Matrix3d finalRotation;
+        finalRotation << outputRotation.at<double>(0,0), outputRotation.at<double>(0,1), outputRotation.at<double>(0,2), outputRotation.at<double>(1,0), outputRotation.at<double>(1,1), outputRotation.at<double>(1,2), outputRotation.at<double>(2,0), outputRotation.at<double>(2,1), outputRotation.at<double>(2,2);
+
+        // System_Log( WARNING ) << "rotation: " << outputRotation;
+        // System_Log( WARNING ) << "eigen rot: " << finalRotation;
+
+        Eigen::AngleAxisd tmpRot(finalRotation);
+        m_curFrame->m_absPose.setRotationMatrix(tmpRot.toRotationMatrix());
+
+        System_Log( WARNING ) << "final trans: " << m_curFrame->m_absPose.params().transpose();
+        // System_Log( INFO ) << "rotation new:" << m_curFrame->m_absPose.rotationMatrix();
     }
+*/
+
     // m_bundler->optimizePose(m_curFrame);
     // m_bundler->oneFrameWithScene (m_curFrame, 2.0);
-    // m_bundler->optimizeScene(m_curFrame, 2.0);
+    m_bundler->optimizeScene(m_curFrame, 2.0);
     // m_bundler->threeViewBA(m_curFrame, 2.0);
     double aftError = algorithm::computeStructureError(m_curFrame);
     System_Log( INFO ) << "Structure error: " << befError << " -> " << aftError;
